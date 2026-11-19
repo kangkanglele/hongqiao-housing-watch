@@ -358,7 +358,7 @@ async function cloudPull(silent=false,force=false,includePageConfig=true){
   if((localPending||cloudDirty)&&!force){
    // 有本地修改时不再用云端覆盖本地：先合并两端记录，再自动提交合并结果。
    setCloudStatus('发现本地修改，正在与云端自动合并…');
-   const merged=window.HQSyncMerge.mergeStates(state,r.state,{localVersion:cloudVersion,remoteVersion:r.version});
+   const merged=window.HQSyncMerge.mergeStates(state,r.state,{localVersion:cloudVersion,remoteVersion:r.version},DEFAULT_PAGE_CONFIG);
    cloudApplying=true;state=sanitizeState(merged.state);cloudVersion=Number(r.version||0);
    localStorage.setItem(KEY,JSON.stringify(state));localStorage.setItem('HQ_CLOUD_VERSION',String(cloudVersion));
    cloudApplying=false;applyPageConfig();
@@ -464,7 +464,7 @@ async function cloudPush(silent=false){
     setCloudStatus('发现云端新版本，正在自动合并本地与云端数据…');
     const remote=await cloudJsonp({action:'load'});
     if(!remote.state||!Array.isArray(remote.state.houses)||!Array.isArray(remote.state.scopes))throw Error('云端快照不完整，未覆盖本地数据。');
-    const merged=window.HQSyncMerge.mergeStates(state,remote.state,{localVersion:cloudVersion,remoteVersion:remote.version});
+    const merged=window.HQSyncMerge.mergeStates(state,remote.state,{localVersion:cloudVersion,remoteVersion:remote.version},DEFAULT_PAGE_CONFIG);
     state=sanitizeState(merged.state);cloudVersion=Number(remote.version||0);mergedConflicts+=merged.conflictCount;
     localStorage.setItem(KEY,JSON.stringify(state));localStorage.setItem('HQ_CLOUD_VERSION',String(cloudVersion));
     applyPageConfig();
