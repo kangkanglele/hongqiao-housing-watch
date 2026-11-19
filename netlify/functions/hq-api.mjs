@@ -96,6 +96,11 @@ export default async function handler(request){
   return response({ok:true,session:makeSession(),expiresIn:AUTH_TTL_MS},200,origin);
  }
  if(action==='health')return response({ok:true,configured:!!(env('HQ_GOOGLE_URL')&&env('HQ_GOOGLE_TOKEN')&&env('HQ_PIN')&&env('HQ_SESSION_SECRET'))},200,origin);
+ // Public read-only mode: anyone may view the housing data; all mutations remain PIN-session protected.
+ if(action==='load'||action==='ping'){
+  try{const result=await google(action);return response(result,200,origin)}
+  catch(e){const status=e.conflict?409:/令牌|尚未配置/.test(e.message)?503:502;return response({ok:false,error:e.message,conflict:!!e.conflict},status,origin)}
+ }
  if(!validSession(headerSession(request)))return response({ok:false,error:'登录已过期，请输入四位 PIN'},401,origin);
  try{
   if(action==='capture'){
