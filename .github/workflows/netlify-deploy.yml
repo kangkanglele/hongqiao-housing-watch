@@ -1,15 +1,35 @@
-
-# Trigger Netlify after linking the GitHub identity in Netlify.
-name: Deploy to Netlify
+name: Test and deploy Netlify
 
 on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Test Netlify gateway
+        run: node tests/test_gateway.mjs
+      - name: Test Chrome extension queue
+        run: node tests/test_extension.cjs
+
   deploy:
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Netlify build
