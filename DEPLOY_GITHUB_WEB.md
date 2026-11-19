@@ -1,18 +1,24 @@
 # GitHub 网页端上传与 Netlify 首次部署（无需 Node.js）
 
-## A. 上传源码
+## A. 更新现有 Apps Script（必须先做）
+1. 打开当前正在使用的 Apps Script 项目，先保留现有部署和数据库。
+2. 将仓库 `apps-script/Code.gs.example` 的内容复制到现有 `Code.gs`。
+3. 只在 Apps Script 编辑器中，把 `SPREADSHEET_ID` 和 `API_TOKEN` 两个占位符替换为你原来使用的值；不要把真实值提交到 GitHub。
+4. 保存后进入「部署 → 管理部署」，编辑现有 Web App，选择新版本并部署，保持原 `/exec` 地址不变。不要重建或清空 Google Sheets。
+
+## B. 上传源码
 1. 打开 https://github.com/kangkanglele/hongqiao-housing-watch
 2. 点击 `Add file` → `Upload files`
 3. 在本地解压本项目 ZIP。把解压后的项目内容上传，确保 GitHub 根目录直接看到 `netlify.toml`、`site/`、`netlify/`、`extension/`，不要把所有文件再套一层项目目录。
 4. 提交到 `main` 分支（Commit changes）。
 
-## B. Netlify 连接仓库
+## C. Netlify 连接仓库
 1. 打开 https://app.netlify.com/projects/hongqiao-housing-watch
 2. Project configuration → Build & deploy / Continuous deployment → Link repository
 3. 选择 GitHub → `kangkanglele/hongqiao-housing-watch` → `main`
 4. Build command 留空；Publish directory 填 `site`。Functions directory 保持 `netlify/functions`（由根目录 `netlify.toml` 指定）。
 
-## C. 配置服务端环境变量
+## D. 配置服务端环境变量
 Netlify → Project configuration → Environment variables。分别新增：
 - `HQ_GOOGLE_URL`：现有 Apps Script `/exec` URL
 - `HQ_GOOGLE_TOKEN`：Apps Script `API_TOKEN`，勾选 Contains secret values
@@ -23,7 +29,7 @@ Netlify → Project configuration → Environment variables。分别新增：
 
 保存后进入 Deploys，触发一次新的 production deploy。环境变量更新必须重新部署才会注入 Functions。
 
-## D. 验收
+## E. 验收
 1. 打开 https://hongqiao-housing-watch.netlify.app/
 2. 数据管理输入你在 Netlify 环境变量中设置的 PIN
 3. 应读取原 Google Sheets 快照，而不是初始化空库
