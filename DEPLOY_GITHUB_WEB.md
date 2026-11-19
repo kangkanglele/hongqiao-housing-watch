@@ -25,7 +25,7 @@
 Netlify → Project configuration → Environment variables。分别新增：
 - `HQ_GOOGLE_URL`：现有 Apps Script `/exec` URL
 - `HQ_GOOGLE_TOKEN`：Apps Script `API_TOKEN`，勾选 Contains secret values
-- `HQ_PIN`：自行选择的四位数字（不要使用 `1111`），勾选 Contains secret values；仅作为日常访问门槛
+- `HQ_PIN`：自行选择的四位数字，不要复用测试环境的 PIN；勾选 Contains secret values，仅作为日常访问门槛
 - `HQ_SESSION_SECRET`：至少 32 字节随机值，勾选 Contains secret values
 
 四项都选 All scopes，Same value for all deploy contexts。已有 `HQ_GOOGLE_URL` 就保留，不要重复新增。
