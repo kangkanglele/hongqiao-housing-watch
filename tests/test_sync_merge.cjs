@@ -27,7 +27,7 @@ const remote={
  visitSessions:[{id:'VISIT-1',date:'2026-11-19',entries:[{id:'ENTRY-REMOTE',houseId:'REMOTE-1'}]}],
  pageConfig:{colorBackground:'#ffffff'}
 };
-const result=merge(local,remote,{localVersion:7,remoteVersion:8});
+const result=merge(local,remote,{localVersion:7,remoteVersion:8},{colorPrimary:'#167a63',colorBackground:'#f5f6f8'});
 const state=result.state;
 assert.equal(state.houses.length,3,'local-only, remote-only, and shared houses should all survive');
 assert.ok(state.houses.some(x=>x.id==='LOCAL-1'));
