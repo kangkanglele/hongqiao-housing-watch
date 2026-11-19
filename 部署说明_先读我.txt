@@ -7,7 +7,7 @@
 2. 原来 Netlify 只用了静态 index.html。新版为保护 Google Token，增加了服务端 Netlify Function。
    因此不能再只把 index.html 或静态 ZIP 拖到 Deploys，否则 / .netlify/functions/hq-api 会返回 404。
    必须使用 Netlify CLI（或将项目绑定 Git 仓库后让 Netlify 构建发布）。
-3. 原来的 Google Sheets 及 Apps Script V3.4 可以继续使用，无需重置、清空或另建数据库；无需重新发布 Apps Script。
+3. 原来的 Google Sheets 数据库继续使用，不需要重建或清空；但必须更新 Apps Script 代码以启用追加式安全快照。将仓库 `apps-script/Code.gs.example` 复制到现有 `Code.gs`，只在 Apps Script 编辑器中替换 Spreadsheet ID 和 API Token 两个占位符，保存并更新现有 Web App 部署，保持原 `/exec` 地址不变。
 4. 当前无法通过 ChatGPT 的 Netlify 连接器代替你写入环境变量（Netlify 返回 403），所以下面的四项需要你在 Netlify 设置一次。
 5. 本包绝无真实 Google API_TOKEN，也没有 Session 私钥。不要把你的密钥提交到 Git 仓库，也不要放在公开 HTML/Chrome 插件中。
 
@@ -54,7 +54,7 @@ netlify deploy --prod
 四、上线验收（在浏览器手动核查）
 ----------------------------------------
 1. 访问 https://hongqiao-housing-watch.netlify.app/，应看到 V3.5 而非 V3.4。
-2. 首次打开自动进入「数据管理 · PIN 解锁」，输入你在 Netlify 环境变量中自行设置的四位 PIN。
+2. 首次打开默认进入公开只读模式，自动读取原 Google Sheets 数据；进入「数据管理」后输入你在 Netlify 环境变量中自行设置的四位 PIN，才能修改、采集同步和写入。
 3. 验证成功后应看到 Google Sheets 中原本的17个小区、市场扫描和2条待核官网链接，不得出现完全空白并询问重新初始化。
 4. 若提示「云端安全配置尚未设置」，说明函数已上线但四个环境变量缺失/作用范围不对。
 5. 若显示 404，多半仅发布了静态网页，未将 Netlify Functions 部署上去。
@@ -83,7 +83,7 @@ netlify deploy --prod
 - H5 上主动操作保存后会自动上传；另一台设备打开或发生操作时读取变化。完全闲置且开着的页面不会即时推送，这是“不轮询”的预期。
 - 没有自动爬取网站；Chrome 插件只读用户当前主动打开的页面，不进行额外批量访问，也不绕过登录和反爬策略。
 - Chrome 扩展「本地存储」仅作为网络失败时的临时待传缓冲，不是第二个业务数据库。必须收到云端成功确认才会移除，确保不丢记录。
-- Google Apps Script 当前仍按整个 JSON 快照分片上传；少量房源的模拟测试通过，尚未在真正的 Netlify + Google 线上环境及大数据量下测定成功率和耗时。扩展到上千套前，应改为 Apps Script 服务端单套增量写入接口，避免每次保存重传全量数据。
+- Google Apps Script 仍按完整 JSON 快照分片上传；新版本采用追加写入并回读校验，旧快照保留，未完成的新快照不会取代最近完整版本。少量房源模拟测试已通过，但仍需在真实 Netlify + Google 线上环境验证；扩展到上千套前，再评估单套增量写入。
 - PIN 仅用于防止随手访问和误操作，不提供暴力破解防护。项目允许公开代码和房源观察信息；服务端 Token/Session Secret 不得进入仓库或 Chrome 插件。
 
 七、自动部署（可选一次性改造）
