@@ -1,214 +1,783 @@
 /**
- * 红桥房源观察站 · Google Sheets 云端读写接口 V2.3 链接身份/归档设计
- * 部署：扩展程序 > Apps Script > 粘贴本文件 > 部署为 Web 应用
- * 执行身份：我（表格所有者） 访问权限：任何人
- * 安全：此为公开仓库模板。部署前替换两个占位符；真实 API_TOKEN 只保存在 Apps Script 与 Netlify 服务端环境变量中。
+ * 红桥房源观察站 · Google Sheets 云端 API
+ * 红桥房源观察站 0.5：单次 POST 快照写入；保留旧 GET 接口兼容。
+ *
+ * Compatibility:
+ *   GET actions: ping, load, begin, chunk, commit, config, configSave
+ *   JSONP response for the existing Netlify front end.
+ *
+ * Data safety:
+ *   - 云端状态只追加快照，不清空旧版本。
+ *   - 云端暂存只清理本次已提交的 uploadId。
+ *   - 业务明细表按主键 upsert，不批量删除旧行。
+ *   - 页面配置与快照分离，配置历史只追加。
+ *   - API_TOKEN is read only from Apps Script Script Properties; never commit it here.
  */
-const SPREADSHEET_ID = "REPLACE_WITH_YOUR_SPREADSHEET_ID";
-const API_TOKEN = "REPLACE_WITH_A_LONG_RANDOM_API_TOKEN";
-const STATE_SHEET = "云端状态";
-const STAGING_SHEET = "云端暂存";
-const STATE_HEADERS = ["snapshot_id", "version", "chunk_index", "total_chunks", "updated_at", "payload"];
-const STAGING_HEADERS = ["upload_id", "chunk_index", "total_chunks", "payload", "created_at", "expected_version"];
+
+const SPREADSHEET_ID = 'REPLACE_WITH_SPREADSHEET_ID';
+const API_TOKEN_PROPERTY = 'API_TOKEN';
+// Keep this empty in the public template. Set API_TOKEN in Script Properties.
+const LEGACY_API_TOKEN_BOOTSTRAP = '';
+
+const STATE_SHEET = '云端状态';
+const STAGING_SHEET = '云端暂存';
+const STATE_HEADERS = ['snapshot_id', 'version', 'chunk_index', 'total_chunks', 'updated_at', 'payload'];
+const STAGING_HEADERS = ['upload_id', 'chunk_index', 'total_chunks', 'payload', 'created_at', 'expected_version'];
+const SNAPSHOT_INDEX_SHEET = '快照目录';
+const SNAPSHOT_INDEX_HEADERS = ['snapshot_id', 'version', 'updated_at', 'total_chunks', 'payload_chars', 'houses_count', 'scopes_count', 'sha256'];
+const PAGE_CONFIG_SHEET = '页面配置';
+const PAGE_CONFIG_HEADERS = ['key', 'section', 'label', 'value', 'description', 'updated_at'];
+const PAGE_CONFIG_HISTORY_SHEET = '页面配置历史';
+const PAGE_CONFIG_HISTORY_HEADERS = ['timestamp', 'editor', 'hash', 'configuration_json', 'comment'];
+
+const DEFAULT_PAGE_CONFIG = {
+  schema: 1,
+  colorPrimary: '#167a63', colorBackground: '#f5f6f8', textScale: 1,
+  cardRadius: 18, cardGap: 15, cardPhotoHeight: 165, cardColumns: 2,
+  mobileNav: 'right', detailTop: 20, showMarketPanel: true,
+  defaultView: 'cards', defaultFilter: 'all', defaultSort: 'recent',
+  priceMin: 20, priceMax: 70, noLiftFloor: 4, excludeEnvironmentC: true,
+  pollMinutes: 0, checkOnFocus: false,
+  navLabels: {
+    houses: '房源总览', visits: '看房行程', changes: '市场记录',
+    benchmark: '成交基准', scopes: '监控小区', config: '页面配置', settings: '数据管理'
+  },
+  filterLabels: {
+    all: '非硬伤候选', focus: '重点 / 待看', visited: '已带看', mine: '我觉得合适',
+    uncertain: '待核验', withphoto: '有照片', excluded: '硬伤排除', budget: '价格区间'
+  }
+};
+
+function doPost(e) {
+  let result;
+  try {
+    const body = JSON.parse(String(e && e.postData && e.postData.contents || '{}'));
+    const expectedToken = getApiToken_();
+    if (!expectedToken || !constantTimeEqual_(String(body.token || ''), expectedToken)) {
+      throw new Error('访问令牌错误。');
+    }
+    if (String(body.action || '') !== 'snapshotCommit') throw new Error('不支持的 POST 操作。');
+    result = commitSnapshot_(body);
+  } catch (err) {
+    result = { ok: false, error: String(err && err.message || err) };
+  }
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
 
 function doGet(e) {
   const p = (e && e.parameter) || {};
-  const callback = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(p.callback || "") ? p.callback : "callback";
+  const callback = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(p.callback || '') ? p.callback : 'callback';
   let result;
   try {
-    if (!constantTimeEqual_(String(p.token || ""), API_TOKEN)) throw new Error("访问令牌错误，请检查网页设置中的 API_TOKEN。");
-    const action = String(p.action || "");
-    if (action === "ping") result = {ok:true, service:"hongqiao-housing-watch", version:currentVersion_()};
-    else if (action === "load") result = loadState_();
-    else if (action === "begin") result = beginUpload_(p);
-    else if (action === "chunk") result = writeChunk_(p);
-    else if (action === "commit") result = commitUpload_(p);
-    else throw new Error("未知操作。");
-  } catch (err) { result = {ok:false, error:String(err && err.message || err), conflict:!!(err && err.conflict)}; }
-  return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ");")
+    const expectedToken = getApiToken_();
+    if (!expectedToken || !constantTimeEqual_(String(p.token || ''), expectedToken)) {
+      throw new Error('访问令牌错误，请检查网页设置中的 API_TOKEN。');
+    }
+    const action = String(p.action || '');
+    if (action === 'ping') result = { ok: true, service: 'hongqiao-housing-watch', version: currentVersion_() };
+    else if (action === 'load') result = loadState_();
+    else if (action === 'begin') result = beginUpload_(p);
+    else if (action === 'chunk') result = writeChunk_(p);
+    else if (action === 'commit') result = commitUpload_(p);
+    else if (action === 'config') result = loadPageConfig_();
+    else if (action === 'configSave') result = savePageConfig_(p);
+    else throw new Error('未知操作。');
+  } catch (err) {
+    result = { ok: false, error: String(err && err.message || err) };
+  }
+  return ContentService.createTextOutput(callback + '(' + JSON.stringify(result) + ');')
     .setMimeType(ContentService.MimeType.JAVASCRIPT);
 }
 
-function ensureSheet_(name, headers) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+function getApiToken_() {
+  const props = PropertiesService.getScriptProperties();
+  let token = props.getProperty(API_TOKEN_PROPERTY);
+  if (!token && LEGACY_API_TOKEN_BOOTSTRAP) {
+    token = LEGACY_API_TOKEN_BOOTSTRAP;
+    props.setProperty(API_TOKEN_PROPERTY, token);
+  }
+  return token || '';
+}
+
+function constantTimeEqual_(a, b) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+function openSpreadsheet_() {
+  return SpreadsheetApp.openById(SPREADSHEET_ID);
+}
+
+function ensureSheet_(ss, name, headers) {
   let sh = ss.getSheetByName(name);
   if (!sh) sh = ss.insertSheet(name);
-  if (sh.getMaxColumns() < headers.length) sh.insertColumnsAfter(sh.getMaxColumns(), headers.length - sh.getMaxColumns());
-  if (sh.getLastRow() === 0) sh.getRange(1, 1, 1, headers.length).setValues([headers]);
+  if (sh.getLastRow() === 0) {
+    sh.getRange(1, 1, 1, headers.length).setValues([headers]);
+    return sh;
+  }
+  const lastCol = Math.max(sh.getLastColumn(), 1);
+  const existing = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(v => String(v || '').trim());
+  const missing = headers.filter(h => existing.indexOf(h) < 0);
+  if (missing.length) {
+    sh.getRange(1, lastCol + 1, 1, missing.length).setValues([missing]);
+  }
   return sh;
 }
-function stateSheet_() { return ensureSheet_(STATE_SHEET, STATE_HEADERS); }
-function stagingSheet_() { return ensureSheet_(STAGING_SHEET, STAGING_HEADERS); }
-function latestSnapshot_() {
+
+function stateSheet_() { return ensureSheet_(openSpreadsheet_(), STATE_SHEET, STATE_HEADERS); }
+function stagingSheet_() { return ensureSheet_(openSpreadsheet_(), STAGING_SHEET, STAGING_HEADERS); }
+
+function latestSnapshot_(parsePayload) {
   const sh = stateSheet_();
   const last = sh.getLastRow();
   if (last < 2) return null;
   const rows = sh.getRange(2, 1, last - 1, STATE_HEADERS.length).getValues();
-  const groups = new Map();
+  const groups = {};
   rows.forEach(r => {
-    const snapshotId = String(r[0] || "");
-    const version = Number(r[1]), index = Number(r[2]), total = Number(r[3]);
-    if (!snapshotId || !Number.isInteger(version) || version < 1 || !Number.isInteger(index) || !Number.isInteger(total) || total < 1 || index < 0 || index >= total) return;
-    const key = snapshotId + "|" + version;
-    let g = groups.get(key);
-    if (!g) { g = {snapshotId, version, total, parts:new Array(total), count:0, invalid:false, updatedAt:String(r[4] || "")}; groups.set(key, g); }
-    if (g.total !== total || g.parts[index] !== undefined) { g.invalid = true; return; }
-    g.parts[index] = String(r[5] || "");
-    g.count++;
-    if (String(r[4] || "") > g.updatedAt) g.updatedAt = String(r[4] || "");
+    const snapshotId = String(r[0] || '');
+    const version = Number(r[1]) || 0;
+    const index = Number(r[2]);
+    const total = Number(r[3]);
+    if (!snapshotId || version < 1 || !Number.isInteger(index) || !Number.isInteger(total) || total < 1) return;
+    const key = snapshotId + '|' + version;
+    if (!groups[key]) groups[key] = { snapshotId, version, total, updatedAt: String(r[4] || ''), chunks: [] };
+    const g = groups[key];
+    if (g.total !== total) return;
+    g.chunks.push({ index, payload: String(r[5] || '') });
   });
-  const candidates = Array.from(groups.values())
-    .filter(g => !g.invalid && g.count === g.total && g.parts.filter(x => x !== undefined).length === g.total)
-    .sort((a,b) => b.version - a.version || b.updatedAt.localeCompare(a.updatedAt));
+  const candidates = Object.keys(groups).map(k => groups[k]).sort((a, b) => b.version - a.version);
   for (const g of candidates) {
-    const payload = g.parts.join("");
+    if (g.chunks.length !== g.total) continue;
+    g.chunks.sort((a, b) => a.index - b.index);
+    let complete = true;
+    for (let i = 0; i < g.total; i++) if (!g.chunks[i] || g.chunks[i].index !== i) complete = false;
+    if (!complete) continue;
+    const payload = g.chunks.map(x => x.payload).join('');
+    if (!parsePayload) return { snapshotId: g.snapshotId, version: g.version, updatedAt: g.updatedAt, total: g.total, payloadChars: Array.from(payload).length };
     try {
       const state = JSON.parse(payload);
-      if (state && Array.isArray(state.houses) && Array.isArray(state.scopes)) return {snapshotId:g.snapshotId, version:g.version, updatedAt:g.updatedAt, payload, state};
+      if (!state || !Array.isArray(state.houses) || !Array.isArray(state.scopes)) continue;
+      return { snapshotId: g.snapshotId, version: g.version, updatedAt: g.updatedAt, total: g.total, payload, state };
+    } catch (err) {
+      // If the newest snapshot is malformed, fall back to the previous complete one.
+    }
+  }
+  return null;
+}
+
+function currentVersion_() {
+  const latest = latestSnapshot_(true);
+  return latest ? latest.version : 0;
+}
+
+function loadState_() {
+  const latest = latestSnapshot_(true);
+  if (!latest) return { ok: true, state: null, version: 0, updatedAt: null };
+  return {
+    ok: true,
+    state: latest.state,
+    version: latest.version,
+    updatedAt: latest.updatedAt,
+    snapshotId: latest.snapshotId
+  };
+}
+
+function beginUpload_(p) {
+  const expected = Number(p.expectedVersion);
+  const current = currentVersion_();
+  if (!Number.isFinite(expected) || expected !== current) {
+    return { ok: false, conflict: true, version: current, error: '云端数据已被其他设备更新。请先点击“从云端拉取”，再继续修改。' };
+  }
+  const uploadId = String(p.uploadId || '');
+  if (!/^[A-Za-z0-9_-]{8,80}$/.test(uploadId)) throw new Error('上传编号格式不正确。');
+  return { ok: true, uploadId, expectedVersion: current };
+}
+
+function writeChunk_(p) {
+  const uploadId = String(p.uploadId || '');
+  const index = Number(p.index);
+  const total = Number(p.total);
+  const payload = String(p.data || '');
+  const expectedVersion = Number(p.expectedVersion);
+  if (!/^[A-Za-z0-9_-]{8,80}$/.test(uploadId)) throw new Error('上传编号格式不正确。');
+  if (!Number.isInteger(index) || !Number.isInteger(total) || total < 1 || total > 2000 || index < 0 || index >= total) {
+    throw new Error('分片序号不正确。');
+  }
+  if (Array.from(payload).length > 500) throw new Error('分片过大，请重试。');
+  if (!Number.isFinite(expectedVersion) || expectedVersion !== currentVersion_()) {
+    return { ok: false, conflict: true, version: currentVersion_(), error: '云端版本已变化，请先重新拉取最新数据。' };
+  }
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sh = stagingSheet_();
+    const last = sh.getLastRow();
+    if (last >= 2) {
+      const old = sh.getRange(2, 1, last - 1, STAGING_HEADERS.length).getValues();
+      for (let i = old.length - 1; i >= 0; i--) {
+        if (String(old[i][0]) === uploadId && Number(old[i][1]) === index) {
+          sh.getRange(i + 2, 1, 1, STAGING_HEADERS.length)
+            .setValues([[uploadId, index, total, payload, new Date().toISOString(), expectedVersion]]);
+          return { ok: true, index };
+        }
+      }
+    }
+    sh.appendRow([uploadId, index, total, payload, new Date().toISOString(), expectedVersion]);
+    return { ok: true, index };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Single-request snapshot commit for the Netlify gateway.
+ * The legacy GET begin/chunk/commit path remains available for compatibility.
+ */
+function commitSnapshot_(p) {
+  const uploadId = String(p.uploadId || '');
+  const expectedVersion = Number(p.expectedVersion);
+  const state = p.state;
+  if (!/^[A-Za-z0-9_-]{8,80}$/.test(uploadId)) throw new Error('上传编号格式不正确。');
+  if (!Number.isFinite(expectedVersion) || expectedVersion < 0) throw new Error('云端版本号不正确。');
+  if (!state || !Array.isArray(state.houses) || !Array.isArray(state.scopes)) throw new Error('数据结构校验失败。');
+
+  const payload = JSON.stringify(state);
+  if (payload.length > 5000000) throw new Error('快照超过单次上传大小限制。');
+  const digest = sha256Hex_(payload);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const ss = openSpreadsheet_();
+    const stateSh = ensureSheet_(ss, STATE_SHEET, STATE_HEADERS);
+    const last = stateSh.getLastRow();
+
+    // Idempotency: a retry with the same uploadId cannot create another snapshot.
+    if (last >= 2) {
+      const rows = stateSh.getRange(2, 1, last - 1, STATE_HEADERS.length).getValues();
+      const existing = rows.filter(r => String(r[0]) === uploadId);
+      if (existing.length) {
+        const existingPayload = existing.sort((a, b) => Number(a[2]) - Number(b[2])).map(r => String(r[5] || '')).join('');
+        if (sha256Hex_(existingPayload) !== digest) throw new Error('上传编号已使用，但本次数据与已提交数据不同。');
+        return {
+          ok: true, duplicate: true, version: Number(existing[0][1]),
+          updatedAt: String(existing[0][4] || ''), houses: state.houses.length,
+          scopes: state.scopes.length, snapshotId: uploadId
+        };
+      }
+    }
+
+    const current = currentVersion_();
+    if (expectedVersion !== current) {
+      return { ok: false, conflict: true, version: current, error: '云端数据已被其他设备更新，请重新读取后再提交。' };
+    }
+
+    const newVersion = current + 1;
+    const now = new Date().toISOString();
+    const chars = Array.from(payload);
+    const chunkSize = 40000;
+    const parts = [];
+    for (let i = 0; i < chars.length; i += chunkSize) parts.push(chars.slice(i, i + chunkSize).join(''));
+    if (!parts.length) parts.push('{}');
+    const snapshotRows = parts.map((part, i) => [uploadId, newVersion, i, parts.length, now, part]);
+
+    // Authoritative snapshot is append-only. Never clear or overwrite old versions.
+    stateSh.getRange(stateSh.getLastRow() + 1, 1, snapshotRows.length, STATE_HEADERS.length).setValues(snapshotRows);
+
+    try {
+      const indexSh = ensureSheet_(ss, SNAPSHOT_INDEX_SHEET, SNAPSHOT_INDEX_HEADERS);
+      indexSh.appendRow([uploadId, newVersion, now, parts.length, chars.length, state.houses.length, state.scopes.length, digest]);
+    } catch (indexError) {
+      // The snapshot itself remains authoritative if this secondary index fails.
+    }
+
+    let normalizedUpdated = true;
+    let normalizedError = '';
+    try {
+      writeNormalized_(state, now);
+    } catch (mirrorError) {
+      normalizedUpdated = false;
+      normalizedError = String(mirrorError && mirrorError.message || mirrorError);
+    }
+
+    return {
+      ok: true, version: newVersion, updatedAt: now, houses: state.houses.length,
+      scopes: state.scopes.length, normalizedUpdated, normalizedError, snapshotId: uploadId
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function commitUpload_(p) {
+  const uploadId = String(p.uploadId || '');
+  if (!/^[A-Za-z0-9_-]{8,80}$/.test(uploadId)) throw new Error('上传编号格式不正确。');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const ss = openSpreadsheet_();
+    const staging = ensureSheet_(ss, STAGING_SHEET, STAGING_HEADERS);
+    const last = staging.getLastRow();
+    if (last < 2) throw new Error('没有收到上传分片。');
+    const all = staging.getRange(2, 1, last - 1, STAGING_HEADERS.length).getValues();
+    const rows = all.filter(r => String(r[0]) === uploadId).sort((a, b) => Number(a[1]) - Number(b[1]));
+    if (!rows.length) throw new Error('找不到本次上传数据，请重新同步。');
+    const total = Number(rows[0][2]);
+    const expectedVersion = Number(rows[0][5]);
+    const current = currentVersion_();
+    if (expectedVersion !== current || rows.some(r => Number(r[5]) !== expectedVersion)) {
+      return { ok: false, conflict: true, version: current, error: '云端版本已变化，请先重新拉取最新数据。' };
+    }
+    if (!Number.isInteger(total) || total < 1 || rows.length !== total ||
+        rows.some((r, i) => Number(r[1]) !== i || Number(r[2]) !== total)) {
+      throw new Error('上传分片不完整，请重新同步。');
+    }
+    const payload = rows.map(r => String(r[3] || '')).join('');
+    const state = JSON.parse(payload);
+    if (!state || !Array.isArray(state.houses) || !Array.isArray(state.scopes)) {
+      throw new Error('数据结构校验失败。');
+    }
+
+    const newVersion = current + 1;
+    const now = new Date().toISOString();
+    const chars = Array.from(payload);
+    const chunkSize = 40000; // below Google Sheets' 50,000-character cell limit
+    const parts = [];
+    for (let i = 0; i < chars.length; i += chunkSize) parts.push(chars.slice(i, i + chunkSize).join(''));
+    if (!parts.length) parts.push('{}');
+    const snapshotRows = parts.map((part, i) => [uploadId, newVersion, i, parts.length, now, part]);
+
+    // CRITICAL: append the new version. Never clear or overwrite earlier snapshots.
+    const stateSh = ensureSheet_(ss, STATE_SHEET, STATE_HEADERS);
+    stateSh.getRange(stateSh.getLastRow() + 1, 1, snapshotRows.length, STATE_HEADERS.length).setValues(snapshotRows);
+
+    const digest = sha256Hex_(payload);
+    try {
+      const indexSh = ensureSheet_(ss, SNAPSHOT_INDEX_SHEET, SNAPSHOT_INDEX_HEADERS);
+      indexSh.appendRow([uploadId, newVersion, now, parts.length, chars.length, state.houses.length, state.scopes.length, digest]);
+    } catch (indexError) {
+      // Snapshot rows are authoritative; a secondary index failure must not
+      // turn a successful commit into a client-visible failure.
+    }
+
+    let normalizedUpdated = true;
+    let normalizedError = '';
+    try {
+      writeNormalized_(state, now);
+    } catch (mirrorError) {
+      normalizedUpdated = false;
+      normalizedError = String(mirrorError && mirrorError.message || mirrorError);
+    }
+
+    // Remove only this upload's temporary chunks; preserve other in-progress uploads.
+    try {
+      for (let i = last; i >= 2; i--) {
+        if (String(staging.getRange(i, 1).getValue()) === uploadId) staging.deleteRow(i);
+      }
+    } catch (cleanupError) {
+      // A stale staging row is harmless; do not roll back the committed snapshot.
+    }
+
+    return {
+      ok: true, version: newVersion, updatedAt: now,
+      houses: state.houses.length, scopes: state.scopes.length,
+      normalizedUpdated, normalizedError, snapshotId: uploadId
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function cellValue_(value) {
+  if (value === undefined || value === null) return '';
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'object') return JSON.stringify(value);
+  return value;
+}
+
+/**
+ * Append/upsert by primary key. Existing rows and extra columns are retained;
+ * records missing from the current snapshot are never deleted.
+ */
+function upsertRows_(ss, sheetName, headers, keyField, objects, fallbackKeyFields) {
+  const sh = ensureSheet_(ss, sheetName, headers);
+  let lastCol = Math.max(sh.getLastColumn(), headers.length);
+  let headerRow = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(v => String(v || '').trim());
+  const missing = headers.filter(h => headerRow.indexOf(h) < 0);
+  if (missing.length) {
+    sh.getRange(1, lastCol + 1, 1, missing.length).setValues([missing]);
+    lastCol += missing.length;
+    headerRow = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(v => String(v || '').trim());
+  }
+  const col = {};
+  headerRow.forEach((h, i) => { if (h) col[h] = i; });
+  if (col[keyField] === undefined) throw new Error(sheetName + ' 缺少主键列：' + keyField);
+
+  const lastRow = sh.getLastRow();
+  const values = lastRow >= 2 ? sh.getRange(2, 1, lastRow - 1, lastCol).getValues() : [];
+  const rowByKey = {};
+  const fallbackFields = (fallbackKeyFields || []).filter(field => col[field] !== undefined);
+  const makeFallbackKey = row => fallbackFields.length ? fallbackFields.map(field => String(row[col[field]] === undefined ? '' : row[col[field]]).trim()).join('\u001f') : '';
+  const rowByFallback = {};
+  values.forEach((row, i) => {
+    const key = String(row[col[keyField]] || '');
+    if (key) rowByKey[key] = i; // last occurrence wins if legacy duplicates exist
+    else { const fallback = makeFallbackKey(row); if (fallback && fallback.replace(/\u001f/g, '')) rowByFallback[fallback] = i; }
+  });
+
+  let changed = false;
+  (objects || []).forEach(obj => {
+    const key = String(obj[keyField] || '');
+    if (!key) return;
+    let rowIndex = rowByKey[key];
+    if (rowIndex === undefined && fallbackFields.length) {
+      const fallback = fallbackFields.map(field => String(obj[field] === undefined ? '' : obj[field]).trim()).join('\u001f');
+      if (fallback && fallback.replace(/\u001f/g, '')) rowIndex = rowByFallback[fallback];
+    }
+    if (rowIndex === undefined) {
+      rowIndex = values.length;
+      values.push(new Array(lastCol).fill(''));
+    }
+    rowByKey[key] = rowIndex;
+    const row = values[rowIndex];
+    Object.keys(obj).forEach(field => {
+      if (col[field] !== undefined && obj[field] !== undefined) row[col[field]] = cellValue_(obj[field]);
+    });
+    changed = true;
+  });
+
+  if (changed && values.length) sh.getRange(2, 1, values.length, lastCol).setValues(values);
+}
+
+function writeNormalized_(state, now) {
+  const ss = openSpreadsheet_();
+  const houses = Array.isArray(state.houses) ? state.houses : [];
+  const scopes = Array.isArray(state.scopes) ? state.scopes : [];
+
+  const houseHeaders = ['house_id','community','title','origin','area_m2','price_wan','rooms','floor','total_floors','elevator','orientation','decoration','env','noise','duplex','top','legal','first_seen','listing_date','last_seen','suitability','stage','note','excluded_reason','record_updated'];
+  upsertRows_(ss, '房源', houseHeaders, 'house_id', houses.map(h => ({
+    house_id:h.id, community:h.community, title:h.title, origin:h.origin, area_m2:h.area,
+    price_wan:h.price, rooms:h.rooms, floor:h.floor, total_floors:h.total, elevator:h.elevator,
+    orientation:h.orient, decoration:h.decoration, env:h.env, noise:h.noise,
+    duplex:!!h.duplex, top:!!h.top, legal:h.legal, first_seen:h.firstSeen,
+    listing_date:h.listingDate, last_seen:h.lastSeen, suitability:h.suitability,
+    stage:h.stage, note:h.note, excluded_reason:h.excludedReason, record_updated:now,
+    record_status:h.deletedAt ? 'archived' : (h.recordStatus || 'active')
+  })));
+
+  const sourceHeaders = ['source_key','house_id','channel','platform_id','url','url_type','relation','checked_at','active','note'];
+  const sourceRows = [];
+  houses.forEach(h => (h.sources || []).forEach((s, i) => sourceRows.push({
+    source_key: String(h.id) + ':' + String(s.platformId || s.id || (i + 1)), house_id:h.id,
+    channel:s.channel, platform_id:s.platformId, url:s.originalUrl || s.url,
+    url_type:s.urlType, relation:s.relation, checked_at:s.checked,
+    active:s.active || '待核验', note:s.note, listing_key:s.listingKey || '',
+    original_url:s.originalUrl || s.url, canonical_url:s.canonicalUrl || '',
+    source_status:s.sourceStatus || s.relation || '待核验', first_seen:s.firstSeen || '', is_primary:!!s.isPrimary
+  })));
+  upsertRows_(ss, '渠道', sourceHeaders, 'source_key', sourceRows);
+
+  const eventHeaders = ['event_id','house_id','date','category','summary','details','prev_price_wan','new_price_wan','source_url','provenance','created_at'];
+  const eventRows = [];
+  houses.forEach(h => (h.events || []).forEach(e => eventRows.push({
+    event_id:e.id, house_id:h.id, date:e.date, category:e.kind || 'manual', summary:e.title,
+    details:e.desc, prev_price_wan:e.prevPrice, new_price_wan:e.newPrice,
+    source_url:e.sourceUrl || '', provenance:e.demo ? '模拟数据' : (h.origin === '公开索引' ? '公开索引' : '人工记录'), created_at:now
+  })));
+  upsertRows_(ss, '变动', eventHeaders, 'event_id', eventRows);
+
+  const scopeHeaders = ['scope_id','name','group','env','priority','allowed','remarks','updated_at'];
+  upsertRows_(ss, '小区', scopeHeaders, 'scope_id', scopes.map(s => ({
+    scope_id:s.id, name:s.name, group:s.group, env:s.env, priority:s.priority,
+    allowed:'是', remarks:s.remarks || '', updated_at:now
+  })));
+
+  const benchmarkHeaders = ['comp_id','community','area_m2','price_wan','deal_date','floor','quality','source','url','verified','included_in_normal','remarks'];
+  upsertRows_(ss, '成交基准', benchmarkHeaders, 'comp_id', (state.benchmarks || []).map(b => ({
+    comp_id:b.id, community:b.community, area_m2:b.area, price_wan:b.price, deal_date:b.date,
+    floor:b.floor, quality:b.quality, source:b.source, url:b.url, verified:b.verified,
+    included_in_normal:b.includedInNormal === true ? '是' : (b.includedInNormal === false ? '否' : '待判断'), remarks:b.remarks || ''
+  })));
+
+  const feedbackHeaders = ['feedback_id','house_id','at','suitability','stage','env','note','source'];
+  upsertRows_(ss, '人工反馈', feedbackHeaders, 'feedback_id', houses.filter(h => h.note || h.suitability || h.stage).map(h => ({
+    feedback_id:'FB-' + h.id, house_id:h.id, at:now, suitability:h.suitability,
+    stage:h.stage, env:h.env, note:h.note || '', source:'网页当前档案'
+  })));
+
+  const demoHeaders = ['house_id','community','title','area_m2','price_wan','suitability','stage','note'];
+  upsertRows_(ss, '模拟样本', demoHeaders, 'house_id', houses.filter(h => h.origin === '模拟数据').map(h => ({
+    house_id:h.id, community:h.community, title:h.title, area_m2:h.area,
+    price_wan:h.price, suitability:h.suitability, stage:h.stage, note:h.note
+  })));
+
+  const linkHeaders = ['listing_key','house_id','channel','platform_id','original_url','canonical_url','link_status','first_seen','last_seen','archived_at','merged_into','note'];
+  upsertRows_(ss, '链接索引', linkHeaders, 'listing_key', (state.linkLedger || []).map(x => ({
+    listing_key:x.key, house_id:x.houseId, channel:x.channel, platform_id:x.platformId,
+    original_url:x.originalUrl, canonical_url:x.canonicalUrl, link_status:x.status,
+    first_seen:x.firstSeen, last_seen:x.lastSeen, archived_at:x.archivedAt || '',
+    merged_into:x.mergedInto || '', note:x.note
+  })));
+
+  const archiveHeaders = ['house_id','archived_at','reason','record_status','stage','primary_listing_key','primary_original_url','tags','merged_into','note','community','title','record_json','updated_at'];
+  upsertRows_(ss, '归档记录', archiveHeaders, 'house_id', houses.filter(h => h.deletedAt).map(h => ({
+    house_id:h.id, archived_at:h.deletedAt, reason:h.deletedReason || '',
+    record_status:h.recordStatus || 'archived', stage:h.stage || '',
+    primary_listing_key:((h.sources || [])[0] || {}).listingKey || '',
+    primary_original_url:((h.sources || [])[0] || {}).originalUrl || ((h.sources || [])[0] || {}).url || '',
+    tags:(h.defects || []).concat(h.drawbacks || []).join('、'), merged_into:h.mergedInto || '',
+    note:h.note || '', community:h.community, title:h.title,
+    record_json:JSON.stringify({id:h.id,community:h.community,title:h.title,sources:h.sources||[],deletedAt:h.deletedAt}), updated_at:now
+  })));
+
+  const scanHeaders = ['扫描ID','扫描日期','小区','渠道','页面类型','页面链接','页面数据抓取时间','小区挂牌均价（元/㎡）','页面显示在售套数','近30天带看','记录性质','备注','是否单套房源','是否验证当前'];
+  upsertRows_(ss, '每日扫描', scanHeaders, '扫描ID', (state.marketScans || []).map(x => ({
+    '扫描ID':x.id, '扫描日期':x.date, '小区':x.community, '渠道':x.channel, '页面类型':x.pageType,
+    '页面链接':x.url, '页面数据抓取时间':x.observationAt, '小区挂牌均价（元/㎡）':x.listedAvg,
+    '页面显示在售套数':x.listedCount, '近30天带看':x.visits30, '记录性质':x.quality,
+    '备注':x.note, '是否单套房源':!!x.isIndividualListing, '是否验证当前':!!x.verifiedCurrent
+  })), ['扫描日期','小区','渠道','页面类型','页面链接']);
+
+  const leadHeaders = ['线索ID','小区','页面成交日期','面积㎡','成交总价万','渠道','原始页面','页面类型','是否验证','是否纳入正常基准','说明','首次录入日期','楼层','质量'];
+  upsertRows_(ss, '成交线索', leadHeaders, '线索ID', (state.saleLeads || []).map(x => ({
+    '线索ID':x.id, '小区':x.community, '页面成交日期':x.date, '面积㎡':x.area,
+    '成交总价万':x.price, '渠道':x.channel, '原始页面':x.url, '页面类型':x.sourceType,
+    '是否验证':x.verified ? '是' : '否', '是否纳入正常基准':x.includedInNormal ? '是' : '否',
+    '说明':x.note, '首次录入日期':x.firstSeen || now, '楼层':x.floor, '质量':x.quality
+  })));
+
+  const candidateHeaders = ['线索ID','小区','标题','面积㎡','页面挂牌总价万','户型','楼层','朝向','装修','电梯','渠道','平台房源编号','独立房源详情URL','查询日期','实际在售状态','图片','用户硬伤排除','备注','查询来源方式','listing_key','canonical_url','source_check'];
+  upsertRows_(ss, '单套详情待核', candidateHeaders, '线索ID', (state.listingCandidates || []).map(x => ({
+    '线索ID':x.candidateId, '小区':x.community, '标题':x.title, '面积㎡':x.area,
+    '页面挂牌总价万':x.price, '户型':x.rooms, '楼层':x.floorBand, '朝向':x.orient,
+    '装修':x.decoration || '未知', '电梯':x.elevator, '渠道':x.platform,
+    '平台房源编号':x.platformListingId, '独立房源详情URL':x.originalUrl,
+    '查询日期':x.observedOn, '实际在售状态':x.statusVerified ? '已核实' : '待核实',
+    '用户硬伤排除':x.exclusionDecision || '', '备注':x.note,
+    '查询来源方式':x.providedBy || '', listing_key:x.listingKey, canonical_url:x.canonicalUrl,
+    source_check:x.sourceCheck
+  })));
+
+  const visitHeaders = ['session_id','date','broker','meeting_time','status','note','created_at','entries_json','updated_at'];
+  upsertRows_(ss, '看房行程', visitHeaders, 'session_id', (state.visitSessions || []).map(x => ({
+    session_id:x.id, date:x.date, broker:x.broker, meeting_time:x.meetingTime,
+    status:x.status, note:x.note, created_at:x.createdAt,
+    entries_json:JSON.stringify((x.entries || []).map(e => {
+      const copy = Object.assign({}, e);
+      if (copy.photoData) { copy.photoPresent = true; delete copy.photoData; }
+      return copy;
+    })), updated_at:now
+  })));
+
+  const visitEntryHeaders = ['entry_id','session_id','listing_key','house_id','platform','platform_listing_id','url','community','title','visited_at','decision','impression','note','photo_present','updated_at'];
+  const visitEntryRows = [];
+  (state.visitSessions || []).forEach(session => (session.entries || []).forEach(entry => visitEntryRows.push({
+    entry_id:entry.id, session_id:session.id, listing_key:entry.listingKey,
+    house_id:entry.houseId, platform:entry.platform, platform_listing_id:entry.platformListingId,
+    url:entry.originalUrl || entry.url, community:entry.community, title:entry.title,
+    visited_at:entry.visitedAt, decision:entry.decision, impression:entry.impression,
+    note:entry.note, photo_present:!!entry.photoData, updated_at:now
+  })));
+  upsertRows_(ss, '看房明细', visitEntryHeaders, 'entry_id', visitEntryRows);
+
+  const quarantineHeaders = ['record_id','community','title','quarantine_reason','record_status','source_count','updated_at'];
+  upsertRows_(ss, '隔离记录', quarantineHeaders, 'record_id', (state.quarantine || []).map(x => ({
+    record_id:x.id, community:x.community, title:x.title,
+    quarantine_reason:x.quarantineReason || '', record_status:x.recordStatus || '',
+    source_count:(x.sources || []).length, updated_at:now
+  })));
+
+  const auditHeaders = ['audit_id','date','invalid_count','source','action','reason','updated_at'];
+  upsertRows_(ss, '无效采集审计', auditHeaders, 'audit_id', (state.invalidIngestAudit || []).map((x, i) => ({
+    audit_id:x.id || [x.date,x.source,x.action,i].join('|'), date:x.date,
+    invalid_count:x.invalidCount, source:x.source, action:x.action, reason:x.reason, updated_at:now
+  })));
+}
+
+function pageConfigNormalize_(source) {
+  const v = source && typeof source === 'object' ? source : {};
+  const d = DEFAULT_PAGE_CONFIG;
+  const number = (value, min, max, fallback) => {
+    const n = Number(value);
+    return Number.isFinite(n) && n >= min && n <= max ? n : fallback;
+  };
+  const color = (value, fallback) => typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value) ? value : fallback;
+  const enumValue = (value, allowed, fallback) => allowed.indexOf(value) >= 0 ? value : fallback;
+  const labelMap = (incoming, defaults) => {
+    const result = {};
+    Object.keys(defaults).forEach(k => {
+      const x = incoming && incoming[k];
+      result[k] = typeof x === 'string' && x.trim() ? x.trim().slice(0, 18) : defaults[k];
+    });
+    return result;
+  };
+  return {
+    schema: 1,
+    colorPrimary: color(v.colorPrimary, d.colorPrimary),
+    colorBackground: color(v.colorBackground, d.colorBackground),
+    textScale: number(v.textScale, 0.85, 1.2, d.textScale),
+    cardRadius: number(v.cardRadius, 6, 32, d.cardRadius),
+    cardGap: number(v.cardGap, 6, 32, d.cardGap),
+    cardPhotoHeight: number(v.cardPhotoHeight, 100, 320, d.cardPhotoHeight),
+    cardColumns: number(v.cardColumns, 1, 3, d.cardColumns),
+    mobileNav: enumValue(v.mobileNav, ['right', 'bottom'], d.mobileNav),
+    detailTop: number(v.detailTop, 8, 55, d.detailTop),
+    showMarketPanel: typeof v.showMarketPanel === 'boolean' ? v.showMarketPanel : d.showMarketPanel,
+    defaultView: enumValue(v.defaultView, ['cards', 'table'], d.defaultView),
+    defaultFilter: enumValue(v.defaultFilter, ['all','focus','visited','mine','uncertain','withphoto','excluded','budget'], d.defaultFilter),
+    defaultSort: enumValue(v.defaultSort, ['recent','priceAsc','priceDesc','areaDesc'], d.defaultSort),
+    priceMin: number(v.priceMin, 0, 1000, d.priceMin),
+    priceMax: number(v.priceMax, 0, 1000, d.priceMax),
+    noLiftFloor: number(v.noLiftFloor, 2, 12, d.noLiftFloor),
+    excludeEnvironmentC: typeof v.excludeEnvironmentC === 'boolean' ? v.excludeEnvironmentC : d.excludeEnvironmentC,
+    pollMinutes: 0,
+    checkOnFocus: false,
+    navLabels: labelMap(v.navLabels, d.navLabels),
+    filterLabels: labelMap(v.filterLabels, d.filterLabels)
+  };
+}
+
+function parseConfigCell_(value) {
+  const raw = String(value === undefined || value === null ? '' : value).trim();
+  if (!raw) return '';
+  try { return JSON.parse(raw); } catch (e) {}
+  if (raw.toUpperCase() === 'TRUE') return true;
+  if (raw.toUpperCase() === 'FALSE') return false;
+  if (/^-?\d+(\.\d+)?$/.test(raw)) return Number(raw);
+  return raw;
+}
+
+function latestConfigHistory_(ss) {
+  const sh = ensureSheet_(ss, PAGE_CONFIG_HISTORY_SHEET, PAGE_CONFIG_HISTORY_HEADERS);
+  const last = sh.getLastRow();
+  if (last < 2) return null;
+  const rows = sh.getRange(2, 1, last - 1, PAGE_CONFIG_HISTORY_HEADERS.length).getValues();
+  rows.sort((a, b) => String(b[0] || '').localeCompare(String(a[0] || '')));
+  for (const row of rows) {
+    try {
+      const parsed = JSON.parse(String(row[3] || ''));
+      if (parsed && typeof parsed === 'object') return parsed;
     } catch (e) {}
   }
   return null;
 }
-function currentVersion_() { const latest = latestSnapshot_(); return latest ? latest.version : 0; }
-function loadState_() {
-  const latest = latestSnapshot_();
-  if (!latest) return {ok:true, state:null, version:0, updatedAt:null};
-  return {ok:true, state:latest.state, version:latest.version, updatedAt:latest.updatedAt};
-}
-function beginUpload_(p) {
-  const expected = Number(p.expectedVersion);
-  const current = currentVersion_();
-  if (!Number.isFinite(expected) || expected !== current) return {ok:false, conflict:true, version:current, error:"云端数据已被其他设备更新。请先点击‘从云端拉取’，再继续修改。"};
-  const uploadId = String(p.uploadId || "");
-  if (!/^[A-Za-z0-9_-]{8,80}$/.test(uploadId)) throw new Error("上传编号格式不正确。");
-  return {ok:true, uploadId:uploadId, expectedVersion:current};
-}
-function writeChunk_(p) {
-  const uploadId = String(p.uploadId || "");
-  const index = Number(p.index), total = Number(p.total), payload = String(p.data || ""), expectedVersion = Number(p.expectedVersion);
-  if (!/^[A-Za-z0-9_-]{8,80}$/.test(uploadId)) throw new Error("上传编号格式不正确。");
-  if (!Number.isInteger(index) || !Number.isInteger(total) || total < 1 || total > 1000 || index < 0 || index >= total) throw new Error("分片序号不正确。");
-  if (!Number.isInteger(expectedVersion) || expectedVersion < 0) throw new Error("云端版本号不正确。");
-  if (payload.length > 500) throw new Error("分片过大，请重试。");
-  const sh = stagingSheet_();
+
+function loadPageConfig_() {
+  const ss = openSpreadsheet_();
+  const sh = ensureSheet_(ss, PAGE_CONFIG_SHEET, PAGE_CONFIG_HEADERS);
+  const config = Object.assign({}, DEFAULT_PAGE_CONFIG, latestConfigHistory_(ss) || {});
+  config.navLabels = Object.assign({}, DEFAULT_PAGE_CONFIG.navLabels, config.navLabels || {});
+  config.filterLabels = Object.assign({}, DEFAULT_PAGE_CONFIG.filterLabels, config.filterLabels || {});
   const last = sh.getLastRow();
   if (last >= 2) {
-    const old = sh.getRange(2, 1, last - 1, 6).getValues();
-    for (let i = old.length - 1; i >= 0; i--) {
-      if (String(old[i][0]) !== uploadId) continue;
-      if (Number(old[i][2]) !== total || Number(old[i][5]) !== expectedVersion) throw new Error("同一上传任务的分片参数不一致。");
-      if (Number(old[i][1]) === index) {
-        sh.getRange(i + 2, 1, 1, 6).setValues([[uploadId,index,total,payload,new Date().toISOString(),expectedVersion]]);
-        return {ok:true, index:index};
-      }
-    }
+    const rows = sh.getRange(2, 1, last - 1, Math.max(sh.getLastColumn(), PAGE_CONFIG_HEADERS.length)).getValues();
+    rows.forEach(row => {
+      const key = String(row[0] || '').trim();
+      if (!key) return;
+      const value = parseConfigCell_(row[3]);
+      if (key.indexOf('navLabels.') === 0) config.navLabels[key.slice(10)] = value;
+      else if (key.indexOf('filterLabels.') === 0) config.filterLabels[key.slice(13)] = value;
+      else config[key] = value;
+    });
   }
-  sh.appendRow([uploadId,index,total,payload,new Date().toISOString(),expectedVersion]);
-  return {ok:true, index:index};
+  const normalized = pageConfigNormalize_(config);
+  return { ok: true, config: normalized, hash: sha256Hex_(JSON.stringify(normalized)) };
 }
-function commitUpload_(p) {
-  const uploadId = String(p.uploadId || "");
-  const lock = LockService.getScriptLock();
-  lock.waitLock(20000);
-  try {
-    const sh = stagingSheet_();
-    const last = sh.getLastRow();
-    if (last < 2) throw new Error("没有收到上传分片。");
-    const all = sh.getRange(2, 1, last - 1, 6).getValues();
-    const rows = all.filter(r => String(r[0]) === uploadId).sort((a,b) => Number(a[1]) - Number(b[1]));
-    if (!rows.length) throw new Error("找不到本次上传数据，请重新同步。");
-    const total = Number(rows[0][2]), expectedVersion = Number(rows[0][5]);
-    if (!Number.isInteger(total) || total < 1 || total > 1000 || rows.length !== total || rows.some((r,i) => Number(r[1]) !== i || Number(r[2]) !== total || Number(r[5]) !== expectedVersion)) throw new Error("上传分片不完整或参数不一致，请重新同步。");
-    const current = latestSnapshot_();
-    const oldVersion = current ? current.version : 0;
-    if (expectedVersion !== oldVersion) { const conflict = new Error("云端版本已变化，请先重新拉取最新数据。"); conflict.conflict = true; throw conflict; }
-    const payload = rows.map(r => String(r[3] || "")).join("");
-    const state = JSON.parse(payload);
-    if (!state || !Array.isArray(state.houses) || !Array.isArray(state.scopes)) throw new Error("数据结构校验失败。");
-    const newVersion = oldVersion + 1;
-    const now = new Date().toISOString();
-    const snapshotId = "SNAP-" + newVersion + "-" + uploadId + "-" + Utilities.getUuid().replace(/-/g, "");
-    const chars = Array.from(payload), chunkSize = 40000, parts = [];
-    for (let i=0; i<chars.length; i+=chunkSize) parts.push(chars.slice(i,i+chunkSize).join(""));
-    const values = parts.map((part,i) => [snapshotId,newVersion,i,parts.length,now,part]);
-    const stateSh = stateSheet_();
-    const appendAt = stateSh.getLastRow() + 1;
-    // Append the new complete snapshot; never clear the previous authoritative version first.
-    if (values.length) stateSh.getRange(appendAt,1,values.length,STATE_HEADERS.length).setValues(values);
-    const verified = latestSnapshot_();
-    if (!verified || verified.snapshotId !== snapshotId || verified.payload !== payload) throw new Error("新快照写入校验失败；旧版本保持不变，请稍后重试。");
-    let normalizedUpdated = true;
-    try { writeNormalized_(state, now); } catch (mirrorError) { normalizedUpdated = false; }
-    // Staging rows are temporary only. Cleanup is best-effort and cannot undo a committed snapshot.
-    let stagingCleaned = true;
-    try {
-      for (let i=0; i<all.length; i++) if (String(all[i][0]) === uploadId) sh.getRange(i + 2,1,1,6).clearContent();
-    } catch (cleanupError) { stagingCleaned = false; }
-    return {ok:true, version:newVersion, updatedAt:now, houses:state.houses.length, scopes:state.scopes.length, normalizedUpdated:normalizedUpdated, stagingCleaned:stagingCleaned, snapshotId:snapshotId};
-  } finally { lock.releaseLock(); }
-}
-function replaceSheetRows_(name, headers, rows) {
-  const sh = ensureSheet_(name, headers);
-  // Full JSON in 云端状态 is authoritative; projections are regenerated after each commit.
-  // Keep old snapshot and append-only event history in JSON, never physically remove archived house records.
-  sh.getRange(1, 1, 1, headers.length).setValues([headers]);
-  const last = sh.getLastRow();
-  if (last > 1) sh.getRange(2, 1, last - 1, headers.length).clearContent();
-  if (rows.length) sh.getRange(2, 1, rows.length, headers.length).setValues(rows.map(row => headers.map((_,i) => row[i] === undefined || row[i] === null ? "" : row[i])));
-}
-function writeNormalized_(state, now) {
-  const houseHeaders = ["house_id","community","title","origin","area_m2","price_wan","rooms","floor","total_floors","elevator","orientation","decoration","env","noise","duplex","top","legal","first_seen","listing_date","last_seen","suitability","stage","note","excluded_reason","record_updated","record_status","archived_at","archived_reason","primary_listing_key","merged_into","tags"];
-  const sourceHeaders = ["source_key","house_id","channel","platform_id","url","url_type","relation","checked_at","active","note","listing_key","original_url","canonical_url","source_status","first_seen"];
-  const eventHeaders = ["event_id","house_id","date","category","summary","details","prev_price_wan","new_price_wan","source_url","provenance","created_at"];
-  const scopeHeaders = ["scope_id","name","group","env","priority","allowed","remarks","updated_at"];
-  const benchmarkHeaders = ["comp_id","community","area_m2","price_wan","deal_date","floor","quality","source","url","verified","included_in_normal","remarks"];
-  const feedbackHeaders = ["feedback_id","house_id","at","suitability","stage","env","note","source"];
-  const demoHeaders = ["house_id","community","title","area_m2","price_wan","suitability","stage","note"];
-  const linkHeaders = ["listing_key","house_id","channel","platform_id","original_url","canonical_url","link_status","first_seen","last_seen","archived_at","merged_into","note"];
-  const archiveHeaders = ["house_id","archived_at","reason","record_status","stage","primary_listing_key","primary_original_url","tags","merged_into","note"];
-  const houses = state.houses || [];
-  replaceSheetRows_("房源", houseHeaders, houses.map(h => [h.id,h.community,h.title,h.origin,h.area,h.price,h.rooms,h.floor,h.total,h.elevator,h.orient,h.decoration,h.env,h.noise,!!h.duplex,!!h.top,h.legal,h.firstSeen,h.listingDate,h.lastSeen,h.suitability,h.stage,h.note,h.excludedReason,now,(h.archived || h.mergedInto) ? "已归档" : "在库",h.archivedAt || "",h.archivedReason || "",h.primarySourceKey || "",h.mergedInto || "",(h.tags || []).join("、")]));
-  const sourceRows = [];
-  houses.forEach(h => (h.sources || []).forEach((s,i) => sourceRows.push([h.id+":"+(i+1),h.id,s.channel,s.platformId,s.url,s.urlType,s.relation,s.checked,s.active || "待核验",s.note || "",listingKey_(s),s.rawUrl || s.url,s.url,(h.archived || h.mergedInto) ? "已归档" : "在库",h.firstSeen || ""])));
-  replaceSheetRows_("渠道", sourceHeaders, sourceRows);
-  const eventRows = [];
-  houses.forEach(h => (h.events || []).forEach(e => eventRows.push([e.id,h.id,e.date,e.kind || "manual",e.title,e.desc,e.prevPrice,e.newPrice,e.sourceUrl || "",e.demo ? "模拟数据" : (h.origin === "公开索引" ? "公开索引" : "人工记录"),now])));
-  replaceSheetRows_("变动", eventHeaders, eventRows);
-  replaceSheetRows_("小区", scopeHeaders, (state.scopes || []).map(s => [s.id,s.name,s.group,s.env,s.priority,"是",s.remarks || "",now]));
-  replaceSheetRows_("成交基准", benchmarkHeaders, (state.benchmarks || []).map(b => [b.id,b.community,b.area,b.price,b.date,b.floor,b.quality,b.source,b.url,b.verified,b.includedInNormal === true ? "是" : (b.includedInNormal === false ? "否" : "待判断"),b.remarks || ""]));
-  replaceSheetRows_("人工反馈", feedbackHeaders, houses.filter(h => h.note || h.suitability || h.stage).map(h => ["FB-"+h.id,h.id,now,h.suitability,h.stage,h.env,h.note || "","网页当前档案"]));
-  replaceSheetRows_("模拟样本", demoHeaders, houses.filter(h => h.origin === "模拟数据").map(h => [h.id,h.community,h.title,h.area,h.price,h.suitability,h.stage,h.note]));
-  // Immutable link identity register (all historic links, including archived/merged/detached).
-  const registry = new Map();
-  (state.linkLedger || []).forEach(x => { if (x.key) registry.set(String(x.key), x); });
-  // Fallback/migration for older client snapshots without linkLedger.
-  houses.forEach(h => (h.sources || []).forEach(s => {
-    const key = listingKey_(s); if (!key) return;
-    const next = {key,houseId:h.mergedInto || h.id,channel:s.channel,platformId:s.platformId,originalUrl:s.rawUrl || s.url,canonicalUrl:s.url,status:(h.archived || h.mergedInto) ? "archived" : "active",firstSeen:h.firstSeen,lastSeen:h.lastSeen};
-    const old = registry.get(key);
-    if (!old || ((!h.archived && !h.mergedInto) && old.status !== "active")) registry.set(key,next);
+
+function configPairs_(config, now) {
+  const sections = {
+    colorPrimary:'外观', colorBackground:'外观', textScale:'外观', cardRadius:'外观', cardGap:'外观',
+    cardPhotoHeight:'外观', cardColumns:'布局', mobileNav:'布局', detailTop:'布局', showMarketPanel:'布局',
+    defaultView:'筛选', defaultFilter:'筛选', defaultSort:'筛选', priceMin:'筛选', priceMax:'筛选',
+    noLiftFloor:'规则', excludeEnvironmentC:'规则'
+  };
+  const names = {
+    colorPrimary:'主色调', colorBackground:'页面背景', textScale:'字体缩放', cardRadius:'卡片圆角 px',
+    cardGap:'卡片间距 px', cardPhotoHeight:'卡片图片高度 px', cardColumns:'桌面卡片列数',
+    mobileNav:'手机导航位置', detailTop:'详情页顶部留白 %', showMarketPanel:'显示市场扫描入口',
+    defaultView:'默认视图', defaultFilter:'默认筛选', defaultSort:'默认排序',
+    priceMin:'重点价格下限（万元）', priceMax:'重点价格上限（万元）',
+    noLiftFloor:'无电梯排除起始楼层', excludeEnvironmentC:'C级小区自动排除'
+  };
+  const rows = Object.keys(sections).map(k => ({
+    key:k, section:sections[k], label:names[k], value:JSON.stringify(config[k]),
+    description:'更改后无需 Netlify 发布', updated_at:now
   }));
-  replaceSheetRows_("链接索引",linkHeaders,[...registry.values()].map(x => [x.key,x.houseId,x.channel,x.platformId,x.originalUrl,x.canonicalUrl,x.status || "active",x.firstSeen,x.lastSeen,(houses.find(h=>h.id===x.houseId)||{}).archivedAt || "",(houses.find(h=>h.id===x.houseId)||{}).mergedInto || "",x.note || ""]));
-  replaceSheetRows_("归档记录",archiveHeaders,houses.filter(h=>h.archived || h.mergedInto).map(h => [h.id,h.archivedAt || "",h.archivedReason || "",h.mergedInto ? "已合并归档" : "已归档",h.stage,h.primarySourceKey || "",((h.sources || [])[0] || {}).rawUrl || ((h.sources || [])[0] || {}).url || "",(h.tags || []).join("、"),h.mergedInto || "",h.note || ""]));
+  Object.keys(config.navLabels).forEach(k => rows.push({
+    key:'navLabels.' + k, section:'文案', label:'导航：' + k,
+    value:JSON.stringify(config.navLabels[k]), description:'18字以内', updated_at:now
+  }));
+  Object.keys(config.filterLabels).forEach(k => rows.push({
+    key:'filterLabels.' + k, section:'文案', label:'筛选：' + k,
+    value:JSON.stringify(config.filterLabels[k]), description:'18字以内', updated_at:now
+  }));
+  return rows;
 }
 
-function listingKey_(s) {
-  if (!s || !s.url) return "";
-  const raw = String(s.url), id = String(s.platformId || "");
-  const host = (raw.match(/^https?:\/\/([^/]+)/i) || [,"" ])[1].toLowerCase();
-  const pathId = (raw.match(/\/ershoufang\/(\d{8,})(?:\.html)?(?:[?#]|$)/i) || [,"" ])[1];
-  const k = pathId || (/^\d{8,}$/.test(id)?id:"");
-  if (k) {
-    if (host === "5i5j.com" || host.endsWith(".5i5j.com")) return "5i5j:" + k;
-    if (host === "ke.com" || host.endsWith(".ke.com")) return "ke:" + k;
-    if (host === "lianjia.com" || host.endsWith(".lianjia.com")) return "lianjia:" + k;
+function savePageConfig_(p) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const ss = openSpreadsheet_();
+    const current = loadPageConfig_();
+    const expectedHash = String(p.expectedHash || '');
+    if (expectedHash !== current.hash) {
+      return { ok: false, conflict: true, hash: current.hash, error: '页面配置已在其他位置更新，请先刷新配置后再保存。' };
+    }
+    let incoming;
+    try { incoming = JSON.parse(String(p.config || '')); }
+    catch (e) { throw new Error('页面配置 JSON 格式不正确。'); }
+    const normalized = pageConfigNormalize_(incoming);
+    if (normalized.priceMin > normalized.priceMax) throw new Error('价格下限不能高于上限。');
+    const now = new Date().toISOString();
+    const sh = ensureSheet_(ss, PAGE_CONFIG_SHEET, PAGE_CONFIG_HEADERS);
+    const lastCol = Math.max(sh.getLastColumn(), PAGE_CONFIG_HEADERS.length);
+    const headers = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(v => String(v || '').trim());
+    const col = {};
+    headers.forEach((h, i) => { if (h) col[h] = i; });
+    const lastRow = sh.getLastRow();
+    const rows = lastRow >= 2 ? sh.getRange(2, 1, lastRow - 1, lastCol).getValues() : [];
+    const rowByKey = {};
+    rows.forEach((row, i) => { const k = String(row[col.key] || ''); if (k) rowByKey[k] = i; });
+    configPairs_(normalized, now).forEach(item => {
+      let i = rowByKey[item.key];
+      if (i === undefined) { i = rows.length; rows.push(new Array(lastCol).fill('')); rowByKey[item.key] = i; }
+      Object.keys(item).forEach(field => { if (col[field] !== undefined) rows[i][col[field]] = item[field]; });
+    });
+    if (rows.length) sh.getRange(2, 1, rows.length, lastCol).setValues(rows);
+
+    const hash = sha256Hex_(JSON.stringify(normalized));
+    const hist = ensureSheet_(ss, PAGE_CONFIG_HISTORY_SHEET, PAGE_CONFIG_HISTORY_HEADERS);
+    hist.appendRow([now, '网页', hash, JSON.stringify(normalized), '网页保存页面配置']);
+    return { ok: true, hash, updatedAt: now };
+  } finally {
+    lock.releaseLock();
   }
-  return "url:" + raw.replace(/[?#].*$/,"").replace(/\/$/,"").toLowerCase();
 }
 
-function constantTimeEqual_(a,b) {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i=0; i<a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
+function sha256Hex_(text) {
+  const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(text), Utilities.Charset.UTF_8);
+  return bytes.map(b => ('0' + ((b + 256) % 256).toString(16)).slice(-2)).join('');
+}
+
+/** Optional manual health check; safe to run from the Apps Script editor. */
+function productionHealthCheck() {
+  const ss = openSpreadsheet_();
+  const latest = latestSnapshot_(true);
+  const config = loadPageConfig_();
+  const report = {
+    spreadsheet: ss.getName(),
+    spreadsheetId: SPREADSHEET_ID,
+    version: latest ? latest.version : 0,
+    snapshotId: latest ? latest.snapshotId : null,
+    houses: latest ? latest.state.houses.length : 0,
+    scopes: latest ? latest.state.scopes.length : 0,
+    pageConfigHash: config.hash,
+    tokenStoredInScriptProperties: !!PropertiesService.getScriptProperties().getProperty(API_TOKEN_PROPERTY),
+    checkedAt: new Date().toISOString()
+  };
+  Logger.log(JSON.stringify(report, null, 2));
+  return report;
 }
