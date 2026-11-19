@@ -761,17 +761,36 @@ function render(){
   }
  }
 }
-function renderHouses(){const houses=state.houses.filter(h=>!h.deletedAt),qualified=houses.filter(h=>!issue(h).length),focus=qualified.filter(h=>['重点关注','准备看房','已看房'].includes(h.stage));const u=new Set(houses.map(h=>h.community));const quarantined=(state.quarantine||[]).length;const archived=state.houses.filter(h=>h.deletedAt).length;
-return `<section class="kpis"><div class="kpi"><div class="kpi-label">可追溯房源 <span>⌂</span></div><div class="kpi-num">${houses.length}</div><div class="kpi-desc">均有单套详情页链接</div></div><div class="kpi"><div class="kpi-label">未触发硬伤 <span>◷</span></div><div class="kpi-num">${qualified.length}</div><div class="kpi-desc">含需要核验的房源</div></div><div class="kpi"><div class="kpi-label">重点 / 待看 <span>☆</span></div><div class="kpi-num">${focus.length}</div><div class="kpi-desc">按你的人工标记</div></div><div class="kpi"><div class="kpi-label">旧数据待补链接 <span>⊘</span></div><div class="kpi-num">${quarantined}</div><div class="kpi-desc">不参与正式统计</div></div><div class="kpi"><div class="kpi-label">已隐藏档案 <span>◌</span></div><div class="kpi-num">${archived}</div><div class="kpi-desc">保留链接和历史</div></div></section>
-${state.pageConfig.showMarketPanel?`<div class="box market-home" style="border:1px solid #cfe4da;background:linear-gradient(135deg,#f5faf7,#fff);">
-  <div class="sectionhead" style="margin:0 0 12px"><h2>今日采集进度 <span class="badge good">数据分层</span></h2><span class="hint">不能将小区页当作单套房源</span></div>
-  <div class="market-stat-grid"><button class="market-stat" data-tab="changes"><b>${(state.marketScans||[]).length}</b><strong>小区市场扫描</strong><small>公开小区级挂牌快照，点击查看</small></button><button class="market-stat" data-tab="benchmark"><b>${(state.saleLeads||[]).length}</b><strong>历史成交线索</strong><small>尚无单笔独立链接，点击查看</small></button><div class="market-stat passive"><b>${houses.length}</b><strong>正式单套房源</strong><small>必须有独立详情链接才能计入</small></div></div>
-</div>`:''}
-${(state.listingCandidates||[]).some(c=>inspectListingUrl(c.originalUrl||c.url,c.platform).ok)?`<div class="box" style="margin-top:14px"><div class="sectionhead" style="margin:0 0 8px"><h2>官方单套链接 · 待补全 <span class="hint">${(state.listingCandidates||[]).filter(c=>inspectListingUrl(c.originalUrl||c.url,c.platform).ok).length} 条</span></h2></div><p class="muted">你已经分享的贝壳／我爱我家官方链接都保存在这里；没有小区或详细参数的不会伪装为完整房源。</p>${(state.listingCandidates||[]).filter(c=>inspectListingUrl(c.originalUrl||c.url,c.platform).ok).map(c=>`<div class="quarantine-item"><div><strong>${esc(c.community&&c.community!=='待核实'?c.community:c.platform+'房源 '+c.platformListingId)}</strong><div class="muted">${esc(c.platform)} · ${c.price?esc(c.price)+'万 · ':''}${c.area?esc(c.area)+'㎡ · ':''}详情待补</div><a href="${esc(urlSafe(c.originalUrl||c.url))}" target="_blank" rel="noopener noreferrer">官方原始链接 ↗</a></div><button class="btn sm" data-action="promoteCandidate" data-id="${esc(c.candidateId)}">补全建档 →</button></div>`).join('')}</div>`:''}
-<div class="alert link-policy"><span>✓</span><div><b>正式录入标准：必须有一条可识别的单套房源详情页。</b> 小区列表、筛选结果页、平台首页、没有链接的演示房源一律不计入正式房源。当前仅在浏览器校验链接结构，不代表已证实页面实时可访问。${quarantined?`<button class="btn text sm" data-tab="settings">查看旧数据 ${quarantined} 条 →</button>`:''}</div></div>
-<div class="sectionhead"><h2>房源跟踪库 <span class="hint">${houses.length} 套有效链接档案</span></h2><span class="hint">默认隐藏已确认硬伤</span></div>
-<div class="toolbar"><div class="searchbox"><span>⌕</span><input id="search" placeholder="搜索园区、房型、编号、备注…" aria-label="搜索房源"></div><select id="kind" aria-label="小区筛选"><option value="all">全部小区</option>${Array.from(u).sort().map(x=>`<option value="${esc(x)}" ${kind===x?'selected':''}>${esc(x)}</option>`).join('')}</select><div class="segments"><button data-view="cards" class="${view==='cards'?'active':''}">卡片</button><button data-view="table" class="${view==='table'?'active':''}">列表</button></div></div><div class="filters" id="filters">${[['all','非硬伤候选'],['focus','重点 / 待看'],['visited','已带看'],['mine','我觉得合适'],['uncertain','待核验'],['withphoto','有照片'],['excluded','硬伤排除'],['budget','价格区间']].map(([id,t])=>`<button class="chip ${filter===id?'active':''}" data-filter="${id}">${esc(state.pageConfig.filterLabels[id]||t)}</button>`).join('')}</div><div id="results">${renderItems()}</div>`}
-function renderResults(){const x=document.getElementById('results');if(x)x.innerHTML=renderItems()}
+function renderHouses(){
+ const houses=state.houses.filter(h=>!h.deletedAt);
+ const qualified=houses.filter(h=>!issue(h).length);
+ const focus=qualified.filter(h=>['重点关注','准备看房','已看房'].includes(h.stage));
+ const archived=state.houses.filter(h=>h.deletedAt).length;
+ const communities=Array.from(new Set(houses.map(h=>h.community).filter(Boolean))).sort();
+ const pending=(state.listingCandidates||[]).filter(x=>inspectListingUrl(x.originalUrl||x.url,x.platform).ok);
+ const readOnly=!cloudConfig.token;
+ return `
+ <section class="bh-overview-head"><h1>房源概览</h1><span class="bh-live-label">实时数据库</span></section>
+ <section class="bh-metrics" aria-label="房源概览统计">
+  <div class="bh-metric"><div class="bh-metric-top"><span class="bh-metric-label">可追溯房源</span>${metricIcon('house')}</div><div class="bh-metric-value">${houses.length}<small>套</small></div></div>
+  <div class="bh-metric"><div class="bh-metric-top"><span class="bh-metric-label">未触发硬伤</span>${metricIcon('shield')}</div><div class="bh-metric-value">${qualified.length}<small>套</small></div></div>
+  <div class="bh-metric"><div class="bh-metric-top"><span class="bh-metric-label">重点 / 待看</span>${metricIcon('bookmark')}</div><div class="bh-metric-value">${focus.length}<small>套</small></div></div>
+  <div class="bh-metric"><div class="bh-metric-top"><span class="bh-metric-label">已隐藏档案</span>${metricIcon('archive')}</div><div class="bh-metric-value">${archived}<small>套</small></div></div>
+ </section>
+ <div class="bh-sync-line"><div class="bh-sync-label">${bhIcon('refresh',15)}<span id="syncInlineStatus">${esc(cloudStatusText||'连接中…')}</span></div><button type="button" data-action="cloudPull" aria-label="刷新云端数据" title="刷新云端数据">${bhIcon('refresh',17)}</button></div>
+ <section class="bh-list-head"><div class="bh-list-title"><h2>候选房源</h2><span id="listingCount">${visibleHouses().length} 套</span></div>
+  <div class="bh-browse-toolbar">
+   <div class="bh-select-wrap"><select id="kind" aria-label="筛选小区"><option value="all">全部小区</option>${communities.map(x=>`<option value="${esc(x)}" ${kind===x?'selected':''}>${esc(x)}</option>`).join('')}</select>${bhIcon('down',13)}</div>
+   <button type="button" class="bh-tool-btn ${searchOpen?'active':''}" data-ui="searchToggle" aria-label="搜索房源" title="搜索房源" aria-expanded="${searchOpen}">${bhIcon('search',19)}</button>
+   <div class="bh-view-switch" aria-label="切换房源视图"><button type="button" class="bh-tool-btn ${view==='cards'?'active':''}" data-view="cards" aria-label="卡片视图" aria-pressed="${view==='cards'}">${bhIcon('grid',17)}</button><button type="button" class="bh-tool-btn ${view==='table'?'active':''}" data-view="table" aria-label="列表视图" aria-pressed="${view==='table'}">${bhIcon('list',17)}</button></div>
+  </div>
+ </section>
+ <div class="bh-search-panel" ${searchOpen?'':'hidden'}>${bhIcon('search',17)}<input id="search" type="search" aria-label="搜索房源" placeholder="搜索小区、户型、编号或官方链接…" value="${esc(search)}"><button type="button" data-ui="searchClose" aria-label="关闭搜索">×</button></div>
+ <details class="bh-filter-accordion" ${filter==='all'?'':'open'}><summary>${filter==='all'?'更多筛选':'正在筛选：'+esc(state.pageConfig.filterLabels[filter]||filter)} ${bhIcon('down',13)}</summary><div class="filters" id="filters">${[['all','非硬伤候选'],['focus','重点 / 待看'],['visited','已带看'],['mine','我觉得合适'],['uncertain','待核验'],['withphoto','有照片'],['excluded','硬伤排除'],['budget','价格区间']].map(([id,label])=>`<button class="chip ${filter===id?'active':''}" data-filter="${id}">${esc(state.pageConfig.filterLabels[id]||label)}</button>`).join('')}</div></details>
+ ${pending.length?`<details class="bh-pending-details"><summary>待补全官方房源链接 · ${pending.length} 条（不计入正式房源）</summary>${pending.map(x=>`<div class="quarantine-item"><div><strong>${esc(x.community&&x.community!=='待核实'?x.community:x.platform+'房源 '+x.platformListingId)}</strong><div class="muted">${esc(x.platform)} · ${x.price?esc(x.price)+'万 · ':''}${x.area?esc(x.area)+'㎡':''}</div><a href="${esc(urlSafe(x.originalUrl||x.url))}" target="_blank" rel="noopener noreferrer">官方原始链接 ↗</a></div><button class="btn sm" data-action="promoteCandidate" data-id="${esc(x.candidateId)}">补全建档</button></div>`).join('')}</details>`:''}
+ <div id="results">${renderItems()}</div>`;
+}
+function renderResults(){const x=document.getElementById('results');if(x)x.innerHTML=renderItems();const count=document.getElementById('listingCount');if(count)count.textContent=visibleHouses().length+' 套'}
 function visibleHouses(){
   return state.houses.filter(h=>{
     if(h.deletedAt)return false;
