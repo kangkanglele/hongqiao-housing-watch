@@ -353,7 +353,7 @@ function markLocalPending(){localPending=true;localMutationSeq++;try{localStorag
 function clearLocalPending(){localPending=false;try{localStorage.removeItem(LOCAL_PENDING_KEY)}catch(e){}}
 
 function save(){if(!cloudConfig.token&&!cloudApplying){toast('当前为公开只读模式，请在数据管理中输入 PIN 后编辑');return false;}try{localStorage.setItem(KEY,JSON.stringify(state));if(!cloudApplying)markLocalPending();if(cloudConfig.url&&cloudConfig.token&&!cloudApplying)scheduleCloudSave();return true}catch(e){toast('当前浏览器未能写入本地存储，请导出备份');return false}}
-function setCloudStatus(t){cloudStatusText=t;const el=document.getElementById('cloudStatusText');if(el)el.textContent=t;const badge=document.getElementById('cloudBadge');if(badge)badge.textContent=cloudConfig.token?'云端已解锁':'公开只读 · 待解锁';const side=document.getElementById('cloudSidebarStatus');if(side)side.textContent=cloudConfig.token?'云端同步 · '+t:'云端待解锁'}
+function setCloudStatus(t){cloudStatusText=t;const el=document.getElementById('cloudStatusText');if(el)el.textContent=t;const badge=document.getElementById('cloudBadge');if(badge)badge.textContent=cloudConfig.token?'云端已解锁':'公开只读 · 待解锁';const side=document.getElementById('cloudSidebarStatus');if(side)side.textContent=cloudConfig.token?'云端同步 · '+t:'云端只读 · '+t;const compact=document.getElementById('cloudCompactStatus');if(compact)compact.textContent=t;const inline=document.getElementById('syncInlineStatus');if(inline)inline.textContent=t}
 async function cloudJsonp(params){
   const publicRead=params?.action==='load'||params?.action==='ping';
   if(!cloudConfig.token&&!publicRead)throw Error('当前为公开只读模式，请输入 PIN 后执行写入操作');
@@ -809,9 +809,26 @@ function visibleHouses(){
     return text.includes(search.toLowerCase());
   }).sort((a,b)=>state.pageConfig.defaultSort==='priceAsc'?(Number(a.price||Infinity)-Number(b.price||Infinity)):state.pageConfig.defaultSort==='priceDesc'?(Number(b.price||-1)-Number(a.price||-1)):state.pageConfig.defaultSort==='areaDesc'?(Number(b.area||-1)-Number(a.area||-1)):String(b.lastSeen||'').localeCompare(String(a.lastSeen||'')));
 }
-function renderItems(){let houses=visibleHouses();if(!houses.length)return `<div class="empty rich-empty"><div class="empty-icon">⌂</div><strong>${state.houses.length?'当前筛选下没有房源':'正式房源库尚无有效详情页记录'}</strong><p>${state.houses.length?'可以调整筛选条件。':'原来的小区列表页和无链接模拟房源已移出正式清单。请使用贝壳或我爱我家的单套房源详情页新增记录。'}</p><button class="btn primary" data-action="new">＋ 粘贴单套房源链接</button></div>`;
-if(view==='table')return `<div class="table-wrap"><table class="main-table"><thead><tr><th>照片 / 房源 / 编号</th><th>面积 / 户型</th><th>楼层</th><th>总价 / 单价</th><th>环境</th><th>初筛状态</th><th>原始链接</th><th>操作</th></tr></thead><tbody>${houses.map(h=>`<tr><td><div class="table-house">${photoMarkup(h,'thumb')}<div><strong>${esc(h.community)}</strong><br><span class="muted">${esc(h.id)}</span></div></div></td><td>${fmt(h.area)}㎡<br>${esc(h.rooms)}</td><td>${h.floor?esc(h.floor)+'/'+esc(h.total):'待核实'}</td><td><strong>${fmtMoney(h)}万</strong><br>${unit(h)}</td><td>${esc(envFor(h))}</td><td>${scene(h)}${visitBadgeForHouse(h)}</td><td>${validSources(h).map(srcPill).join('')}</td><td><button class="cell-btn" data-open="${esc(h.id)}">查看 →</button></td></tr>`).join('')}</tbody></table></div>`;
-return `<div class="cards">${houses.map(h=>`<article class="house">${photoMarkup(h)}<div class="house-top"><div><h3>${esc(h.community)} <small>${esc(h.id)}</small></h3><div class="house-meta">${esc(h.title)}</div></div><div class="badges">${scene(h)}${visitBadgeForHouse(h)}</div></div>${issueTags(h)}<div class="price-row"><div class="price"><strong>${fmtMoney(h)}</strong><small>万</small><div class="unit">${unit(h)}</div></div><div class="grade">环境 ${esc(envFor(h)==='待评'?'待评级':envFor(h)+'级')}</div></div><div class="divide"></div><div class="attributes"><div class="attr"><label>面积 / 房型</label><strong>${fmt(h.area)}㎡ · ${esc(h.rooms)}</strong></div><div class="attr"><label>楼层 / 电梯</label><strong>${h.floor?esc(h.floor)+' / '+esc(h.total):'待核实'} · ${esc(h.elevator)}</strong></div><div class="attr"><label>行动状态</label><strong>${esc(h.stage)}</strong></div></div><div class="source-row">${validSources(h).map(srcPill).join('')}</div><div class="divide"></div><div class="house-foot"><div class="foot-info">观察 ${esc(h.lastSeen)} · ${esc(h.suitability)}</div><button class="btn text sm" data-action="shareHouse" data-id="${esc(h.id)}">分享链接</button><button class="btn sm" data-open="${esc(h.id)}">房源档案 →</button></div></article>`).join('')}</div>`}
+function renderItems(){
+ const houses=visibleHouses();
+ if(!houses.length)return `<div class="empty rich-empty"><div class="empty-icon">⌂</div><strong>${state.houses.length?'当前筛选下没有房源':'正式房源库尚无有效房源记录'}</strong><p>${state.houses.length?'试试其他小区或筛选条件。':'新增贝壳、我爱我家的官方单套详情页链接后，房源会显示在这里。'}</p><button class="btn primary" data-action="new">＋ 新增房源</button></div>`;
+ return `<div class="bh-listings ${view==='table'?'compact':''}">${houses.map(h=>{
+ const hard=issue(h).length>0;
+ const status=hard?'硬伤排除':h.stage||'待核验';
+ const tone=hard?'bad':status.includes('准备')||status.includes('待看')?'warn':status.includes('重点')?'':'neutral';
+ const meta=[Number(h.area)>0?fmt(h.area)+'㎡':'面积待核验',h.rooms&&h.rooms!=='未知'?h.rooms:'户型待核验',h.floorBand||(Number(h.floor)>0?'第'+h.floor+'层':'楼层待核验')].join(' · ');
+ const heading=h.community||'小区待核验';
+ const price=Number(h.price)>0?fmtMoney(h):'—';
+ return `<article class="bh-listing"><button type="button" class="bh-listing-main" data-open="${esc(h.id)}" aria-label="查看 ${esc(heading)} 的房源档案">
+  <span class="bh-listing-media">${photoMarkup(h,'thumb')}</span>
+  <span class="bh-listing-info">
+   <span class="bh-listing-name" title="${esc(h.title||heading)}">${esc(heading)}</span>
+   <span class="bh-listing-meta">${esc(meta)}</span>
+   <span class="bh-listing-price"><b>${price}</b><small>万元</small></span>
+   <span class="bh-listing-bottom"><span class="bh-stage ${tone}">${esc(status)}</span><span class="bh-view-detail">查看档案 ›</span></span>
+  </span>
+ </button></article>`}).join('')}</div>`;
+}
 function renderChanges(){
  const scans=(state.marketScans||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
  const logs=state.houses.flatMap(h=>(h.events||[]).map(e=>({...e,house:h}))).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
@@ -958,7 +975,7 @@ window.addEventListener('focus',()=>{if(!document.hidden)onCloudWake()});
 window.addEventListener('pageshow',e=>{if(e.persisted)onCloudWake(true)});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)onCloudWake()});
 window.addEventListener('online',()=>{if(cloudStartupDone)onCloudWake(true)});
-document.addEventListener('click',e=>{const close=e.target.closest('[data-close]');if(close&&(close===e.target||e.target.closest('button[data-close]'))){closeOverlay();return}const nt=e.target.closest('[data-tab]');if(nt){if(configFormDirty&&tab==='config'&&nt.dataset.tab!=='config'){if(!confirm('页面配置有未保存的修改，确认放弃吗？'))return;configFormDirty=false;}tab=nt.dataset.tab;filter=state.pageConfig.defaultFilter;search='';render();window.scrollTo(0,0);return}const ff=e.target.closest('[data-filter]');if(ff){window.__hqUserFiltersTouched=true;filter=ff.dataset.filter;render();return}const vv=e.target.closest('[data-view]');if(vv){window.__hqUserFiltersTouched=true;view=vv.dataset.view;render();return}const oo=e.target.closest('[data-open]');if(oo){openDetail(oo.dataset.open);return}const a=e.target.closest('[data-action]');if(!a)return;const action=a.dataset.action;const publicActions=new Set(['visitFilter','reopen','shareHouse','exportLinks','export','saveCloudConfig','lockCloud','cloudPull']);if(!cloudConfig.token&&!publicActions.has(action)){toast('当前为公开只读模式；输入 PIN 解锁后才能修改数据');tab='settings';render();return;}const id=a.dataset.id, h=state.houses.find(x=>x.id===id);switch(action){
+document.addEventListener('click',e=>{const ui=e.target.closest('[data-ui]');if(ui){const cmd=ui.dataset.ui;if(cmd==='drawerOpen'){openBhDrawer();return}if(cmd==='drawerClose'){closeBhDrawer();return}if(cmd==='searchToggle'){searchOpen=!searchOpen;render();if(searchOpen)document.getElementById('search')?.focus();return}if(cmd==='searchClose'){search='';searchOpen=false;render();return}if(cmd==='help'){modal('买房助手 · 使用说明','<p>房源信息、历史价格、看房行程和小区记录均可查看。新增、修改或归档需要在「数据管理」输入 PIN。</p><p>正式房源须有可识别的单套官方详情链接；待核实线索独立保存，不能计入正式房源。</p><p>首页概览来自真实数据库，使用「更多筛选」查看其他状态。</p>');return}}const close=e.target.closest('[data-close]');if(close&&(close===e.target||e.target.closest('button[data-close]'))){closeOverlay();return}const nt=e.target.closest('[data-tab]');if(nt){if(configFormDirty&&tab==='config'&&nt.dataset.tab!=='config'){if(!confirm('页面配置有未保存的修改，确认放弃吗？'))return;configFormDirty=false;}closeBhDrawer();tab=nt.dataset.tab;filter=state.pageConfig.defaultFilter;search='';searchOpen=false;render();window.scrollTo(0,0);return}const ff=e.target.closest('[data-filter]');if(ff){window.__hqUserFiltersTouched=true;filter=ff.dataset.filter;render();return}const vv=e.target.closest('[data-view]');if(vv){window.__hqUserFiltersTouched=true;view=vv.dataset.view;render();return}const oo=e.target.closest('[data-open]');if(oo){openDetail(oo.dataset.open);return}const a=e.target.closest('[data-action]');if(!a)return;const action=a.dataset.action;const publicActions=new Set(['visitFilter','reopen','shareHouse','exportLinks','export','saveCloudConfig','lockCloud','cloudPull']);if(!cloudConfig.token&&!publicActions.has(action)){toast('当前为公开只读模式；输入 PIN 解锁后才能修改数据');tab='settings';render();return;}const id=a.dataset.id, h=state.houses.find(x=>x.id===id);switch(action){
  case 'visitNew':editVisitSession();break;
  case 'visitEditSession':editVisitSession(id);break;
  case 'visitFilter':visitView=a.dataset.viewVisits||'active';render();break;
@@ -1128,6 +1145,7 @@ function importCapturedRecord(record){
  state.linkLedger=(state.linkLedger||[]).filter(x=>x.key!==(v.channel==='贝壳'?'ke:':'5i5j:')+v.id);
  return {status:'created',detail:h.id};
 }
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('bh-drawer-open'))closeBhDrawer()});
 // V3.5: 浏览器扩展独立直传 Netlify Functions；已移除旧的 H5 消息中转。
 applyPageConfig();render();
 const hqCloudInitPromise=initCloud().finally(()=>{cloudStartupDone=true});
