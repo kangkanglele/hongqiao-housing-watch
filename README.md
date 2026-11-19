@@ -17,7 +17,7 @@
 3. 在 Netlify 项目设置中配置以下 Functions 环境变量（都选 All deploy contexts；密钥项标记 Secret）：
    - `HQ_GOOGLE_URL`：现有 Apps Script `/exec` 地址
    - `HQ_GOOGLE_TOKEN`：Apps Script `Code.gs` 中的 `API_TOKEN`
-   - `HQ_PIN`：初始四位 PIN，当前约定 `1111`，首次验收后建议修改
+   - `HQ_PIN`：你自己设置的四位数字；仅作为日常访问门槛，不提供暴力破解防护
    - `HQ_SESSION_SECRET`：至少 32 字节的随机私钥
 4. 保存环境变量后触发一次新的生产部署。
 
@@ -26,3 +26,13 @@
 ## 数据保护
 
 Google Sheets 是业务数据源；首次部署不会重置或清空表格。Apps Script V3.4 `/exec` 继续使用，不需要重新初始化。
+
+
+## 安全边界
+
+- 源代码可以公开；仓库不得包含真实运行凭据。
+- 房源和小区信息按可公开查看的数据设计；管理写入仍需通过服务端 PIN 会话。
+- PIN 只用于防止随手访问和误操作，不作为强认证；项目不实施输错次数锁定。
+- Google Token 与 Session Secret 只保存在 Netlify Functions 环境变量中。
+- Google Sheets 的完整 JSON 快照是权威数据；新版本先追加并校验，旧快照保留作为回滚依据。
+- 删除优先使用归档/软删除；同步失败时保留本地待同步队列。
