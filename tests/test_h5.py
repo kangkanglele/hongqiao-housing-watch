@@ -1,7 +1,9 @@
 from playwright.sync_api import sync_playwright
 from pathlib import Path
+import secrets
 
-html=Path('/mnt/data/hongqiao_v3_5_source/site/index.html').read_text()
+html=(Path(__file__).resolve().parents[1] / 'site' / 'index.html').read_text()
+test_pin = str(1000 + secrets.randbelow(9000))
 with sync_playwright() as pw:
     b=pw.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox'])
     p=b.new_page(viewport={'width':900,'height':800})
@@ -36,7 +38,7 @@ with sync_playwright() as pw:
     p.locator('#nav [data-tab="settings"]').click()
     assert p.locator('#adminPin').count()==1,'settings should offer PIN unlock'
     assert p.locator('#cloudToken').count()==0,'no secret token form'
-    p.locator('#adminPin').fill('1111')
+    p.locator('#adminPin').fill(test_pin)
     p.locator('[data-action="saveCloudConfig"]').click()
     p.wait_for_timeout(500)
     assert p.locator('#adminPin').count()==0,'should unlock after authentication'
