@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "红桥房源采集助手",
   "short_name": "红桥采集",
-  "version": "0.5",
-  "description": "点击图标即采集当前贝壳/我爱我家单套房源并直传云端；失败自动重试。",
+  "version": "0.6",
+  "description": "点击扩展图标自动采集房源；弹窗显示进度，页面悬浮提示同步状态。",
   "minimum_chrome_version": "110",
   "permissions": [
     "activeTab",
@@ -15,7 +15,8 @@
     "https://hongqiao-housing-watch.netlify.app/*"
   ],
   "action": {
-    "default_title": "一键采集并同步房源"
+    "default_title": "一键采集并同步房源",
+    "default_popup": "popup.html"
   },
   "background": {
     "service_worker": "background.js"
