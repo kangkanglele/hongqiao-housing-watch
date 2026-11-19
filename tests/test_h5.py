@@ -9,7 +9,7 @@ with sync_playwright() as pw:
     p=b.new_page(viewport={'width':900,'height':800})
     errors=[]
     p.on('pageerror',lambda e:errors.append(str(e)))
-    p.add_init_script("""() => {
+    p.add_init_script("""(() => {
       const d={};
       Object.defineProperty(window,'localStorage',{configurable:true,value:{
         getItem:k=>d[k]||null,
@@ -30,10 +30,11 @@ with sync_playwright() as pw:
         else answer={ok:true,version:8};
         return {ok:true,status:200,json:async()=>answer};
       };
-    }""")
+    })();""")
     p.set_content(html,wait_until='domcontentloaded')
     p.wait_for_timeout(300)
-    assert '公开只读模式' in p.locator('#root').inner_text(),'should open in public read-only mode'
+    root_text=p.locator('#root').inner_text()
+    assert '公开只读模式' in root_text, f'should open in public read-only mode; page errors={errors}; root={root_text[:500]}'
     assert p.locator('#adminPin').count()==0,'PIN should not block public browsing'
     p.locator('#nav [data-tab="settings"]').click()
     assert p.locator('#adminPin').count()==1,'settings should offer PIN unlock'
