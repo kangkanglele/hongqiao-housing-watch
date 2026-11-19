@@ -1,5 +1,5 @@
 /**
- * 红桥房源观察站 V3.5 — 服务端数据中转
+ * 红桥房源观察站 0.5 — 服务端数据中转
  * 机密只放 Netlify Functions 环境变量；严禁放在 HTML/Chrome 扩展。
  * 此接口对现有 Google Apps Script V3.4 向后兼容，不需要再次发布 Apps Script。
  */
@@ -34,6 +34,18 @@ async function google(action,params={}){
  if(!value?.ok){const e=Error(str(value?.error||'Google 操作失败',300));if(value?.conflict)e.conflict=true;throw e}
  return value;
 }
+async function googlePost(action,params={}) {
+ const scriptUrl=env('HQ_GOOGLE_URL'),token=env('HQ_GOOGLE_TOKEN');if(!scriptUrl||!token)throw Error('云端服务端凭证尚未配置');
+ const u=new URL(scriptUrl);if(u.protocol!=='https:'||u.hostname!=='script.google.com'||!/^\\/macros\\/s\\/[^/]+\\/exec$/.test(u.pathname))throw Error('云端部署地址配置不正确');
+ const body=JSON.stringify({...params,action,token});
+ if(new TextEncoder().encode(body).length>5*1024*1024)throw Error('云端快照超过单次上传限制，请先缩减照片体积');
+ const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),23000);let r,txt;
+ try{r=await fetch(u,{method:'POST',redirect:'follow',signal:ctrl.signal,headers:{'content-type':'application/json','accept':'application/json'},body});txt=await r.text();}finally{clearTimeout(timer)}
+ if(!r.ok)throw Error('Google 云端写入失败（HTTP '+r.status+'）');
+ let value;try{value=JSON.parse(txt)}catch{throw Error('Google POST 返回格式异常；请确认 Apps Script 已部署 0.5 版单次写入接口')}
+ if(!value?.ok){const e=Error(str(value?.error||'Google 写入失败',300));if(value?.conflict)e.conflict=true;throw e}
+ return value;
+}
 const VALID_NAMES=['水木天成翠杨园','水木天成依湖园','水木天成逸树园','水木天成望汀园','水木天成阁林园','水木天成碧杉园','水木天成闻涛园','水木天成临湾园','民畅园','河怡花园','燕宇新城','龙禧园','西河名邸','金筑家园','子牙南里','礼貌楼','礼貌东里'];
 function mergeRecord(state,input){
  const id=identity(input);if(input.platform&&input.platform!==id.channel)throw Error('渠道与房源链接域名不一致');if(input.platformId&&String(input.platformId)!==id.id)throw Error('房源编号与链接不一致');const community=str(input.community,60);const validCommunity=(state.scopes||[]).some(s=>s.name===community)&&VALID_NAMES.includes(community);
@@ -66,11 +78,7 @@ function mergeRecord(state,input){
 }
 async function commitWholeState(state,version){
  const uploadId='hq'+Date.now().toString(36)+Math.random().toString(36).slice(2,12);
- await google('begin',{uploadId,expectedVersion:version});
- const chars=Array.from(JSON.stringify(state)),size=380,total=Math.ceil(chars.length/size);
- if(total>1000)throw Error('当前快照过大，需要升级为分条存储后再继续采集');
- for(let i=0;i<total;i++)await google('chunk',{uploadId,index:i,total,data:chars.slice(i*size,(i+1)*size).join(''),expectedVersion:version});
- return google('commit',{uploadId});
+ return googlePost('snapshotCommit',{uploadId,expectedVersion:version,state});
 }
 async function ingest(record){
  // 幂等：同一平台+编号只保留一条；新版价格不同才生成事件。
