@@ -51,8 +51,27 @@
   function isTimestampField(field) {
     return /(?:At|Seen|checked|captureAt|updatedAt|createdAt|deletedAt)$/i.test(field || '');
   }
-  function mergeScalar(local, remote, path, conflicts, field) {
+  function defaultAtPath(defaults, path) {
+    const prefix = 'state.pageConfig.';
+    if (!path.startsWith(prefix)) return { found: false };
+    let value = defaults;
+    for (const key of path.slice(prefix.length).split('.')) {
+      if (!isObject(value) || !Object.prototype.hasOwnProperty.call(value, key)) return { found: false };
+      value = value[key];
+    }
+    return { found: true, value };
+  }
+  function mergeScalar(local, remote, path, conflicts, field, defaults) {
     if (Object.is(local, remote) || json(local) === json(remote)) return local;
+    // Normalized page config contains defaults even when a device never edited them.
+    // Treat those values as inherited, so they cannot overwrite another device's custom setting.
+    const inherited = defaultAtPath(defaults, path);
+    if (inherited.found) {
+      const localIsDefault = json(local) === json(inherited.value);
+      const remoteIsDefault = json(remote) === json(inherited.value);
+      if (localIsDefault && !remoteIsDefault) return remote;
+      if (remoteIsDefault && !localIsDefault) return local;
+    }
     if (local === undefined || local === null || local === '') return remote;
     if (remote === undefined || remote === null || remote === '') return local;
     if (isTimestampField(field)) {
@@ -62,7 +81,7 @@
     if (conflicts.length < 120) conflicts.push({ path, local: preview(local), remote: preview(remote), chosen: 'local' });
     return local;
   }
-  function mergeArray(local, remote, path, conflicts) {
+  function mergeArray(local, remote, path, conflicts, defaults) {
     const field = path.split('.').pop() || 'items';
     const result = [];
     const positions = new Map();
@@ -70,7 +89,7 @@
       const key = itemKey(item, field, sourceIndex);
       if (positions.has(key)) {
         const at = positions.get(key);
-        result[at] = mergeValue(item, result[at], path + '[' + key + ']', conflicts, field);
+        result[at] = mergeValue(item, result[at], path + '[' + key + ']', conflicts, field, defaults);
       } else {
         positions.set(key, result.length);
         result.push(item);
@@ -80,26 +99,26 @@
     (local || []).forEach((item, index) => add(item, index));
     return result;
   }
-  function mergeValue(local, remote, path, conflicts, field) {
-    if (Array.isArray(local) && Array.isArray(remote)) return mergeArray(local, remote, path, conflicts);
+  function mergeValue(local, remote, path, conflicts, field, defaults) {
+    if (Array.isArray(local) && Array.isArray(remote)) return mergeArray(local, remote, path, conflicts, defaults);
     if (plain(local) && plain(remote)) {
       const result = {};
       const keys = new Set([...Object.keys(remote), ...Object.keys(local)]);
       for (const key of keys) {
         const hasLocal = Object.prototype.hasOwnProperty.call(local, key);
         const hasRemote = Object.prototype.hasOwnProperty.call(remote, key);
-        if (hasLocal && hasRemote) result[key] = mergeValue(local[key], remote[key], path + '.' + key, conflicts, key);
+        if (hasLocal && hasRemote) result[key] = mergeValue(local[key], remote[key], path + '.' + key, conflicts, key, defaults);
         else result[key] = hasLocal ? local[key] : remote[key];
       }
       return result;
     }
-    return mergeScalar(local, remote, path, conflicts, field);
+    return mergeScalar(local, remote, path, conflicts, field, defaults);
   }
-  function mergeStates(localState, remoteState, meta) {
+  function mergeStates(localState, remoteState, meta, defaults) {
     const conflicts = [];
     const local = plain(localState) ? localState : {};
     const remote = plain(remoteState) ? remoteState : {};
-    const merged = mergeValue(local, remote, 'state', conflicts, 'state');
+    const merged = mergeValue(local, remote, 'state', conflicts, 'state', defaults || {});
     const previous = [];
     for (const item of [...(remote.syncConflicts || []), ...(local.syncConflicts || [])]) {
       const key = item && (item.id || item.at) || json(item);
