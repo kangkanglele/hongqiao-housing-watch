@@ -30,12 +30,12 @@ Netlify → Project configuration → Environment variables。分别新增：
 保存后进入 Deploys，触发一次新的 production deploy。环境变量更新必须重新部署才会注入 Functions。
 
 ## E. 验收
-1. 打开 https://hongqiao-housing-watch.netlify.app/
-2. 数据管理输入你在 Netlify 环境变量中设置的 PIN
-3. 应读取原 Google Sheets 快照，而不是初始化空库
-4. 如报 `云端安全配置尚未设置`，检查四项变量是否齐全且 Functions scope 生效
-5. 如 API 404，检查 Functions 是否随仓库部署；不要用静态拖拽部署代替 Git 部署
-
+1. 打开 https://hongqiao-housing-watch.netlify.app/，首页应默认进入公开只读模式并自动读取现有 Google Sheets 快照。
+2. 进入「数据管理」，输入你在 Netlify 环境变量中设置的 PIN，解锁新增、修改、归档和云端同步。
+3. 确认原有小区、房源、历史变动和成交线索都还在；不要执行初始化空库或重置操作。
+4. 确认未登录时可以浏览和导出，但不能提交新增、修改或采集写入。
+5. 如报 `云端安全配置尚未设置`，检查四项变量是否齐全且 Functions scope 生效。
+6. 如 API 404，检查 Functions 是否随仓库部署；不要用静态拖拽部署代替 Git 部署。
 
 ## 安全说明
 
