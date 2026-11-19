@@ -53,5 +53,20 @@ assert.equal(unknown.body.status,'pending_community');assert.equal(state.houses.
 const thirdParty=await call('capture',{record:{...item,url:'https://anjuke.com/tj/ershoufang/101126703003.html'}},session);assert.equal(thirdParty.status,502);assert.equal(state.houses.length,1);
 const opts=await handler(new Request(root,{method:'OPTIONS',headers:{origin:'chrome-extension://abcdefgh'}}));assert.equal(opts.status,204);
 assert.equal(snapshotPostCalls,3,'each successful mutation must be one Apps Script POST');
+// H5 now uses the exact same one-request Apps Script POST as the extension.
+const snapshotInvalid=await call('snapshotCommit',{expectedVersion:version,state:{houses:'invalid',scopes:[]} },session);
+assert.equal(snapshotInvalid.status,400,'H5 snapshots must include valid houses and scopes');
+const snapshotAuth=await call('snapshotCommit',{expectedVersion:version,state},'');
+assert.equal(snapshotAuth.status,401,'H5 snapshot commits must require a PIN session');
+const staleSnapshot=await call('snapshotCommit',{expectedVersion:version-1,state},session);
+assert.equal(staleSnapshot.status,409,'H5 stale-version commits must be rejected, not overwrite cloud state');
+const beforeH5Writes=snapshotPostCalls;
+const nextState=structuredClone(state);nextState.scopes[0].env='A';
+const h5Snapshot=await call('snapshotCommit',{expectedVersion:version,state:nextState},session);
+assert.equal(h5Snapshot.status,200);
+assert.equal(h5Snapshot.body.ok,true);
+assert.equal(snapshotPostCalls,beforeH5Writes+1,'one H5 save must become one Apps Script POST');
+assert.equal(state.scopes[0].env,'A');
+console.log('PASS H5 gateway atomic snapshot: PIN write gate, strict version check, one POST, remote readback');
 console.log('PASS gateway 0.5: login, auth, one-request snapshot commit, dedup, price history, manual notes, unknown community, host whitelist, OPTIONS; snapshot v'+version);
 globalThis.fetch=oldFetch;
