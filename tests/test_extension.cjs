@@ -1,27 +1,86 @@
-const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
-let data={},listeners={},openedOptions=0,alarms=new Map(),apiCalls=[],remoteOnline=true,badge='';
-const testPin=String(1000+Math.floor(Math.random()*9000));
+const fs=require('node:fs');
+const vm=require('node:vm');
+const path=require('node:path');
+const assert=require('node:assert/strict');
+let data={},listeners={},alarms=new Map(),apiCalls=[],overlayMessages=[],remoteOnline=true,badge='';
 const event=()=>({addListener(fn){this.fn=fn}});
 const chrome={
- storage:{local:{async get(keys){return Object.fromEntries(keys.map(k=>[k,data[k]]))},async set(o){const old={...data};Object.assign(data,o);if(listeners.changed){let changes={};for(const k of Object.keys(o))changes[k]={oldValue:old[k],newValue:data[k]};listeners.changed(changes,'local')}} ,async remove(k){delete data[k]}} , onChanged:{addListener(fn){listeners.changed=fn}}},
- alarms:{create:async (name,params)=>alarms.set(name,params),clear:async name=>alarms.delete(name),onAlarm:event()},
- action:{onClicked:event(),setBadgeText:async x=>{badge=x.text},setBadgeBackgroundColor:async()=>{},setTitle:async()=>{}},
- scripting:{executeScript:async()=>[{result:{platform:'贝壳',platformId:'101126703003',url:'https://m.ke.com/tj/ershoufang/101126703003.html',community:'水木天成碧杉园',area:71.31,price:56,title:'南向一居'}}]},
- runtime:{onMessage:event(),onStartup:event(),onInstalled:event(),openOptionsPage:async()=>openedOptions++}
+ storage:{
+  local:{
+   async get(keys){return Object.fromEntries(keys.map(key=>[key,data[key]]))},
+   async set(values){
+    const old={...data};Object.assign(data,values);
+    if(listeners.changed){const changes={};for(const key of Object.keys(values))changes[key]={oldValue:old[key],newValue:data[key]};listeners.changed(changes,'local')}
+   },
+   async remove(key){delete data[key]}
+  },
+  onChanged:{addListener(fn){listeners.changed=fn}}
+ },
+ alarms:{create:async(name,options)=>alarms.set(name,options),clear:async name=>alarms.delete(name),onAlarm:event()},
+ action:{
+  setBadgeText:async value=>{badge=value.text},
+  setBadgeBackgroundColor:async()=>{},
+  setTitle:async()=>{}
+ },
+ scripting:{
+  executeScript:async options=>{
+   if(options.files?.includes('extract.js'))return [{result:{platform:'贝壳',platformId:'101126703003',url:'https://m.ke.com/tj/ershoufang/101126703003.html',community:'水木天成碧杉园',area:71.31,price:56,title:'南向一居'}}];
+   return [];
+  }
+ },
+ tabs:{
+  query:async()=>[{id:44,url:'https://m.ke.com/tj/ershoufang/101126703003.html'}],
+  sendMessage:async(tabId,message)=>{overlayMessages.push({tabId,message});return true}
+ },
+ runtime:{onMessage:event(),onStartup:event(),onInstalled:event()}
 };
-const fetch=async (url,o)=>{apiCalls.push(JSON.parse(o.body));if(!remoteOnline)throw Error('离线');if(apiCalls.at(-1).action==='login')return {ok:true,status:200,json:async()=>({ok:true,session:'testsession'})};if(apiCalls.at(-1).action==='capture')return {ok:true,status:200,json:async()=>({ok:true,platformKey:'ke:101126703003',status:'created',version:9})};throw Error('unexpected')};
+const fetch=async(url,options)=>{
+ const body=JSON.parse(options.body);apiCalls.push(body);
+ if(!remoteOnline)throw Error('离线');
+ if(body.action==='login')return {ok:true,status:200,json:async()=>({ok:true,session:'testsession'})};
+ if(body.action==='capture')return {ok:true,status:200,json:async()=>({ok:true,platformKey:'ke:101126703003',status:'created',houseId:'TJ-HQ-0001'})};
+ throw Error('unexpected action '+body.action);
+};
 const context={chrome,fetch,Date,Set,Array,Promise,console,Error,JSON,Math,String,Number};
-vm.runInNewContext(fs.readFileSync(require('path').resolve(__dirname,'../extension/background.js'),'utf8'),context);
-const sleep=ms=>new Promise(res=>setTimeout(res,ms));
-async function send(type,rest={}){return new Promise((res,rej)=>{chrome.runtime.onMessage.fn({type,...rest},{},v=>res(v))})}
+vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../extension/background.js'),'utf8'),context);
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function send(type,rest={}){return new Promise(resolve=>chrome.runtime.onMessage.fn({type,...rest},{},resolve))}
 (async()=>{
- await chrome.action.onClicked.fn({id:44});await sleep(20);
- assert.equal((data.queue||[]).length,1);assert.equal(openedOptions,1);assert.equal(apiCalls.length,0);
- const auth=await send('AUTH',{pin:testPin});assert.equal(auth.ok,true);await sleep(20);
- assert.equal((data.queue||[]).length,0);assert.ok(data.lastSyncedAt);assert.ok(!alarms.size);
- remoteOnline=false;await chrome.action.onClicked.fn({id:44});await sleep(20);
- assert.equal((data.queue||[]).length,1);assert.ok(alarms.has('hq_failed_sync_retry'));
- remoteOnline=true;await send('WAKE_SYNC');await sleep(20);
- assert.equal((data.queue||[]).length,0);assert.equal(alarms.size,0);
- console.log('PASS extension: click-only capture, first PIN setup, direct cloud save, offline queue, auto retry, zero H5 tabs; badge='+badge);
-})().catch(e=>{console.error(e);process.exit(1)});
+ const captured=await send('CAPTURE_ACTIVE');
+ assert.equal(captured.ok,true);
+ assert.equal((data.queue||[]).length,1);
+ assert.equal(data.syncPhase,'auth_required');
+ assert.equal(apiCalls.length,0,'without PIN the listing must remain local');
+ assert.ok(overlayMessages.some(x=>x.message.type==='HQ_SYNC_PROGRESS'),'page floating status should be updated');
+
+ const auth=await send('AUTH',{pin:'1234'});
+ assert.equal(auth.ok,true);
+ await sleep(20);
+ assert.equal((data.queue||[]).length,0);
+ assert.ok(data.lastSyncedAt);
+ assert.equal(data.syncPhase,'synced');
+ assert.equal(apiCalls.filter(x=>x.action==='capture').length,1);
+ assert.ok(!alarms.size);
+
+ remoteOnline=false;
+ await send('CAPTURE_ACTIVE');
+ await sleep(20);
+ assert.equal((data.queue||[]).length,1);
+ assert.equal(data.syncPhase,'offline');
+ assert.ok(alarms.has('hq_failed_sync_retry'));
+
+ remoteOnline=true;
+ await send('WAKE_SYNC');
+ await sleep(20);
+ assert.equal((data.queue||[]).length,0);
+ assert.equal(data.syncPhase,'synced');
+ assert.equal(alarms.size,0);
+
+ const manifest=JSON.parse(fs.readFileSync(path.resolve(__dirname,'../extension/manifest.json'),'utf8'));
+ assert.equal(manifest.action.default_popup,'popup.html','toolbar click must open a visible popup');
+ const popup=fs.readFileSync(path.resolve(__dirname,'../extension/popup.html'),'utf8');
+ assert.ok(popup.includes('id="statusCard"')&&popup.includes('id="pin"')&&popup.includes('id="retry"'));
+ const overlay=fs.readFileSync(path.resolve(__dirname,'../extension/status-overlay.js'),'utf8');
+ assert.ok(overlay.includes('HQ_SYNC_PROGRESS')&&overlay.includes('position:fixed'));
+ console.log('PASS extension: popup UI, click-to-capture, PIN login, floating page status, local queue, offline retry and cloud sync');
+})().catch(error=>{console.error(error);process.exit(1)});
