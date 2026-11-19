@@ -6,12 +6,16 @@ import secrets
 ROOT = Path(__file__).resolve().parents[1]
 html = (ROOT / 'site' / 'index.html').read_text()
 merge_js = (ROOT / 'site' / 'sync-merge.js').read_text()
+layout_css = (ROOT / 'site' / 'buyhouse-v08.css').read_text()
 test_pin = str(1000 + secrets.randbelow(9000))
 
 def basic_route(route):
     request = route.request
     if request.resource_type == 'document':
         route.fulfill(status=200, content_type='text/html; charset=utf-8', body=html)
+        return
+    if request.url.endswith('/buyhouse-v08.css'):
+        route.fulfill(status=200, content_type='text/css; charset=utf-8', body=layout_css)
         return
     if request.url.endswith('/sync-merge.js'):
         route.fulfill(status=200, content_type='text/javascript; charset=utf-8', body=merge_js)
@@ -22,7 +26,11 @@ def basic_route(route):
             answer = {'ok': True, 'session': 'test-signed-session'}
         elif data.get('action') == 'load':
             answer = {'ok': True, 'version': 8, 'updatedAt': '2026-11-19', 'state': {
-                'version': 4, 'houses': [], 'benchmarks': [],
+                'version': 4, 'houses': [
+                    {'id':'TJ-HQ-1001','community':'水木天成翠杨园','title':'南向一居','price':49.5,'area':54,'rooms':'1室1厅','floor':4,'total':7,'stage':'重点关注','defects':[], 'sources':[{'channel':'贝壳','url':'https://m.ke.com/tj/ershoufang/101126703003.html'}], 'events':[]},
+                    {'id':'TJ-HQ-1002','community':'民畅园','title':'顶层二居','price':55,'area':65,'rooms':'2室1厅','stage':'观察中','defects':['top'], 'sources':[{'channel':'我爱我家','url':'https://m.5i5j.com/tj/ershoufang/819644244.html'}], 'events':[]},
+                    {'id':'TJ-HQ-1003','community':'河怡花园','title':'历史档案','price':60,'deletedAt':'2026-11-19','defects':[], 'sources':[{'channel':'贝壳','url':'https://m.ke.com/tj/ershoufang/22222222222.html'}], 'events':[]}
+                 ], 'benchmarks': [],
                 'scopes': [{'id': 'S1', 'name': '水木天成翠杨园', 'group': '水木天成', 'env': 'B', 'priority': '核心内圈'}],
                 'quarantine': [], 'marketScans': [{'id': 'test', 'date': '2026-11-19', 'community': '民畅园'}],
                 'saleLeads': [], 'listingCandidates': [], 'linkLedger': [], 'visitSessions': []
@@ -59,6 +67,9 @@ def conflict_route_factory():
         request = route.request
         if request.resource_type == 'document':
             route.fulfill(status=200, content_type='text/html; charset=utf-8', body=html)
+            return
+        if request.url.endswith('/buyhouse-v08.css'):
+            route.fulfill(status=200, content_type='text/css; charset=utf-8', body=layout_css)
             return
         if request.url.endswith('/sync-merge.js'):
             route.fulfill(status=200, content_type='text/javascript; charset=utf-8', body=merge_js)
@@ -117,8 +128,29 @@ with sync_playwright() as pw:
     page.goto('https://hongqiao-housing-watch.netlify.app/', wait_until='domcontentloaded')
     page.wait_for_timeout(300)
     root_text = page.locator('#root').inner_text()
-    assert '公开只读模式' in root_text, f'should open read-only; errors={errors}; root={root_text[:500]}'
+    assert page.locator('.bh-overview-head h1').inner_text() == '房源概览', f'new dynamic overview missing; errors={errors}; root={root_text[:500]}'
+    assert page.locator('.bh-metric').count() == 4, 'four real-data dashboard metrics expected'
+    assert page.locator('#nav [data-tab="config"]').count() == 0, 'page configuration must not appear in navigation'
+    page.wait_for_function("document.querySelectorAll('.bh-metric-value').length === 4 && document.querySelector('.bh-metric-value').textContent.includes('2')", timeout=6000)
+    assert [x.replace('套','').strip() for x in page.locator('.bh-metric-value').all_inner_texts()] == ['2','1','1','1'], 'metrics must reflect loaded records'
+    assert page.locator('.bh-listing').count() == 1, 'default list excludes hard defects and deleted records'
+    assert '水木天成翠杨园' in page.locator('.bh-listing-name').inner_text()
+    page.locator('[data-view="table"]').click()
+    assert page.locator('.bh-listings.compact').count() == 1
+    page.locator('[data-view="cards"]').click()
+    page.locator('[data-ui="searchToggle"]').click()
+    assert page.locator('#search').is_visible()
+    page.locator('#search').fill('不存在的小区')
+    assert page.locator('.bh-listing').count() == 0
+    page.locator('[data-ui="searchClose"]').click()
+    assert page.locator('.bh-listing').count() == 1
+    page.set_viewport_size({'width':390,'height':844})
+    assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), '390px layout must not scroll horizontally'
+    page.set_viewport_size({'width':320,'height':740})
+    assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), '320px layout must not scroll horizontally'
+
     assert page.locator('#adminPin').count() == 0
+    page.locator('#navToggle').click()
     page.locator('#nav [data-tab="settings"]').click()
     assert page.locator('#adminPin').count() == 1
     assert page.locator('#cloudToken').count() == 0
@@ -126,6 +158,7 @@ with sync_playwright() as pw:
     page.locator('[data-action="saveCloudConfig"]').click()
     page.wait_for_timeout(500)
     assert page.locator('#adminPin').count() == 0
+    page.locator('#navToggle').click()
     page.locator('#nav [data-tab="settings"]').click()
     assert '已解锁' in page.locator('#root').inner_text()
     page.locator('[data-action="lockCloud"]').click()
@@ -179,6 +212,7 @@ with sync_playwright() as pw:
     conflict_page.wait_for_timeout(2000)
     assert actions == finished_actions, f'background request detected without user activity: {actions[len(finished_actions):]}'
     # Switching a H5 view is an explicit event; it may check the version once.
+    conflict_page.locator('#navToggle').click()
     conflict_page.locator('#nav [data-tab="scopes"]').click()
     conflict_page.wait_for_function("document.getElementById('cloudSidebarStatus')?.textContent.includes('已同步')", timeout=6000)
     conflict_page.wait_for_timeout(400)
