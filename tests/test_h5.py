@@ -129,7 +129,104 @@ with sync_playwright() as pw:
     assert not errors, errors
     page.close()
 
-    # Simulate two devices writing at once: stale local v7 must merge remote v8 and retry automatically.
+
+    # Passive sync mode: H5 edits stay local while the page is open, then sync on reload.
+    def passive_sync_route_factory():
+        actions = []
+        uploads = {}
+        version = 8
+        remote_state = {
+            'version': 4, 'houses': [],
+            'scopes': [{'id': 'S1', 'name': '水木天成翠杨园', 'group': '水木天成', 'env': 'B', 'priority': '核心内圈'}],
+            'benchmarks': [], 'quarantine': [], 'marketScans': [], 'saleLeads': [],
+            'listingCandidates': [], 'linkLedger': [], 'visitSessions': [], 'pageConfig': {}
+        }
+
+        def route(route):
+            nonlocal version
+            request = route.request
+            if request.resource_type == 'document':
+                route.fulfill(status=200, content_type='text/html; charset=utf-8', body=html)
+                return
+            if request.url.endswith('/sync-merge.js'):
+                route.fulfill(status=200, content_type='text/javascript; charset=utf-8', body=merge_js)
+                return
+            if '/.netlify/functions/hq-api' not in request.url:
+                route.fulfill(status=204, body='')
+                return
+            data = request.post_data_json or {}
+            action = data.get('action')
+            actions.append(action)
+            if action == 'load':
+                answer = {'ok': True, 'version': version, 'updatedAt': '2026-11-19T12:00:00Z', 'state': remote_state}
+            elif action == 'ping':
+                answer = {'ok': True, 'version': version}
+            elif action == 'config':
+                answer = {'ok': True, 'config': remote_state.get('pageConfig', {}), 'hash': 'passive-config'}
+            elif action == 'begin':
+                uploads[data['uploadId']] = {'total': 0, 'chunks': {}}
+                answer = {'ok': True, 'uploadId': data['uploadId']}
+            elif action == 'chunk':
+                upload = uploads[data['uploadId']]
+                upload['total'] = int(data['total'])
+                upload['chunks'][int(data['index'])] = str(data.get('data', ''))
+                answer = {'ok': True}
+            elif action == 'commit':
+                upload = uploads[data['uploadId']]
+                committed = json.loads(''.join(upload['chunks'][i] for i in range(upload['total'])))
+                remote_state.clear()
+                remote_state.update(committed)
+                version += 1
+                answer = {'ok': True, 'version': version, 'updatedAt': '2026-11-19T12:01:00Z'}
+            else:
+                answer = {'ok': True, 'version': version}
+            route.fulfill(status=200, content_type='application/json; charset=utf-8',
+                          body=json.dumps(answer, ensure_ascii=False))
+
+        return route, actions, remote_state
+
+    passive_page = browser.new_page(viewport={'width': 900, 'height': 800})
+    passive_errors = []
+    passive_page.on('pageerror', lambda error: passive_errors.append(str(error)))
+    passive_route, passive_actions, passive_remote = passive_sync_route_factory()
+    passive_page.route('**/*', passive_route)
+    passive_page.add_init_script("""
+      localStorage.setItem('HQ_V35_SESSION', 'test-signed-session');
+      localStorage.setItem('HQ_CLOUD_VERSION', '8');
+    """)
+    passive_page.goto('https://hongqiao-housing-watch.netlify.app/', wait_until='domcontentloaded')
+    passive_page.wait_for_function(
+        "document.getElementById('cloudSidebarStatus')?.textContent.includes('已同步 · v8')",
+        timeout=8000
+    )
+    initial_actions = list(passive_actions)
+    assert initial_actions.count('load') == 1, initial_actions
+    assert 'ping' not in initial_actions, initial_actions
+
+    # Navigation and a real local edit must not trigger ping or upload while the page remains open.
+    passive_page.locator('#nav [data-tab="scopes"]').click()
+    passive_page.locator('[data-scope="S1"]').select_option('C')
+    passive_page.wait_for_timeout(1800)  # longer than the former 1.4s autosave debounce
+    assert passive_actions == initial_actions, f'page activity unexpectedly called the API: {passive_actions}'
+    assert passive_page.evaluate("localStorage.getItem('HQ_LOCAL_UNSYNCED_V31')") == '1'
+    assert passive_remote['scopes'][0]['env'] == 'B', 'local edit must not upload before page refresh'
+
+    # A full page refresh performs the pending upload and then reads the latest cloud snapshot.
+    passive_page.reload(wait_until='domcontentloaded')
+    passive_page.wait_for_function(
+        "document.getElementById('cloudSidebarStatus')?.textContent.includes('已同步 · v9')",
+        timeout=8000
+    )
+    assert passive_actions.count('commit') == 1, passive_actions
+    assert passive_remote['scopes'][0]['env'] == 'C', passive_remote['scopes']
+    assert passive_page.evaluate("localStorage.getItem('HQ_LOCAL_UNSYNCED_V31')") is None
+    assert 'ping' not in passive_actions, passive_actions
+    assert not passive_errors, passive_errors
+    print('PASS H5: no background sync on navigation/edit; local edits persist and sync on full page refresh')
+
+    passive_page.close()
+
+    # Simulate refresh-time two-device sync: stale local v7 must merge remote v8 and retry.
     local_state = {
         'version': 4,
         'houses': [
@@ -170,5 +267,5 @@ with sync_playwright() as pw:
     assert committed['pageConfig'].get('colorBackground') == '#ffffff', f"remote pageConfig was not preserved: {committed.get('pageConfig')}"
     assert committed['syncConflicts'], 'same-field differences must be archived for later review'
     assert not conflict_errors, conflict_errors
-    print('PASS H5: PIN-gated editing, automatic merge after stale-version conflict, union of both devices, conflict audit; page errors=', conflict_errors)
+    print('PASS H5: PIN-gated editing, refresh-time merge after stale-version conflict, union of both devices, conflict audit; page errors=', conflict_errors)
     browser.close()
