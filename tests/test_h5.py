@@ -30,7 +30,7 @@ def basic_route(route):
         elif data.get('action') == 'ping':
             answer = {'ok': True, 'version': 8}
         elif data.get('action') == 'config':
-            answer = {'ok': True, 'config': {}, 'hash': 'test-config'}
+            answer = {'ok': True, 'config': remote_state.get('pageConfig', {}), 'hash': 'test-config'}
         else:
             answer = {'ok': True, 'version': 8}
         route.fulfill(status=200, content_type='application/json', body=json.dumps(answer, ensure_ascii=False))
