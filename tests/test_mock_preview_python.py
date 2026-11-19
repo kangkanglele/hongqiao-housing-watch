@@ -72,6 +72,20 @@ try:
     }, token, allow_error=True)
     assert status == 409 and conflict["conflict"] and conflict["version"] == 2
 
+    # New H5 path: one authenticated atomic POST; no 380-character GET-chunk series.
+    modified = read_back["state"]
+    modified["houses"][0]["note"] = "PYTHON-ATOMIC-H5-SAVE"
+    status, saved = request("/.netlify/functions/hq-api", {
+        "action": "snapshotCommit", "expectedVersion": 2, "state": modified
+    }, token)
+    assert status == 200 and saved["version"] == 3
+    status, read_back = request("/.netlify/functions/hq-api", {"action": "load"})
+    assert read_back["state"]["houses"][0]["note"] == "PYTHON-ATOMIC-H5-SAVE"
+    status, stale = request("/.netlify/functions/hq-api", {
+        "action": "snapshotCommit", "expectedVersion": 2, "state": modified
+    }, token, allow_error=True)
+    assert status == 409 and stale["version"] == 3
+
     status, reset = request("/__mock/reset", {})
     assert status == 200 and reset["version"] == 1 and reset["houses"] == 3
     print("PASS Python-only mock preview: local banner, isolated seed, PIN gate, snapshot write/read-back, version conflict, reset")
