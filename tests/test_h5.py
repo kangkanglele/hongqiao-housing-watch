@@ -39,8 +39,9 @@ def basic_route(route):
 
 def conflict_route_factory():
     begin_versions = []
-    uploads = {}
     commits = []
+    actions = []
+    remote_version = 8
     remote_state = {
         'version': 4,
         'houses': [
@@ -67,40 +68,43 @@ def conflict_route_factory():
             return
         data = request.post_data_json or {}
         action = data.get('action')
+        nonlocal remote_version
+        actions.append(action)
         if action == 'ping':
-            answer = {'ok': True, 'version': 8}
+            answer = {'ok': True, 'version': remote_version}
             route.fulfill(status=200, content_type='application/json', body=json.dumps(answer))
         elif action == 'load':
-            answer = {'ok': True, 'version': 9 if commits else 8, 'updatedAt': '2026-11-19T10:00:00Z', 'state': remote_state}
+            answer = {'ok': True, 'version': remote_version, 'updatedAt': '2026-11-19T10:00:00Z', 'state': remote_state}
             route.fulfill(status=200, content_type='application/json', body=json.dumps(answer, ensure_ascii=False))
-        elif action == 'begin':
-            begin_versions.append(int(data.get('expectedVersion', 0)))
+        elif action == 'snapshotCommit':
+            expected = int(data.get('expectedVersion', 0))
+            begin_versions.append(expected)
             if len(begin_versions) == 1:
                 route.fulfill(status=409, content_type='application/json', body=json.dumps({
-                    'ok': False, 'conflict': True, 'version': 8,
-                    'error': '云端数据已被其他设备更新。请先点击从云端拉取，再继续修改。'
+                    'ok': False, 'conflict': True, 'version': remote_version,
+                    'error': '云端数据已被其他设备更新，请自动合并后重试'
                 }, ensure_ascii=False))
                 return
-            uploads[data['uploadId']] = {'total': 0, 'chunks': {}}
-            route.fulfill(status=200, content_type='application/json', body=json.dumps({'ok': True, 'uploadId': data['uploadId']}))
-        elif action == 'chunk':
-            upload = uploads[data['uploadId']]
-            upload['total'] = int(data['total'])
-            upload['chunks'][int(data['index'])] = str(data.get('data', ''))
-            route.fulfill(status=200, content_type='application/json', body=json.dumps({'ok': True}))
-        elif action == 'commit':
-            upload = uploads[data['uploadId']]
-            payload = ''.join(upload['chunks'][i] for i in range(upload['total']))
-            committed = json.loads(payload)
+            if expected != remote_version:
+                route.fulfill(status=409, content_type='application/json', body=json.dumps({
+                    'ok': False, 'conflict': True, 'version': remote_version,
+                    'error': '模拟云端版本不一致'
+                }, ensure_ascii=False))
+                return
+            committed = data['state']
             commits.append(committed)
             remote_state.clear()
             remote_state.update(committed)
-            route.fulfill(status=200, content_type='application/json', body=json.dumps({'ok': True, 'version': 9, 'updatedAt': '2026-11-19T10:01:00Z'}))
+            remote_version += 1
+            route.fulfill(status=200, content_type='application/json', body=json.dumps({
+                'ok': True, 'version': remote_version,
+                'updatedAt': '2026-11-19T10:01:00Z'
+            }))
         elif action == 'config':
             route.fulfill(status=200, content_type='application/json', body=json.dumps({'ok': True, 'config': remote_state.get('pageConfig', {}), 'hash': 'test-config'}))
         else:
             route.fulfill(status=200, content_type='application/json', body=json.dumps({'ok': True}))
-    return route, begin_versions, commits
+    return route, begin_versions, commits, actions, remote_state
 
 with sync_playwright() as pw:
     browser = pw.chromium.launch(headless=True, args=['--no-sandbox'])
@@ -145,7 +149,7 @@ with sync_playwright() as pw:
     conflict_page = browser.new_page(viewport={'width': 900, 'height': 800})
     conflict_errors = []
     conflict_page.on('pageerror', lambda error: conflict_errors.append(str(error)))
-    conflict_route, begin_versions, commits = conflict_route_factory()
+    conflict_route, begin_versions, commits, actions, remote_state = conflict_route_factory()
     conflict_page.route('**/*', conflict_route)
     conflict_page.add_init_script("""
       localStorage.setItem('hongqiao_watch_v1_20261118', %s);
@@ -156,7 +160,7 @@ with sync_playwright() as pw:
     conflict_page.goto('https://hongqiao-housing-watch.netlify.app/', wait_until='domcontentloaded')
     conflict_page.wait_for_function("document.getElementById('cloudSidebarStatus')?.textContent.includes('已同步 · v9')", timeout=8000)
     assert begin_versions[:2] == [7, 8], f'expected stale v7 then automatic retry at v8; got {begin_versions}'
-    assert len(commits) == 1, f'expected one merged commit; got {len(commits)}'
+    assert len(commits) == 1, f'expected one merged atomic POST; got {len(commits)}'
     committed = commits[0]
     assert len(committed['houses']) == 3, [house['id'] for house in committed['houses']]
     assert {house['id'] for house in committed['houses']} == {'LOCAL-1', 'REMOTE-1', 'SHARED-1'}
@@ -170,5 +174,23 @@ with sync_playwright() as pw:
     assert committed['pageConfig'].get('colorBackground') == '#ffffff', f"remote pageConfig was not preserved: {committed.get('pageConfig')}"
     assert committed['syncConflicts'], 'same-field differences must be archived for later review'
     assert not conflict_errors, conflict_errors
-    print('PASS H5: PIN-gated editing, automatic merge after stale-version conflict, union of both devices, conflict audit; page errors=', conflict_errors)
+    # Idle tabs must not poll at any interval; startup only loads once.
+    finished_actions = list(actions)
+    conflict_page.wait_for_timeout(2000)
+    assert actions == finished_actions, f'background request detected without user activity: {actions[len(finished_actions):]}'
+    # Switching a H5 view is an explicit event; it may check the version once.
+    conflict_page.locator('#nav [data-tab="scopes"]').click()
+    conflict_page.wait_for_function("document.getElementById('cloudSidebarStatus')?.textContent.includes('已同步')", timeout=6000)
+    conflict_page.wait_for_timeout(400)
+    assert actions.count('ping') >= 1, f'expected on-navigation version check, got {actions}'
+    # A real edit still uploads after the 1.4-second debounce; no page refresh is required.
+    conflict_page.locator('[data-scope="S-LOCAL"]').select_option('C')
+    conflict_page.wait_for_function("document.getElementById('cloudSidebarStatus')?.textContent.includes('云端同步成功 · v10')", timeout=8000)
+    assert len(commits) == 2, f'expected a second atomic POST for the edited scope, got {len(commits)}'
+    assert next(scope for scope in remote_state['scopes'] if scope['id']=='S-LOCAL')['env']=='C'
+    assert conflict_page.evaluate("localStorage.getItem('HQ_LOCAL_UNSYNCED_V31')") is None
+    finished_actions = list(actions)
+    conflict_page.wait_for_timeout(1800)
+    assert actions == finished_actions, 'idle H5 made an unrequested background call'
+    print('PASS H5: PIN access, one-POST conflict merge, edit auto-upload, explicit navigation check, no idle polling')
     browser.close()
