@@ -1,0 +1,155 @@
+/* 买房助手 v0.8 — dynamic UI, matched to approved static prototype.
+   This stylesheet affects presentation only. Data access and records remain in index.html. */
+:root{--bh-bg:#f5f7f6;--bh-ink:#203a33;--bh-green:#187964;--bh-mute:#7b8c83;--bh-line:#e7ede9;--bh-mint:#e9f4ec}
+html,body{background:var(--bh-bg)!important;color:var(--bh-ink)}
+body{min-height:100vh}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #7fc9aa;outline-offset:2px}
+.topbar-shell{position:sticky;top:0;z-index:39;background:rgba(255,255,255,.96);border-bottom:1px solid #e8edeb;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.bh-topbar{height:59px;max-width:1120px;padding:0 30px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.bh-topbar-left,.bh-topbar-right{display:flex;align-items:center;gap:12px;min-width:0}
+.bh-logo{font-weight:730;color:#203a33;font-size:16px;letter-spacing:.01em;white-space:nowrap}
+.bh-icon-btn{height:37px;width:37px;flex:0 0 37px;border:1px solid #e5ece7;background:#fff;display:grid;place-items:center;color:#46675b;border-radius:11px;cursor:pointer}
+.bh-menu-btn{background:#eef4f0;border:0}
+.bh-mini-status{display:flex;gap:7px;align-items:center;color:#82928b;font-size:11px;max-width:240px;min-width:0}
+.bh-mini-status span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bh-status-dot{display:inline-block;border-radius:100%;height:7px;width:7px;background:#8dc1a4;flex-shrink:0}
+.app{display:block!important;min-height:100vh;background:var(--bh-bg)!important}
+.app .content{margin:0 auto!important;max-width:1120px!important;width:100%!important;padding:0 30px 105px!important;min-width:0!important}
+.app .main-inner{max-width:100%!important;margin:0!important;padding:0!important}
+.app .topline{display:none!important}
+#root{padding-top:24px}
+.bh-backdrop{position:fixed;inset:0;background:rgba(14,35,27,.35);z-index:48;opacity:0;pointer-events:none;transition:opacity .18s ease}
+.app-drawer{position:fixed!important;top:0;bottom:0;left:0;z-index:49;width:min(300px,85vw);background:#fff;box-shadow:15px 0 45px rgba(29,54,41,.16);transform:translateX(-104%);transition:transform .2s ease;display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain}
+body.bh-drawer-open .bh-backdrop{opacity:1;pointer-events:auto}
+body.bh-drawer-open .app-drawer{transform:translateX(0)}
+body.bh-drawer-open{overflow:hidden}
+.bh-drawer-head{display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid #edf1ee;padding:23px 20px}
+.bh-drawer-brand{display:flex;gap:11px;align-items:center;min-width:0}
+.bh-drawer-glyph{width:41px;height:41px;border-radius:12px;background:#e8f4ec;color:#237b5d;display:grid;place-items:center}
+.bh-drawer-brand strong{display:block;font-size:16px;color:#203a33}
+.bh-drawer-brand small{display:block;margin-top:4px;font-size:11px;color:#84968c}
+.bh-drawer-label{margin:22px 22px 11px;color:#9caaa2;font-size:11px;font-weight:650;letter-spacing:.06em}
+#nav.drawer-links{display:flex!important;flex-direction:column;gap:4px;margin:0 12px;padding:0;background:transparent;position:static;width:auto}
+#nav.drawer-links button{display:flex;align-items:center;gap:13px;width:100%;min-height:45px;padding:10px 13px;border:0;border-radius:11px;color:#536b60;text-align:left;font-size:14px;font-weight:560;background:transparent;white-space:nowrap}
+#nav.drawer-links button .ico{display:grid;place-items:center;width:23px;flex:0 0 23px;color:#6d8b7d}
+#nav.drawer-links button.active{color:#146d54;background:#e8f4ed;font-weight:720}
+#nav.drawer-links button.active .ico{color:#15745b}
+#nav.drawer-links button:hover{background:#f2f7f4}
+.bh-drawer-bottom{margin-top:auto;padding:18px 21px 28px;color:#92a198;font-size:12px;border-top:1px solid #eef2ef;line-height:1.7}
+#cloudSidebarStatus{color:#537b67;font-size:12px;margin-bottom:6px}
+.bh-overview-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:3px 0 15px}
+.bh-overview-head h1{font-size:20px;line-height:1.25;color:#243b33;font-weight:760;margin:0;letter-spacing:-.02em}
+.bh-live-label{border-radius:20px;border:1px solid #e1e9e4;background:#eff4f0;padding:5px 10px;font-size:11px;color:#7d9186;white-space:nowrap}
+.bh-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.bh-metric{background:#fff;border:1px solid var(--bh-line);border-radius:17px;min-height:132px;padding:18px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 8px 32px rgba(27,65,53,.027);min-width:0}
+.bh-metric-top{display:flex;align-items:center;justify-content:space-between;gap:5px;min-height:34px}
+.bh-metric-label{font-size:13px;color:#688077;font-weight:560;white-space:nowrap}
+.bh-metric-icon{flex:0 0 37px;width:37px;height:37px;background:#e9f4ec;border-radius:11px;display:grid;place-items:center;border:1px solid #dcece1}
+.bh-metric-icon svg{width:31px;height:31px;filter:drop-shadow(0 1px 1px rgba(27,100,67,.08))}
+.bh-metric-value{font-weight:780;color:#203d34;font-size:32px;line-height:1.1;letter-spacing:-.05em;font-variant-numeric:tabular-nums}
+.bh-metric-value small{font-size:12px;font-weight:500;color:#a7b3ab;letter-spacing:0;margin-left:4px}
+.bh-sync-line{display:flex;justify-content:space-between;align-items:center;gap:9px;padding:10px 13px;border:1px solid #e1ede6;background:#ecf5ef;border-radius:12px;color:#678779;font-size:12px;margin-top:13px;min-height:41px}
+.bh-sync-label{min-width:0;display:flex;gap:8px;align-items:center}
+.bh-sync-label>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bh-sync-line button{border:none;background:transparent;color:#4f8270;display:grid;place-items:center;width:30px;height:28px;flex:0 0 30px;border-radius:7px}
+.bh-sync-line button:hover{background:#ddefe5}
+.bh-list-head{display:flex;justify-content:space-between;align-items:center;gap:9px;margin:29px 0 13px}
+.bh-list-title{display:flex;align-items:baseline;gap:8px;min-width:0}
+.bh-list-title h2{margin:0;font-weight:760;font-size:19px;white-space:nowrap;color:#253d34}
+.bh-list-title span{font-size:11px;white-space:nowrap;color:#93a79b}
+.bh-browse-toolbar{display:flex;align-items:center;gap:7px;flex:0 0 auto}
+.bh-browse-toolbar select{border-radius:11px;background:#fff;border:1px solid #e3ebe6;color:#48695a;height:39px;padding:0 27px 0 10px;max-width:160px;min-width:93px;font-size:12px;appearance:none;-webkit-appearance:none}
+.bh-select-wrap{position:relative;display:flex;align-items:center}
+.bh-select-wrap svg{position:absolute;right:9px;pointer-events:none;color:#8da398}
+.bh-tool-btn{border:1px solid #e3eae5;background:#fff;border-radius:11px;width:39px;height:39px;color:#6a8a79;display:grid;place-items:center;cursor:pointer;flex:0 0 39px}
+.bh-tool-btn.active{background:#eaf4ee;border-color:#cadfd1;color:#167760}
+.bh-view-switch{display:flex;align-items:center;gap:1px;border:1px solid #e3eae5;border-radius:10px;padding:2px;background:#f4f7f4;height:39px}
+.bh-view-switch .bh-tool-btn{height:32px;width:32px;flex:0 0 32px;border:0;border-radius:8px;background:transparent}
+.bh-view-switch .bh-tool-btn.active{background:#fff;box-shadow:0 2px 5px rgba(26,57,41,.1);color:#187963}
+.bh-search-panel{margin:0 0 13px;display:flex;align-items:center;gap:9px;padding:8px 12px;background:#fff;border:1px solid #dae9e0;border-radius:12px;color:#5c8773}
+.bh-search-panel[hidden]{display:none}
+.bh-search-panel input{width:100%;border:0;outline:0!important;background:none;color:#233b32;min-width:0;font-size:13px}
+.bh-search-panel button{background:none;border:0;color:#759386;padding:0 4px;display:grid;place-items:center}
+.bh-filter-accordion{margin:0 0 12px;border:none;background:transparent}
+.bh-filter-accordion summary{display:inline-flex;align-items:center;gap:6px;list-style:none;color:#729181;font-size:11px;cursor:pointer;padding:5px 2px}
+.bh-filter-accordion summary::-webkit-details-marker{display:none}
+.bh-filter-accordion[open] summary{color:#157963;font-weight:650}
+.bh-filter-accordion .filters{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
+.bh-filter-accordion .filters .chip{font-size:11px;padding:6px 9px;border-radius:15px}
+.bh-pending-details{margin:10px 0;border:1px solid #e4ebe6;border-radius:12px;padding:11px 13px;background:#fff;color:#65776f}
+.bh-pending-details summary{cursor:pointer;font-size:12px;font-weight:650}
+.bh-pending-details .quarantine-item{padding:9px 0}
+.bh-listings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.bh-listing{min-width:0;background:#fff;border:1px solid #e5ede8;border-radius:16px;box-shadow:0 8px 26px rgba(27,65,53,.027);overflow:hidden}
+.bh-listing-main{padding:11px;width:100%;display:flex;align-items:center;gap:12px;border:0;background:transparent;text-align:left;color:inherit}
+.bh-listing-main:hover{background:#fafdfa}
+.bh-listing-media{width:105px;height:105px;flex:0 0 105px;border-radius:11px;overflow:hidden;background:linear-gradient(160deg,#d8e9e4,#c9dfd2);display:grid;place-items:center}
+.bh-listing-media .property-photo.thumb{width:100%;height:100%;border-radius:0;display:flex;overflow:hidden}
+.bh-listing-media .property-photo.thumb img{object-fit:cover;width:100%;height:100%}
+.bh-listing-media .photo-placeholder{display:flex;justify-content:center;align-items:center;gap:5px;text-align:center;color:#65867b;font-size:10px;padding:4px}
+.bh-listing-media .photo-symbol{font-size:38px!important}
+.bh-listing-media .photo-placeholder span:last-child{display:block!important}
+.bh-listing-info{flex:1;min-width:0;display:grid;gap:7px}
+.bh-listing-name{font-size:14px;font-weight:735;color:#263e35;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.bh-listing-meta{color:#87998f;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bh-listing-price{color:#198266;display:flex;align-items:baseline;gap:4px}
+.bh-listing-price b{font-size:25px;line-height:1;font-weight:780;letter-spacing:-.04em}
+.bh-listing-price small{font-size:11px}
+.bh-listing-bottom{display:flex;align-items:center;gap:6px;justify-content:space-between;min-width:0}
+.bh-stage{display:inline-flex;border-radius:6px;padding:4px 6px;background:#e9f7ef;color:#25775f;font-size:10px;white-space:nowrap;max-width:124px;overflow:hidden;text-overflow:ellipsis}
+.bh-stage.neutral{background:#f1f4f1;color:#74867d}
+.bh-stage.warn{background:#fff1df;color:#a27938}
+.bh-stage.bad{background:#ffefed;color:#aa514b}
+.bh-view-detail{font-size:10px;color:#829d8f;white-space:nowrap}
+.bh-listings.compact{grid-template-columns:1fr;gap:5px}
+.bh-listings.compact .bh-listing-main{padding:8px 12px}
+.bh-listings.compact .bh-listing-media{width:50px;height:50px;flex-basis:50px;border-radius:8px}
+.bh-listings.compact .bh-listing-media .photo-symbol{font-size:22px!important}
+.bh-listings.compact .bh-listing-info{display:flex;align-items:center;justify-content:space-between;gap:15px}
+.bh-listings.compact .bh-listing-name{font-size:13px}
+.bh-listings.compact .bh-listing-meta{display:none}
+.bh-listings.compact .bh-listing-price b{font-size:19px}
+.bh-listings.compact .bh-listing-bottom{display:none}
+.bh-fab{position:fixed;right:max(22px,env(safe-area-inset-right));bottom:calc(22px + env(safe-area-inset-bottom));z-index:27;width:54px;height:54px;border-radius:16px;color:#fff;background:#188466;border:none;box-shadow:0 8px 21px rgba(24,125,98,.25);display:grid;place-items:center}
+.bh-fab[hidden]{display:none}
+.bh-fab:hover{background:#0d7257}
+#root>.alert{margin:0 0 15px}
+.bh-readonly-note{display:flex;gap:6px;align-items:center;color:#788e82;font-size:11px;background:#f0f7f1;border:1px solid #e2efe5;border-radius:10px;padding:9px 12px;margin-bottom:12px}
+.app .box{max-width:100%}
+@media(max-width:760px){
+ .bh-topbar{height:58px;padding:0 16px}
+ .app .content,body[data-mobile-nav='bottom'] .app .content{padding:0 16px calc(110px + env(safe-area-inset-bottom))!important}
+ #root{padding-top:25px}
+ .bh-overview-head h1{font-size:18px}
+ .bh-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+ .bh-metric{min-height:101px;padding:14px;border-radius:17px}
+ .bh-metric-label{font-size:11.5px}
+ .bh-metric-icon{width:31px;height:31px;flex-basis:31px;border-radius:9px}
+ .bh-metric-icon svg{width:28px;height:28px}
+ .bh-metric-value{font-size:29px}
+ .bh-list-head{margin-top:29px}
+ .bh-list-title h2{font-size:16px}
+ .bh-listings{grid-template-columns:1fr}
+ .bh-listing-media{width:108px;height:108px;flex-basis:108px}
+ .bh-mini-status{max-width:116px;font-size:10px}
+}
+@media(max-width:375px){
+ .bh-topbar{padding:0 14px}
+ .app .content,body[data-mobile-nav='bottom'] .app .content{padding-left:14px!important;padding-right:14px!important}
+ .bh-metric{padding:11px;min-height:99px}
+ .bh-metric-label{font-size:11px}
+ .bh-metric-icon{width:29px;height:29px;flex-basis:29px}
+ .bh-metric-icon svg{width:26px;height:26px}
+ .bh-list-head{gap:5px}
+ .bh-list-title h2{font-size:15px}
+ .bh-list-title span{display:none}
+ .bh-browse-toolbar{gap:4px}
+ .bh-browse-toolbar select{max-width:100px;min-width:91px;padding-left:7px;font-size:11px}
+ .bh-tool-btn{width:35px;height:36px;flex-basis:35px}
+ .bh-view-switch{height:36px}
+ .bh-view-switch .bh-tool-btn{width:28px;flex-basis:28px}
+ .bh-listing-media{width:97px;height:97px;flex-basis:97px}
+ .bh-listing-name{font-size:13px}
+ .bh-listing-price b{font-size:23px}
+}
+@media(prefers-reduced-motion:reduce){.app-drawer,.bh-backdrop{transition:none!important}}
