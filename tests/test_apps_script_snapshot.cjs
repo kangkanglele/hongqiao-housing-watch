@@ -103,8 +103,8 @@ assert.equal(three.normalizedUpdated,true);
 
 const testHouse={id:'TJ-HQ-TEST-0001',community:'水木天成碧杉园',title:'【测试数据】碧杉园两室',origin:'模拟数据',area:71.31,price:56,rooms:'2室1厅',floor:5,total:7,elevator:'有',orient:'南',decoration:'简装',env:'B',noise:'未知',duplex:false,top:false,legal:'待核实',firstSeen:'2026-11-19',lastSeen:'2026-11-19',suitability:'待判断',stage:'测试',note:'仅用于验证云端写入，非真实房源',sources:[{channel:'贝壳',platformId:'TEST000001',url:'https://m.ke.com/tj/ershoufang/12345678901.html',originalUrl:'https://m.ke.com/tj/ershoufang/12345678901.html',urlType:'官方单套详情',relation:'测试输入',checked:'2026-11-19'}],events:[{id:'EVT-TEST-1',date:'2026-11-19',kind:'manual',title:'测试录入',desc:'测试数据，不作为市场样本'}]};
 const postState={...third,houses:[...second.houses,testHouse]};
-function postSnapshot(uploadId,expectedVersion,state){
-  const response=context.doPost({postData:{contents:JSON.stringify({action:'snapshotCommit',token,uploadId,expectedVersion,state})}});
+function postSnapshot(uploadId,expectedVersion,state,authToken=token){
+  const response=context.doPost({postData:{contents:JSON.stringify({action:'snapshotCommit',token:authToken,uploadId,expectedVersion,state})}});
   return JSON.parse(response.text);
 }
 const direct=postSnapshot('direct-post-test-0001',3,postState);
@@ -117,7 +117,7 @@ assert.equal(duplicate.ok,true);assert.equal(duplicate.duplicate,true);assert.eq
 assert.equal(sheets.get('房源').getLastRow(),3,'retry must not duplicate the sample house');
 const stale=postSnapshot('direct-post-test-0002',3,postState);
 assert.equal(stale.ok,false);assert.equal(stale.conflict,true);assert.equal(context.loadState_().version,4);
-const badToken=postSnapshot('direct-post-test-0003',4,{...postState});
+const badToken=postSnapshot('direct-post-test-0003',4,{...postState},'wrong-token');
 assert.equal(badToken.ok,false);assert.match(badToken.error,/令牌/);
 
 console.log('PASS Apps Script snapshots: append-only commits, incomplete snapshot ignored, latest complete version loaded, normalized projections updated');
