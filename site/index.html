@@ -324,7 +324,7 @@ applyPageConfig();
 const HQ_API_PATH='/.netlify/functions/hq-api';
 let cloudConfig={url:HQ_API_PATH,token:localStorage.getItem('HQ_V35_SESSION')||''};
 try{localStorage.removeItem('HQ_CLOUD_CONFIG')}catch(_){}
-let cloudVersion=Number(localStorage.getItem('HQ_CLOUD_VERSION')||0),cloudStatusText='尚未连接',cloudSyncBusy=false,cloudDirty=false,cloudApplying=false,cloudTimer=null;
+let cloudVersion=Number(localStorage.getItem('HQ_CLOUD_VERSION')||0),cloudStatusText='尚未连接',cloudSyncBusy=false,cloudDirty=false,cloudApplying=false,cloudTimer=null,cloudStartupDone=false;
 const LOCAL_PENDING_KEY='HQ_LOCAL_UNSYNCED_V31';
 let localPending=localStorage.getItem(LOCAL_PENDING_KEY)==='1',localMutationSeq=0;
 let configApiSupported=false,configCloudHash='',configFormDirty=false;
@@ -403,11 +403,11 @@ async function cloudConfigPull(quiet=false){
   if(!quiet)toast('页面配置已刷新，无需重新部署');return true;
  }catch(e){if(!quiet)toast('刷新配置失败：'+e.message);return false;}
 }
-// 只由真实用户操作触发的轻量版本查询；没有后台轮询、切回页面检测、常驻连接。
-// 短时间连续点选只检查一次；有未保存修改/编辑中的表单时一律不覆盖。
+// 事件触发的轻量版本查询：页面加载、切回标签、网络恢复或内容导航；不做后台定时轮询。
+// 短时间连续操作合并查询；有未保存修改或编辑中的表单时一律不覆盖。
 let userActionCheckBusy=false,lastUserActionCheck=0,lastPendingRetry=0;
 async function refreshOnUserAction(force=false){
- if(!cloudConfig.url||userActionCheckBusy||cloudSyncBusy||hqBridgeBusy||isEditingNow())return false;
+ if(!cloudStartupDone||!cloudConfig.url||userActionCheckBusy||cloudSyncBusy||hqBridgeBusy||isEditingNow())return false;
  const now=Date.now();
  // 上次云端上传失败、断网后保留在本地的修改：下一次主动操作时自动补传。
  // 失败至少间隔30秒再次尝试，避免冲突/断网时反复请求。
@@ -443,14 +443,8 @@ async function cloudPush(silent=false){
   for(let attempt=0;attempt<4;attempt++){
    try{
     setCloudStatus(attempt?'正在提交自动合并结果…':'正在同步云端…');
-    const uploadId='hq'+Date.now().toString(36)+Math.random().toString(36).slice(2,10);
-    await cloudJsonp({action:'begin',expectedVersion:cloudVersion,uploadId});
-    const raw=JSON.stringify(state),chars=Array.from(raw),size=380,total=Math.ceil(chars.length/size);
-    for(let i=0;i<total;i++){
-     const chunk=chars.slice(i*size,(i+1)*size).join('');
-     await cloudJsonp({action:'chunk',uploadId,index:i,total,data:chunk,expectedVersion:cloudVersion});
-    }
-    const end=await cloudJsonp({action:'commit',uploadId});
+    // One atomic request via the Netlify gateway; no 380-character chunk loop.
+    const end=await cloudJsonp({action:'snapshotCommit',expectedVersion:cloudVersion,state});
     cloudVersion=Number(end.version||cloudVersion+1);
     localStorage.setItem('HQ_CLOUD_VERSION',String(cloudVersion));
     if(localMutationSeq===writeMutationSeq)clearLocalPending();else cloudDirty=true;
@@ -773,7 +767,7 @@ function renderPageConfig(){
  const number=(id,title,lo,hi,step='1',help='')=>`<div class="form-item"><label>${title}</label><input data-cfg="${id}" type="number" min="${lo}" max="${hi}" step="${step}" value="${esc(c[id])}"><small>${help}</small></div>`;
  const pick=(id,title,options)=>`<div class="form-item"><label>${title}</label><select data-cfg="${id}">${options.map(([val,label])=>`<option value="${esc(val)}" ${String(c[id])===String(val)?'selected':''}>${esc(label)}</option>`).join('')}</select></div>`;
  const check=(id,title,help)=>`<div class="form-item config-full"><label style="display:flex;align-items:center;gap:10px"><input data-cfg="${id}" type="checkbox" ${c[id]?'checked':''}>${title}</label><small>${help||''}</small></div>`;
- return `<div class="alert"><span>◈</span><div><b>页面配置支持云端更新，不用重发 Netlify。</b>打开网页时读取一次配置；之后在你切换页面、筛选或查看档案等主动操作时，检查云端的新版本。没有操作就不会访问后台；如果当前正在编辑，则等保存完成后再检查。下方有故障时使用的手动刷新按钮。新增代码功能仍需部署。<br><b>当前配置读取模式：</b>${configApiSupported?'独立配置表（Google Sheets 页面配置）':'兼容模式（云端完整快照）'}。不需要重新上传 Netlify。</div></div>
+ return `<div class="alert"><span>◈</span><div><b>页面配置支持云端更新，不用重发 Netlify。</b>网页打开、切回标签、网络恢复、切换页面或筛选时，按需检查最新版本；没有操作时绝不定时请求。房源修改保存后仍自动上传。下方保留手动刷新以备故障排查。新增代码功能仍需部署。<br><b>当前配置读取模式：</b>${configApiSupported?'独立配置表（Google Sheets 页面配置）':'兼容模式（云端完整快照）'}。不需要重新上传 Netlify。</div></div>
  <div class="box"><div class="sectionhead" style="margin:0 0 15px"><h2>页面样式与布局</h2><span class="hint">支持回滚 · 自动校验参数</span></div>
  <div class="config-form">
  <div class="form-item"><label>主色调</label><input data-cfg="colorPrimary" type="color" value="${esc(c.colorPrimary)}"></div>
@@ -881,16 +875,24 @@ function val(id){return document.getElementById(id)?.value||''}
 function changed(h,what,desc){h.events=h.events||[];h.events.unshift(ev(nowStamp(),what,desc,'manual',false));h.lastSeen=nowDay()}
 document.addEventListener('input',e=>{if(e.target.matches('[data-cfg],[data-cfg-label]'))configFormDirty=true});
 document.addEventListener('change',e=>{if(e.target.matches('[data-cfg],[data-cfg-label]'))configFormDirty=true});
-// 保存操作自动上传；切回页面、恢复网络和正常导航时自动检查云端版本。
-// 本地有待同步修改时先自动合并，再提交；不要求用户手动拉取。
+// Only real user/navigation/network events check remote versions, never a background polling interval.
+// Editing continues to save locally and automatically push to the cloud after 1.4 seconds.
+let lastCloudWakeEvent=0;
+function onCloudWake(force=false){
+ const now=Date.now();
+ // focus + visibilitychange (or pageshow) often fire together: issue at most one check.
+ if(now-lastCloudWakeEvent<1200)return;
+ lastCloudWakeEvent=now;
+ if(cloudStartupDone)void refreshOnUserAction(force);
+}
 document.addEventListener('click',e=>{
- const actionable=e.target.closest('[data-tab],[data-filter],[data-view],[data-open],[data-close],[data-action]');
- if(actionable)Promise.resolve().then(()=>refreshOnUserAction());
+ const actionable=e.target.closest('[data-tab],[data-filter],[data-view],[data-open]');
+ if(actionable)Promise.resolve().then(()=>onCloudWake());
 },true);
-window.addEventListener('focus',()=>refreshOnUserAction());
-window.addEventListener('pageshow',()=>refreshOnUserAction());
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshOnUserAction();});
-window.addEventListener('online',()=>{if(localPending)cloudPush(true);else refreshOnUserAction(true);});
+window.addEventListener('focus',()=>{if(!document.hidden)onCloudWake()});
+window.addEventListener('pageshow',e=>{if(e.persisted)onCloudWake(true)});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)onCloudWake()});
+window.addEventListener('online',()=>{if(cloudStartupDone)onCloudWake(true)});
 document.addEventListener('click',e=>{const close=e.target.closest('[data-close]');if(close&&(close===e.target||e.target.closest('button[data-close]'))){closeOverlay();return}const nt=e.target.closest('[data-tab]');if(nt){if(configFormDirty&&tab==='config'&&nt.dataset.tab!=='config'){if(!confirm('页面配置有未保存的修改，确认放弃吗？'))return;configFormDirty=false;}tab=nt.dataset.tab;filter=state.pageConfig.defaultFilter;search='';render();window.scrollTo(0,0);return}const ff=e.target.closest('[data-filter]');if(ff){window.__hqUserFiltersTouched=true;filter=ff.dataset.filter;render();return}const vv=e.target.closest('[data-view]');if(vv){window.__hqUserFiltersTouched=true;view=vv.dataset.view;render();return}const oo=e.target.closest('[data-open]');if(oo){openDetail(oo.dataset.open);return}const a=e.target.closest('[data-action]');if(!a)return;const action=a.dataset.action;const publicActions=new Set(['visitFilter','reopen','shareHouse','exportLinks','export','saveCloudConfig','lockCloud','cloudPull']);if(!cloudConfig.token&&!publicActions.has(action)){toast('当前为公开只读模式；输入 PIN 解锁后才能修改数据');tab='settings';render();return;}const id=a.dataset.id, h=state.houses.find(x=>x.id===id);switch(action){
  case 'visitNew':editVisitSession();break;
  case 'visitEditSession':editVisitSession(id);break;
@@ -1063,7 +1065,7 @@ function importCapturedRecord(record){
 }
 // V3.5: 浏览器扩展独立直传 Netlify Functions；已移除旧的 H5 消息中转。
 applyPageConfig();render();
-const hqCloudInitPromise=initCloud();
+const hqCloudInitPromise=initCloud().finally(()=>{cloudStartupDone=true});
 // 新设备首次打开时自动展示 PIN 登录界面，避免看到全是0的空白初始化页。
 if(!cloudConfig.token){tab='houses';render();}
 
