@@ -1,0 +1,92 @@
+红桥房源观察站 V3.5｜跨设备云端直连 + Chrome 一键保存
+日期：2026-11-19
+
+先看重要说明
+----------------------------------------
+1. 这是一版「代码完成、本地模拟验收通过」的候选版本，不是已上线的正式版本。
+2. 原来 Netlify 只用了静态 index.html。新版为保护 Google Token，增加了服务端 Netlify Function。
+   因此不能再只把 index.html 或静态 ZIP 拖到 Deploys，否则 / .netlify/functions/hq-api 会返回 404。
+   必须使用 Netlify CLI（或将项目绑定 Git 仓库后让 Netlify 构建发布）。
+3. 原来的 Google Sheets 及 Apps Script V3.4 可以继续使用，无需重置、清空或另建数据库；无需重新发布 Apps Script。
+4. 当前无法通过 ChatGPT 的 Netlify 连接器代替你写入环境变量（Netlify 返回 403），所以下面的四项需要你在 Netlify 设置一次。
+5. 本包绝无真实 Google API_TOKEN，也没有 Session 私钥。不要把你的密钥提交到 Git 仓库，也不要放在公开 HTML/Chrome 插件中。
+
+一、备份
+----------------------------------------
+- Google Sheets > 文件 > 制作副本（请确认副本确实创建）
+- V3.4 网页 > 数据管理 > 导出 JSON（已有的数据不应该被重建）
+- Netlify 上一次成功部署保留不删，以便出问题时回退
+
+二、Netlify 上设置四个服务端环境变量（只用设置一次）
+----------------------------------------
+打开现有站点：
+https://app.netlify.com/projects/hongqiao-housing-watch
+Project configuration > Environment variables > Add a variable
+将每个变量的作用范围设为 Functions，环境用 Production（或 All）；敏感项选 Secret。
+
+1. HQ_GOOGLE_URL        = 你现有 Apps Script Web App 的完整 /exec 地址
+2. HQ_GOOGLE_TOKEN      = 你现有 Apps Script Code.gs 中的 API_TOKEN 原值
+3. HQ_PIN               = 1111 （用户指定的初始四位 PIN，建议测试后改为随机的四位数）
+4. HQ_SESSION_SECRET    = 本地随机生成的至少32字节私钥，不要使用 1111
+
+可用本机 Node.js 生成随机私钥：
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+安全说明：四位 PIN 极易被猜中。它只能作为便捷入口，无法替代真正账户验证或身份认证。Netlify Functions 中的内存次数限制并非可靠的全局暴力破解防护。强烈建议未来增加 Netlify 身份认证、持久化限流或更长的密码。
+不要把 HQ_GOOGLE_TOKEN 或 HQ_SESSION_SECRET 发送到聊天，也不要截图展示。
+
+三、一次发布到原 Netlify 项目（必须上传函数）
+----------------------------------------
+Windows/macOS/Linux：先安装 Node.js（推荐 LTS），然后在命令行：
+
+npm install -g netlify-cli
+netlify login
+
+把本源码包解压，进入「hongqiao_v3_5_source」目录（有 netlify.toml、site、netlify 三项的目录），运行：
+
+netlify link --id 2fa742a8-a464-4db4-8e72-c67a760f7139
+netlify deploy --prod
+
+如果已关联项目，第二条 link 可省略。命令会读取 netlify.toml，发布 site/ 与 netlify/functions/。
+【重要】本版本不能采用「仅拖拽一个 index.html/ZIP 到 Netlify」的旧部署方式来启用云端接口。
+如果不想使用命令行：可以将目录上传到自己私有 GitHub 仓库，并在 Netlify 项目里连接该仓库。以后推送 Git 提交可自动触发站点部署，但仍会消耗 Netlify 相应构建与使用额度。
+
+四、上线验收（在浏览器手动核查）
+----------------------------------------
+1. 访问 https://hongqiao-housing-watch.netlify.app/，应看到 V3.5 而非 V3.4。
+2. 首次打开自动进入「数据管理 · PIN 解锁」，输入初始 PIN 1111。
+3. 验证成功后应看到 Google Sheets 中原本的17个小区、市场扫描和2条待核官网链接，不得出现完全空白并询问重新初始化。
+4. 若提示「云端安全配置尚未设置」，说明函数已上线但四个环境变量缺失/作用范围不对。
+5. 若显示 404，多半仅发布了静态网页，未将 Netlify Functions 部署上去。
+6. 若「Google 云端请求失败」或「访问令牌错误」，检查现有 Apps Script /exec 地址和 Code.gs 里的 API_TOKEN 与服务器环境变量是否一致。
+7. 点击「数据管理」中的「锁定」测试再次解锁。
+
+五、安装 Chrome 扩展（替换旧插件）
+----------------------------------------
+- 解压独立的 hongqiao_v3_5_chrome_extension.zip 到固定文件夹。
+- 打开 Chrome > chrome://extensions > 打开开发者模式。
+- 先确认旧 V0.3 插件的「本地待同步」为0，或已在旧 H5 成功同步；否则暂时保留旧插件，避免误删其本地待传队列。确认后停用旧插件。
+- 选择「加载已解压的扩展程序」，选包含 manifest.json 的 extension 文件夹。
+- 首次打开一个贝壳/我爱我家的单套详情页，点击 Chrome 工具栏插件图标一次。
+- 插件会自动执行：提取 DOM -> 本地暂存为待传队列 -> 直接向 Netlify 函数上报。
+- 首次尚未建立 PIN 会话时自动打开「扩展设置」输入四位 PIN，一旦成功就自动续传这条房源。
+- 之后点击图标不再出现「读取 / 保存本地 / 同步H5」三个按钮，也不会跳转 H5。
+- 待上传数量会显示在插件图标数字角标；绿色 ✓ 表示已全部上传。
+- 网络不通或云端失败时，自动每5分钟重试待上传队列；队列清空后停止。
+- 必要时右击插件 > 扩展程序选项，可查看错误和剩余待同步数量；也可重新登录/重试。
+
+六、数据保留和已知边界
+----------------------------------------
+- 新发现官方房源自动以「平台 + 房源编号」去重，保留价格变化及页面原始链接。
+- 只认可贝壳 ke.com 和我爱我家 5i5j.com 的单套详情页，不接纳链家/其他第三方。
+- 页面无法识别小区时，仍入云端待匹配列表，但不冒充已核实的正式房源。
+- H5 上主动操作保存后会自动上传；另一台设备打开或发生操作时读取变化。完全闲置且开着的页面不会即时推送，这是“不轮询”的预期。
+- 没有自动爬取网站；Chrome 插件只读用户当前主动打开的页面，不进行额外批量访问，也不绕过登录和反爬策略。
+- Chrome 扩展「本地存储」仅作为网络失败时的临时待传缓冲，不是第二个业务数据库。必须收到云端成功确认才会移除，确保不丢记录。
+- Google Apps Script 当前仍按整个 JSON 快照分片上传；少量房源的模拟测试通过，尚未在真正的 Netlify + Google 线上环境及大数据量下测定成功率和耗时。扩展到上千套前，应改为 Apps Script 服务端单套增量写入接口，避免每次保存重传全量数据。
+- 四位 PIN 不是完整安全体系，真实买房记录可能涉及个人隐私；如用于长期公网部署，需要优先加强登录与限流。
+
+七、自动部署（可选一次性改造）
+----------------------------------------
+在 Netlify 中关联私有 GitHub 仓库，仓库根目录保持 netlify.toml、site/、netlify/functions/。以后 git push 即自动构建发布，无需每次手动拖拽 ZIP。
+注意：自动化发布的是程序代码；Google Sheets 数据/页面配置更新本来就无需发布。
