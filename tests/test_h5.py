@@ -152,7 +152,7 @@ with sync_playwright() as pw:
       localStorage.setItem('HQ_V35_SESSION', 'test-signed-session');
     """ % json.dumps(json.dumps(local_state, ensure_ascii=False)))
     conflict_page.goto('https://hongqiao-housing-watch.netlify.app/', wait_until='domcontentloaded')
-    conflict_page.wait_for_function("document.getElementById('cloudStatusText')?.textContent.includes('自动合并并同步成功')", timeout=8000)
+    conflict_page.wait_for_function("document.getElementById('cloudSidebarStatus')?.textContent.includes('自动合并并同步成功')", timeout=8000)
     assert begin_versions[:2] == [7, 8], f'expected stale v7 then automatic retry at v8; got {begin_versions}'
     assert len(commits) == 1, f'expected one merged commit; got {len(commits)}'
     committed = commits[0]
