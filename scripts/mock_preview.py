@@ -210,6 +210,20 @@ document.getElementById("hq-mock-reset").addEventListener("click",async()=>{
                 return self.send_json(200, {"ok": True, "config": config, "hash": CONFIG_HASH})
             except Exception as exc:
                 return self.send_json(400, {"ok": False, "error": str(exc)})
+        if action == "snapshotCommit":
+            expected = data.get("expectedVersion")
+            next_state = data.get("state")
+            if not isinstance(expected, int) or expected != VERSION:
+                return self.send_json(409, {"ok": False, "conflict": True, "version": VERSION, "error": "模拟快照版本已变化"})
+            if not isinstance(next_state, dict) or not isinstance(next_state.get("houses"), list) or not isinstance(next_state.get("scopes"), list):
+                return self.send_json(400, {"ok": False, "error": "模拟快照缺少 houses 或 scopes"})
+            for key in ("benchmarks", "marketScans", "saleLeads", "quarantine", "listingCandidates", "linkLedger", "visitSessions"):
+                if not isinstance(next_state.get(key), list):
+                    next_state[key] = []
+            STATE = next_state
+            VERSION += 1
+            UPDATED_AT = now_iso()
+            return self.send_json(200, {"ok": True, "version": VERSION, "updatedAt": UPDATED_AT, "houses": len(STATE["houses"]), "scopes": len(STATE["scopes"]), "snapshotId": "mock-atomic-commit"})
         if action == "begin":
             upload_id = str(data.get("uploadId", ""))
             if not re.fullmatch(r"[A-Za-z0-9_-]{8,80}", upload_id):
