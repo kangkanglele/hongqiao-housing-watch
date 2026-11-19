@@ -5,7 +5,7 @@ import secrets
 html=(Path(__file__).resolve().parents[1] / 'site' / 'index.html').read_text()
 test_pin = str(1000 + secrets.randbelow(9000))
 with sync_playwright() as pw:
-    b=pw.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox'])
+    b=pw.chromium.launch(headless=True,args=['--no-sandbox'])
     p=b.new_page(viewport={'width':900,'height':800})
     errors=[]
     p.on('pageerror',lambda e:errors.append(str(e)))
