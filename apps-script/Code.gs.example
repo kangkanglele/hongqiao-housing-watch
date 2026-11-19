@@ -18,7 +18,7 @@ function doGet(e) {
   try {
     if (!constantTimeEqual_(String(p.token || ""), API_TOKEN)) throw new Error("访问令牌错误，请检查网页设置中的 API_TOKEN。");
     const action = String(p.action || "");
-    if (action === "ping") result = {ok:true, service:"hongqiao-housing-watch", spreadsheetId:SPREADSHEET_ID, version:currentVersion_()};
+    if (action === "ping") result = {ok:true, service:"hongqiao-housing-watch", version:currentVersion_()};
     else if (action === "load") result = loadState_();
     else if (action === "begin") result = beginUpload_(p);
     else if (action === "chunk") result = writeChunk_(p);
