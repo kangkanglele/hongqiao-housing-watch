@@ -16,9 +16,7 @@
 
 const SPREADSHEET_ID = 'REPLACE_WITH_SPREADSHEET_ID';
 const API_TOKEN_PROPERTY = 'API_TOKEN';
-// Private Apps Script project only. First authenticated request migrates this
-// existing production token into Script Properties; do not copy this file to
-// the public GitHub repository.
+// Keep this empty in the public template. Set API_TOKEN in Script Properties.
 const LEGACY_API_TOKEN_BOOTSTRAP = '';
 
 const STATE_SHEET = '云端状态';
