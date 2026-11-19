@@ -22,9 +22,38 @@
 
 ## 开发、模拟与发布
 
-### 本地模拟预览
+### 本地模拟预览（不需要 Node.js）
 
-先安装一次本地测试依赖（不需要安装 npm 包）：
+**Mac 最简单的方式：** 双击仓库根目录的 `启动本地模拟环境.command`。它会自动切换到项目目录、启动 Python 模拟服务并打开浏览器。关闭终端窗口或按 Ctrl+C 即可停止。
+
+也可以在终端运行：
+
+```bash
+cd /你的路径/hongqiao-housing-watch
+python3 scripts/mock_preview.py
+```
+
+然后打开 http://127.0.0.1:4173 。本地预览只需要 Mac 上的 Python 3；不需要 Node.js、npm、Playwright 或安装其他依赖。不要在用户主目录 `~` 下直接执行相对路径命令，必须从项目目录运行；双击启动器会自动处理目录。
+
+页面顶部会显示「本地模拟环境」提示。模拟环境有以下隔离措施：
+
+- 只绑定本机 `127.0.0.1`，不会对外网开放。
+- 使用虚构房源和虚构房源编号，不代表真实挂牌。
+- 不连接正式 Netlify Functions、Google Sheets 或 Apps Script。
+- PIN 可输入任意四位数字；写入只保存在本地模拟服务内存。
+- 可随时点击顶部「重置模拟数据」；停止并重新启动服务也会生成一份全新模拟数据。
+
+### 本地回归测试
+
+双击根目录的 `运行本地回归测试.command`，或从项目目录运行：
+
+```bash
+bash scripts/test-local.sh
+```
+
+Python 模拟服务和基础测试不要求 Node.js。若本机安装了 Node.js，会额外运行网关、扩展和 Apps Script 的完整 JavaScript 回归测试；安装了 Playwright 时，还会运行 H5 浏览器测试。GitHub Actions 始终运行完整测试套件。
+
+Playwright 浏览器测试的一次性安装命令：
 
 ```bash
 python3 -m venv .venv
@@ -33,29 +62,7 @@ python -m pip install --upgrade pip playwright
 python -m playwright install chromium
 ```
 
-运行完整回归测试：
-
-```bash
-bash scripts/test-local.sh
-```
-
-启动可交互的本地模拟网站：
-
-```bash
-node scripts/mock-preview.mjs
-```
-
-然后打开 http://127.0.0.1:4173 。
-
-页面顶部会显示「本地模拟环境」提示。模拟环境有以下隔离措施：
-
-- 只绑定本机 `127.0.0.1`，不会对外网开放。
-- 使用虚构房源和虚构房源编号，不代表真实挂牌。
-- 不连接正式 Netlify Functions、Google Sheets 或 Apps Script。
-- PIN 可输入任意四位数字；写入只保存到本地模拟服务。
-- 可随时点击顶部「重置模拟数据」。关闭并重新启动模拟服务也会生成一份全新的模拟数据。
-
-本地模拟 API 覆盖公开读取、PIN 登录、配置读取/保存、版本校验、快照分片写入和回读。自动化测试还会使用 mock fetch、mock Google Sheets 和 Playwright 路由拦截验证同步、去重、冲突与只读模式；不会触碰正式数据库。
+本地模拟 API 覆盖公开读取、PIN 登录、配置读取/保存、版本校验、快照分片写入和回读；所有测试使用虚构数据，不会触碰正式数据库。
 
 ### GitHub CI 与 Netlify 发布职责
 
