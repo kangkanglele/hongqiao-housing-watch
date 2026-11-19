@@ -1,4 +1,4 @@
-# 红桥房源观察站 V3.5
+# 红桥房源观察站 0.5
 
 本仓库用于 Netlify 自动部署，保留现有 H5 页面、Google Sheets 数据结构和 Chrome 一键采集扩展。
 
@@ -11,6 +11,13 @@
 - `extension/`：Chrome Manifest V3 扩展，独立安装
 - `tests/`：本地模拟测试
 
+## 0.5 基础同步链路
+
+- Chrome 扩展把房源先保存到本地队列；只有云端确认成功后才从队列移除。
+- Netlify 网关读取当前快照、合并单套房源，再通过一次 JSON POST 调用 Apps Script 的 `snapshotCommit`；不再把一个快照拆成 24 次 GET 请求。
+- Apps Script 在锁内校验版本，追加完整快照，并按主键更新明细表；相同 `uploadId` 重试不会重复写入。
+- 旧 GET `ping/load/begin/chunk/commit/config/configSave` 保留兼容。
+
 ## 重要：首次部署
 
 1. 先更新现有 Apps Script：复制 `apps-script/Code.gs.example` 内容到现有 `Code.gs`，将两个占位符替换为你原来使用的 Spreadsheet ID 与 API Token；保存后在 Apps Script「部署 → 管理部署」中编辑现有 Web App，选择新版本并部署。不要把真实值提交到 GitHub，也不要新建或清空 Google Sheets。
@@ -21,7 +28,7 @@
    - `HQ_GOOGLE_TOKEN`：Apps Script `Code.gs` 中的 `API_TOKEN`
    - `HQ_PIN`：你自己设置的四位数字；仅作为日常访问门槛，不提供暴力破解防护
    - `HQ_SESSION_SECRET`：至少 32 字节的随机私钥
-5. 保存环境变量后触发一次新的生产部署。
+5. 先通过 GitHub Pull Request 完成本地/模拟测试；确认 Apps Script 已部署并能响应 `snapshotCommit` 后，再合并到 `main`，只触发一次 Netlify 生产部署。不要为小改动频繁发布。
 
 不要把真实 Token 或 Session 私钥提交到 GitHub，也不要写入 HTML/Chrome 扩展。
 
