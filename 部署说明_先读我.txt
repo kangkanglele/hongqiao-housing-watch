@@ -26,8 +26,8 @@ Project configuration > Environment variables > Add a variable
 
 1. HQ_GOOGLE_URL        = 你现有 Apps Script Web App 的完整 /exec 地址
 2. HQ_GOOGLE_TOKEN      = 你现有 Apps Script Code.gs 中的 API_TOKEN 原值
-3. HQ_PIN               = 你自己选择的四位数字（不要使用 1111；仅作为日常访问门槛）
-4. HQ_SESSION_SECRET    = 本地随机生成的至少32字节私钥，不要使用 1111
+3. HQ_PIN               = 你自己选择的四位数字（不要复用测试环境的 PIN；仅作为日常访问门槛）
+4. HQ_SESSION_SECRET    = 本地随机生成的至少32字节私钥，不要复用其他环境的值
 
 可用本机 Node.js 生成随机私钥：
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
