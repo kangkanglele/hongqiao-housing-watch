@@ -238,6 +238,26 @@ async function handleApi(req, res) {
     return;
   }
 
+  if (action === 'snapshotCommit') {
+    if (Number(data.expectedVersion) !== version) {
+      conflict(res);
+      return;
+    }
+    const next = data.state;
+    if (!next || typeof next !== 'object' || !Array.isArray(next.houses) || !Array.isArray(next.scopes)) {
+      sendJson(res, 400, { ok: false, error: '模拟快照缺少 houses 或 scopes。' });
+      return;
+    }
+    for (const key of ['benchmarks', 'marketScans', 'saleLeads', 'quarantine', 'listingCandidates', 'linkLedger', 'visitSessions']) {
+      if (!Array.isArray(next[key])) next[key] = [];
+    }
+    state = next;
+    version += 1;
+    updatedAt = new Date().toISOString();
+    sendJson(res, 200, { ok: true, version, updatedAt, houses: state.houses.length, scopes: state.scopes.length, snapshotId: 'mock-atomic-commit' });
+    return;
+  }
+
   if (action === 'begin') {
     const uploadId = String(data.uploadId || '');
     if (!/^[A-Za-z0-9_-]{8,80}$/.test(uploadId)) {
