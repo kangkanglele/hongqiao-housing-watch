@@ -36,7 +36,7 @@ async function google(action,params={}){
 }
 async function googlePost(action,params={}) {
  const scriptUrl=env('HQ_GOOGLE_URL'),token=env('HQ_GOOGLE_TOKEN');if(!scriptUrl||!token)throw Error('云端服务端凭证尚未配置');
- const u=new URL(scriptUrl);if(u.protocol!=='https:'||u.hostname!=='script.google.com'||!/^\\/macros\\/s\\/[^/]+\\/exec$/.test(u.pathname))throw Error('云端部署地址配置不正确');
+ const u=new URL(scriptUrl);if(u.protocol!=='https:'||u.hostname!=='script.google.com'||!/^\/macros\/s\/[^/]+\/exec$/.test(u.pathname))throw Error('云端部署地址配置不正确');
  const body=JSON.stringify({...params,action,token});
  if(new TextEncoder().encode(body).length>5*1024*1024)throw Error('云端快照超过单次上传限制，请先缩减照片体积');
  const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),23000);let r,txt;
