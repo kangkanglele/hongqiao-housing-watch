@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>红桥房源采集助手</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<header class="header">
+ <div class="brand-mark">⌂</div>
+ <div><strong>红桥房源采集助手</strong><small>PROPERTY WATCH · AUTO SYNC</small></div>
+ <span id="connection" class="connection">检查中</span>
+</header>
+<section class="status-card" id="statusCard" data-phase="extracting">
+ <div class="status-icon" id="statusIcon"><span class="spinner"></span></div>
+ <div class="status-copy"><strong id="statusTitle">正在连接当前页面…</strong><p id="statusMessage">读取房源详情并保存到本机队列</p></div>
+</section>
+<section class="listing" id="listing" hidden>
+ <div class="listing-label">本次采集房源</div>
+ <strong id="listingTitle">—</strong>
+ <div class="listing-meta" id="listingMeta"></div>
+ <a id="listingLink" href="#" target="_blank" rel="noopener">打开原始房源 ↗</a>
+</section>
+<section class="auth" id="auth" hidden>
+ <label for="pin">首次使用或登录过期时，输入四位 PIN</label>
+ <div class="auth-row"><input id="pin" type="password" inputmode="numeric" maxlength="4" placeholder="四位 PIN" autocomplete="off"><button id="login">连接并同步</button></div>
+ <p id="authMessage"></p>
+</section>
+<footer class="footer">
+ <div><strong id="queueCount">0 条待同步</strong><small id="lastSynced">尚未同步</small></div>
+ <button class="secondary" id="retry">重新同步</button>
+</footer>
+<div class="hint">点击扩展图标即自动采集当前房源。采集记录先保存在本机，云端确认成功后才从队列移除。</div>
+<script src="popup.js"></script>
+</body>
+</html>

@@ -3,13 +3,18 @@ from pathlib import Path
 import json
 import secrets
 
-html=(Path(__file__).resolve().parents[1] / 'site' / 'index.html').read_text()
+ROOT = Path(__file__).resolve().parents[1]
+html = (ROOT / 'site' / 'index.html').read_text()
+merge_js = (ROOT / 'site' / 'sync-merge.js').read_text()
 test_pin = str(1000 + secrets.randbelow(9000))
 
-def route_request(route):
+def basic_route(route):
     request = route.request
     if request.resource_type == 'document':
         route.fulfill(status=200, content_type='text/html; charset=utf-8', body=html)
+        return
+    if request.url.endswith('/sync-merge.js'):
+        route.fulfill(status=200, content_type='text/javascript; charset=utf-8', body=merge_js)
         return
     if '/.netlify/functions/hq-api' in request.url:
         data = request.post_data_json or {}
@@ -20,39 +25,150 @@ def route_request(route):
                 'version': 4, 'houses': [], 'benchmarks': [],
                 'scopes': [{'id': 'S1', 'name': '水木天成翠杨园', 'group': '水木天成', 'env': 'B', 'priority': '核心内圈'}],
                 'quarantine': [], 'marketScans': [{'id': 'test', 'date': '2026-11-19', 'community': '民畅园'}],
-                'saleLeads': [], 'listingCandidates': [], 'linkLedger': []
+                'saleLeads': [], 'listingCandidates': [], 'linkLedger': [], 'visitSessions': []
             }}
         elif data.get('action') == 'ping':
             answer = {'ok': True, 'version': 8}
+        elif data.get('action') == 'config':
+            answer = {'ok': True, 'config': {}, 'hash': 'test-config'}
         else:
             answer = {'ok': True, 'version': 8}
         route.fulfill(status=200, content_type='application/json', body=json.dumps(answer, ensure_ascii=False))
         return
     route.fulfill(status=204, body='')
 
+def conflict_route_factory():
+    begin_versions = []
+    uploads = {}
+    commits = []
+    remote_state = {
+        'version': 4,
+        'houses': [
+            {'id': 'REMOTE-1', 'community': '民畅园', 'title': '云端新增房源', 'sources': [{'channel': '贝壳', 'url': 'https://m.ke.com/tj/ershoufang/22222222222.html'}], 'events': []},
+            {'id': 'SHARED-1', 'community': '民畅园', 'title': '云端标题', 'note': '云端备注', 'price': 70, 'sources': [{'channel': '贝壳', 'url': 'https://m.ke.com/tj/ershoufang/101126703003.html'}], 'events': [{'id': 'E-REMOTE', 'title': '云端事件'}]}
+        ],
+        'scopes': [{'id': 'S-REMOTE', 'name': '云端小区'}],
+        'benchmarks': [], 'marketScans': [{'id': 'SCAN-REMOTE', 'community': '云端扫描'}],
+        'saleLeads': [], 'quarantine': [], 'listingCandidates': [], 'linkLedger': [],
+        'visitSessions': [{'id': 'VISIT-1', 'date': '2026-11-19', 'entries': [{'id': 'ENTRY-REMOTE', 'houseId': 'REMOTE-1'}]}],
+        'pageConfig': {'colorBackground': '#ffffff'}
+    }
+
+    def route(route):
+        request = route.request
+        if request.resource_type == 'document':
+            route.fulfill(status=200, content_type='text/html; charset=utf-8', body=html)
+            return
+        if request.url.endswith('/sync-merge.js'):
+            route.fulfill(status=200, content_type='text/javascript; charset=utf-8', body=merge_js)
+            return
+        if '/.netlify/functions/hq-api' not in request.url:
+            route.fulfill(status=204, body='')
+            return
+        data = request.post_data_json or {}
+        action = data.get('action')
+        if action == 'ping':
+            answer = {'ok': True, 'version': 8}
+            route.fulfill(status=200, content_type='application/json', body=json.dumps(answer))
+        elif action == 'load':
+            answer = {'ok': True, 'version': 9 if commits else 8, 'updatedAt': '2026-11-19T10:00:00Z', 'state': remote_state}
+            route.fulfill(status=200, content_type='application/json', body=json.dumps(answer, ensure_ascii=False))
+        elif action == 'begin':
+            begin_versions.append(int(data.get('expectedVersion', 0)))
+            if len(begin_versions) == 1:
+                route.fulfill(status=409, content_type='application/json', body=json.dumps({
+                    'ok': False, 'conflict': True, 'version': 8,
+                    'error': '云端数据已被其他设备更新。请先点击从云端拉取，再继续修改。'
+                }, ensure_ascii=False))
+                return
+            uploads[data['uploadId']] = {'total': 0, 'chunks': {}}
+            route.fulfill(status=200, content_type='application/json', body=json.dumps({'ok': True, 'uploadId': data['uploadId']}))
+        elif action == 'chunk':
+            upload = uploads[data['uploadId']]
+            upload['total'] = int(data['total'])
+            upload['chunks'][int(data['index'])] = str(data.get('data', ''))
+            route.fulfill(status=200, content_type='application/json', body=json.dumps({'ok': True}))
+        elif action == 'commit':
+            upload = uploads[data['uploadId']]
+            payload = ''.join(upload['chunks'][i] for i in range(upload['total']))
+            committed = json.loads(payload)
+            commits.append(committed)
+            remote_state.clear()
+            remote_state.update(committed)
+            route.fulfill(status=200, content_type='application/json', body=json.dumps({'ok': True, 'version': 9, 'updatedAt': '2026-11-19T10:01:00Z'}))
+        elif action == 'config':
+            route.fulfill(status=200, content_type='application/json', body=json.dumps({'ok': True, 'config': remote_state.get('pageConfig', {}), 'hash': 'test-config'}))
+        else:
+            route.fulfill(status=200, content_type='application/json', body=json.dumps({'ok': True}))
+    return route, begin_versions, commits
+
 with sync_playwright() as pw:
-    b=pw.chromium.launch(headless=True,args=['--no-sandbox'])
-    p=b.new_page(viewport={'width':900,'height':800})
-    errors=[]
-    p.on('pageerror',lambda e:errors.append(str(e)))
-    p.route('**/*', route_request)
-    p.goto('https://hongqiao-housing-watch.netlify.app/', wait_until='domcontentloaded')
-    p.wait_for_timeout(300)
-    root_text=p.locator('#root').inner_text()
-    assert '公开只读模式' in root_text, f'should open in public read-only mode; page errors={errors}; root={root_text[:500]}'
-    assert p.locator('#adminPin').count()==0,'PIN should not block public browsing'
-    p.locator('#nav [data-tab="settings"]').click()
-    assert p.locator('#adminPin').count()==1,'settings should offer PIN unlock'
-    assert p.locator('#cloudToken').count()==0,'no secret token form'
-    p.locator('#adminPin').fill(test_pin)
-    p.locator('[data-action="saveCloudConfig"]').click()
-    p.wait_for_timeout(500)
-    assert p.locator('#adminPin').count()==0,'should unlock after authentication'
-    p.locator('#nav [data-tab="settings"]').click()
-    assert '已解锁' in p.locator('#root').inner_text()
-    assert p.locator('#cloudToken').count()==0
-    p.locator('[data-action="lockCloud"]').click()
-    assert p.locator('#adminPin').count()==1,'should return to read-only mode after lock'
-    assert not errors,errors
-    print('PASS H5: public read-only view, PIN-gated editing, no Google token field, lock UI; page errors=',errors)
-    b.close()
+    browser = pw.chromium.launch(headless=True, args=['--no-sandbox'])
+
+    # Public read-only and PIN unlock.
+    page = browser.new_page(viewport={'width': 900, 'height': 800})
+    errors = []
+    page.on('pageerror', lambda error: errors.append(str(error)))
+    page.route('**/*', basic_route)
+    page.goto('https://hongqiao-housing-watch.netlify.app/', wait_until='domcontentloaded')
+    page.wait_for_timeout(300)
+    root_text = page.locator('#root').inner_text()
+    assert '公开只读模式' in root_text, f'should open read-only; errors={errors}; root={root_text[:500]}'
+    assert page.locator('#adminPin').count() == 0
+    page.locator('#nav [data-tab="settings"]').click()
+    assert page.locator('#adminPin').count() == 1
+    assert page.locator('#cloudToken').count() == 0
+    page.locator('#adminPin').fill(test_pin)
+    page.locator('[data-action="saveCloudConfig"]').click()
+    page.wait_for_timeout(500)
+    assert page.locator('#adminPin').count() == 0
+    page.locator('#nav [data-tab="settings"]').click()
+    assert '已解锁' in page.locator('#root').inner_text()
+    page.locator('[data-action="lockCloud"]').click()
+    assert page.locator('#adminPin').count() == 1
+    assert not errors, errors
+    page.close()
+
+    # Simulate two devices writing at once: stale local v7 must merge remote v8 and retry automatically.
+    local_state = {
+        'version': 4,
+        'houses': [
+            {'id': 'LOCAL-1', 'community': '民畅园', 'title': '本地新增房源', 'sources': [{'channel': '我爱我家', 'url': 'https://m.5i5j.com/tj/ershoufang/11111111111.html'}], 'events': []},
+            {'id': 'SHARED-1', 'community': '民畅园', 'title': '本地标题', 'note': '本地备注', 'sources': [{'channel': '贝壳', 'url': 'https://m.ke.com/tj/ershoufang/101126703003.html'}], 'events': [{'id': 'E-LOCAL', 'title': '本地事件'}]}
+        ],
+        'scopes': [{'id': 'S-LOCAL', 'name': '本地小区'}],
+        'benchmarks': [], 'marketScans': [{'id': 'SCAN-LOCAL', 'community': '本地扫描'}],
+        'saleLeads': [], 'quarantine': [], 'listingCandidates': [], 'linkLedger': [],
+        'visitSessions': [{'id': 'VISIT-1', 'date': '2026-11-19', 'entries': [{'id': 'ENTRY-LOCAL', 'houseId': 'LOCAL-1'}]}],
+        'pageConfig': {'colorPrimary': '#123456'}
+    }
+    conflict_page = browser.new_page(viewport={'width': 900, 'height': 800})
+    conflict_errors = []
+    conflict_page.on('pageerror', lambda error: conflict_errors.append(str(error)))
+    conflict_route, begin_versions, commits = conflict_route_factory()
+    conflict_page.route('**/*', conflict_route)
+    conflict_page.add_init_script("""
+      localStorage.setItem('hongqiao_watch_v1_20261118', %s);
+      localStorage.setItem('HQ_LOCAL_UNSYNCED_V31', '1');
+      localStorage.setItem('HQ_CLOUD_VERSION', '7');
+      localStorage.setItem('HQ_V35_SESSION', 'test-signed-session');
+    """ % json.dumps(json.dumps(local_state, ensure_ascii=False)))
+    conflict_page.goto('https://hongqiao-housing-watch.netlify.app/', wait_until='domcontentloaded')
+    conflict_page.wait_for_function("document.getElementById('cloudSidebarStatus')?.textContent.includes('已同步 · v9')", timeout=8000)
+    assert begin_versions[:2] == [7, 8], f'expected stale v7 then automatic retry at v8; got {begin_versions}'
+    assert len(commits) == 1, f'expected one merged commit; got {len(commits)}'
+    committed = commits[0]
+    assert len(committed['houses']) == 3, [house['id'] for house in committed['houses']]
+    assert {house['id'] for house in committed['houses']} == {'LOCAL-1', 'REMOTE-1', 'SHARED-1'}
+    shared = next(house for house in committed['houses'] if house['id'] == 'SHARED-1')
+    assert shared['title'] == '本地标题'
+    assert shared['price'] == 70
+    assert {event['id'] for event in shared['events']} == {'E-LOCAL', 'E-REMOTE'}
+    assert len(committed['marketScans']) == 2
+    assert {entry['id'] for entry in committed['visitSessions'][0]['entries']} == {'ENTRY-LOCAL', 'ENTRY-REMOTE'}
+    assert committed['pageConfig']['colorPrimary'] == '#123456'
+    assert committed['pageConfig'].get('colorBackground') == '#ffffff', f"remote pageConfig was not preserved: {committed.get('pageConfig')}"
+    assert committed['syncConflicts'], 'same-field differences must be archived for later review'
+    assert not conflict_errors, conflict_errors
+    print('PASS H5: PIN-gated editing, automatic merge after stale-version conflict, union of both devices, conflict audit; page errors=', conflict_errors)
+    browser.close()

@@ -5,41 +5,53 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 PYTHON_BIN="${PYTHON:-python3}"
 
-if ! command -v node >/dev/null 2>&1; then
-  echo "Node.js 20+ is required." >&2
-  exit 1
-fi
 if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
-  echo "Python 3 is required. Set PYTHON=python if your command is named python." >&2
-  exit 1
-fi
-if ! "$PYTHON_BIN" -c "import playwright" >/dev/null 2>&1; then
-  echo "Playwright is missing. Install it with: python3 -m pip install playwright" >&2
-  echo "Then install Chromium with: python3 -m playwright install chromium" >&2
+  echo "需要 Python 3。Mac 通常已自带 python3。"
   exit 1
 fi
 
-echo "==> Syntax checks"
-node --check netlify/functions/hq-api.mjs
-node --check scripts/mock-preview.mjs
-node --check < apps-script/Code.gs.example
+echo "==> Python-only local preview test (no Node.js required)"
+"$PYTHON_BIN" tests/test_mock_preview_python.py
 
-echo "==> Netlify gateway simulation"
-node tests/test_gateway.mjs
+if command -v node >/dev/null 2>&1; then
+  echo "==> JavaScript syntax checks"
+  node --check netlify/functions/hq-api.mjs
+  node --check scripts/mock-preview.mjs
+  node --check extension/background.js
+  node --check extension/popup.js
+  node --check extension/status-overlay.js
+  node --check site/sync-merge.js
+  node --check < apps-script/Code.gs.example
 
-echo "==> Chrome extension queue simulation"
-node tests/test_extension.cjs
+  echo "==> Concurrent sync merge unit test"
+  node tests/test_sync_merge.cjs
 
-echo "==> Apps Script / Google Sheets snapshot simulation"
-node tests/test_apps_script_snapshot.cjs
+  echo "==> Netlify gateway simulation"
+  node tests/test_gateway.mjs
 
-echo "==> Local interactive mock server"
-node tests/test_mock_preview.mjs
+  echo "==> Chrome extension popup and sync simulation"
+  node tests/test_extension.cjs
 
-echo "==> Chrome listing extraction simulation"
-"$PYTHON_BIN" tests/test_extract.py
+  echo "==> Apps Script / Google Sheets snapshot simulation"
+  node tests/test_apps_script_snapshot.cjs
 
-echo "==> H5 read-only and PIN UI simulation"
-"$PYTHON_BIN" tests/test_h5.py
+  echo "==> Node-based local mock server regression"
+  node tests/test_mock_preview.mjs
+else
+  echo "==> Node.js is not installed; skipped Node-only tests."
+  echo "    GitHub Actions runs the complete Node.js regression suite automatically."
+fi
 
-echo "ALL MOCK TESTS PASSED"
+if "$PYTHON_BIN" -c "import playwright" >/dev/null 2>&1; then
+  echo "==> Chrome listing extraction simulation"
+  "$PYTHON_BIN" tests/test_extract.py
+
+  echo "==> H5 UI and automatic cloud-conflict merge simulation"
+  "$PYTHON_BIN" tests/test_h5.py
+else
+  echo "==> Playwright is not installed; skipped browser-based tests."
+  echo "    Install with: python3 -m pip install playwright"
+  echo "    Then run: python3 -m playwright install chromium"
+fi
+
+echo "LOCAL TESTS COMPLETED"
