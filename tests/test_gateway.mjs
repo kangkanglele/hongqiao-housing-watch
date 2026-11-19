@@ -27,7 +27,9 @@ async function call(action,data={},session=''){
 }
 const bad=await call('login',{pin:'1234'});assert.equal(bad.status,401);
 const login=await call('login',{pin:'1111'});assert.equal(login.status,200);const session=login.body.session;
-assert.ok(session);const noAuth=await call('load');assert.equal(noAuth.status,401);
+assert.ok(session);const noAuth=await call('load');assert.equal(noAuth.status,200,'public read-only load should not require PIN');assert.equal(noAuth.body.version,8);
+const publicPing=await call('ping');assert.equal(publicPing.status,200);
+const noAuthWrite=await call('begin',{uploadId:'upload0001',expectedVersion:8});assert.equal(noAuthWrite.status,401,'mutations must still require a PIN session');
 const old=await call('load',{},session);assert.equal(old.body.version,8);
 const item={platform:'贝壳',platformId:'101126703003',url:'https://m.ke.com/tj/ershoufang/101126703003.html?shareSource=beike_app',community:'水木天成碧杉园',title:'碧杉园南向一居',area:71.31,price:56,rooms:'1居',floorBand:'高楼层/7层',totalFloors:7,orientation:'南'};
 const first=await call('capture',{record:item},session);assert.equal(first.body.status,'created');assert.equal(state.houses.length,1);assert.equal(state.houses[0].price,56);assert.equal(state.marketScans.length,1);assert.equal(state.saleLeads.length,1);assert.equal(state.visitSessions.length,1);
