@@ -115,6 +115,17 @@ export default async function handler(request){
    if(!data.record||typeof data.record!=='object')return response({ok:false,error:'缺少房源数据'},400,origin);
    const result=await ingest(data.record);return response({ok:true,...result},200,origin);
   }
+  // H5 edits use the same atomic Apps Script snapshotCommit API as the Chrome extension.
+  // This replaces hundreds of 380-character GET chunks with one authenticated POST.
+  if(action==='snapshotCommit'){
+   const expectedVersion=Number(data.expectedVersion),state=data.state;
+   if(!Number.isInteger(expectedVersion)||expectedVersion<0||!state||typeof state!=='object'||Array.isArray(state)||!Array.isArray(state.houses)||!Array.isArray(state.scopes)){
+    return response({ok:false,error:'快照或版本格式不正确'},400,origin);
+   }
+   const uploadId='hq'+Date.now().toString(36)+Math.random().toString(36).slice(2,12);
+   const result=await googlePost('snapshotCommit',{uploadId,expectedVersion,state});
+   return response({ok:true,version:Number(result.version),updatedAt:result.updatedAt||'',snapshotId:result.snapshotId||uploadId},200,origin);
+  }
   if(!['ping','load','config','configSave','begin','chunk','commit'].includes(action))return response({ok:false,error:'操作不被允许'},400,origin);
   const params={...data};delete params.action;delete params.token;delete params.callback;delete params.session;const res=await google(action,params);
   return response(res,200,origin);
