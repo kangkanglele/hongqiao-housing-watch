@@ -2,76 +2,171 @@
 const API='https://hongqiao-housing-watch.netlify.app/.netlify/functions/hq-api';
 const ALARM='hq_failed_sync_retry';
 let busy=false;
-const key=o=>o.platform+':'+o.platformId;
-async function state(){return chrome.storage.local.get(['queue','session','syncStatus','lastSyncedAt'])}
-async function status(message){await chrome.storage.local.set({syncStatus:message})}
-async function scheduleRetry(count){if(count>0)await chrome.alarms.create(ALARM,{delayInMinutes:5,periodInMinutes:5});else await chrome.alarms.clear(ALARM)}
-async function login(pin){
- const r=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'login',pin})});
- const d=await r.json().catch(()=>({ok:false,error:'无法解析服务器响应'}));if(!r.ok||!d.ok)throw Error(d.error||'连接失败');
- await chrome.storage.local.set({session:d.session});await flush();return {ok:true};
+const capturingTabs=new Set();
+const queueKey=item=>String(item.platform||'')+':'+String(item.platformId||'');
+
+async function getState(){
+ return chrome.storage.local.get(['queue','session','syncStatus','syncPhase','lastSyncedAt','lastCapture','lastResult','activeTabId']);
 }
-async function capture(record){
- if(!record||!['贝壳','我爱我家'].includes(record.platform)||!/^\d{8,}$/.test(String(record.platformId||'')))throw Error('仅接收官方单套详情页');
- const raw=await state(),queue=Array.isArray(raw.queue)?raw.queue:[];
- const item={...record,queueId:key(record),queuedAt:new Date().toISOString()};
- const index=queue.findIndex(x=>x.queueId===item.queueId);if(index>=0)queue[index]=item;else queue.push(item);
- await chrome.storage.local.set({queue});await scheduleRetry(queue.length);
- await status(raw.session?'已保存待传，正在自动同步…':'已保存待传；首次使用需输入四位 PIN');
- flush();return {ok:true,queued:queue.length};
-}
-async function flush(){
- if(busy)return;busy=true;
+async function reportBadge(tabId,phase,queueLength){
+ const text=phase==='extracting'||phase==='syncing'?'…':phase==='error'?'!':phase==='synced'?'✓':queueLength?String(Math.min(queueLength,99)):'';
+ const color=phase==='error'?'#c94a41':phase==='synced'?'#167a63':'#b0741b';
  try{
-  let {queue=[],session}=await state();if(!Array.isArray(queue)||!queue.length){await scheduleRetry(0);return}
-  if(!session){await status('尚未登录云端，已保留待同步记录');return}
-  for(let i=0;i<queue.length;i++){
-   const item=queue[i];
-   let res,body;try{res=await fetch(API,{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+session},body:JSON.stringify({action:'capture',record:item})});body=await res.json();}catch(e){await status('网络不可用，待同步 '+queue.length+' 条；后台自动重试');break}
-   if(res.status===401){await chrome.storage.local.remove('session');await status('云端登录过期，待同步 '+queue.length+' 条；输入 PIN 后自动续传');break}
-   if(!res.ok||!body?.ok){await status('同步失败：'+(body?.error||'服务器错误')+'；待同步 '+queue.length+' 条');break}
-   // 再次读取确保不会删除这一刻刚刚采集的同编号新报价。
-   const latest=await state(),curr=Array.isArray(latest.queue)?latest.queue:[];
-   const remaining=curr.filter(x=>!(x.queueId===item.queueId&&x.queuedAt===item.queuedAt));
-   await chrome.storage.local.set({queue:remaining,lastSyncedAt:new Date().toISOString(),syncStatus:remaining.length?'已上传一条，剩余待同步 '+remaining.length:'已同步云端 · '+(body.platformKey||item.queueId)});
-   queue=remaining;i=-1; // 取剩余队列第一条，继续自动处理
-  }
-  const last=await state();await scheduleRetry((last.queue||[]).length);
- }finally{busy=false}
+  const target=tabId?{tabId}:{};
+  await chrome.action.setBadgeText({...target,text});
+  await chrome.action.setBadgeBackgroundColor({...target,color});
+  await chrome.action.setTitle({...target,title:phase==='synced'?'房源已同步到云端':queueLength?'待同步 '+queueLength+' 条房源':'红桥房源采集助手'});
+ }catch(_){}
 }
-chrome.runtime.onMessage.addListener((msg,sender,reply)=>{
+async function notifyTab(tabId,payload){
+ if(!tabId)return;
+ try{await chrome.tabs.sendMessage(tabId,{type:'HQ_SYNC_PROGRESS',...payload});}
+ catch(_){
+  try{
+   await chrome.scripting.executeScript({target:{tabId},files:['status-overlay.js']});
+   await chrome.tabs.sendMessage(tabId,{type:'HQ_SYNC_PROGRESS',...payload});
+  }catch(__){}
+ }
+}
+async function setStatus(phase,message,tabId,extra={}){
+ const current=await getState();
+ const target=tabId||current.activeTabId||null;
+ const queue=Array.isArray(current.queue)?current.queue:[];
+ const payload={phase,message,queued:queue.length,at:new Date().toISOString(),...extra};
+ await chrome.storage.local.set({syncPhase:phase,syncStatus:message,statusUpdatedAt:payload.at,...extra});
+ await reportBadge(target,phase,queue.length);
+ await notifyTab(target,payload);
+}
+async function scheduleRetry(count){
+ if(count>0)await chrome.alarms.create(ALARM,{delayInMinutes:2,periodInMinutes:5});
+ else await chrome.alarms.clear(ALARM);
+}
+async function login(pin){
+ if(!/^\d{4}$/.test(String(pin||'')))throw Error('请输入四位数字 PIN');
+ const response=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'login',pin})});
+ const body=await response.json().catch(()=>({ok:false,error:'无法解析服务器响应'}));
+ if(!response.ok||!body.ok)throw Error(body.error||'PIN 验证失败');
+ await chrome.storage.local.set({session:body.session});
+ await setStatus('syncing','PIN 验证成功，正在同步本机待上传记录…');
+ const result=await flush();
+ return {ok:true,...result};
+}
+async function capture(record,tabId){
+ if(!record||!['贝壳','我爱我家'].includes(record.platform)||!/^\d{8,}$/.test(String(record.platformId||'')))throw Error('仅接收贝壳或我爱我家官网单套详情页');
+ const current=await getState(),queue=Array.isArray(current.queue)?current.queue:[];
+ const item={...record,queueId:queueKey(record),queuedAt:new Date().toISOString()};
+ const index=queue.findIndex(x=>x.queueId===item.queueId);
+ if(index>=0)queue[index]=item;else queue.push(item);
+ await chrome.storage.local.set({queue,lastCapture:{...record,capturedAt:item.queuedAt},activeTabId:tabId||current.activeTabId||null});
+ await scheduleRetry(queue.length);
+ const latest=await getState();
+ if(!latest.session){
+  await setStatus('auth_required','房源已保存在本机，请输入 PIN 连接云端',tabId);
+  return {ok:true,queued:queue.length,authed:false};
+ }
+ await setStatus('queued','房源已安全暂存，正在同步云端…',tabId);
+ const result=await flush(tabId);
+ return {ok:true,queued:(await getState()).queue?.length||0,authed:true,...result};
+}
+async function flush(tabId){
+ if(busy)return {ok:true,busy:true};
+ busy=true;
+ try{
+  let current=await getState();
+  let queue=Array.isArray(current.queue)?current.queue:[];
+  if(!queue.length){
+   await scheduleRetry(0);
+   await setStatus('synced','没有待同步房源；本机队列已清空',tabId);
+   return {ok:true,queued:0};
+  }
+  if(!current.session){
+   await setStatus('auth_required','有 '+queue.length+' 条房源已保存在本机，输入 PIN 后自动同步',tabId);
+   await scheduleRetry(queue.length);
+   return {ok:false,queued:queue.length,authRequired:true};
+  }
+  const total=queue.length;
+  await setStatus('syncing','正在同步 0/'+total+' 条房源…',tabId);
+  for(const item of [...queue]){
+   let response,body;
+   try{
+    response=await fetch(API,{
+     method:'POST',
+     headers:{'content-type':'application/json','authorization':'Bearer '+current.session},
+     body:JSON.stringify({action:'capture',record:item})
+    });
+    body=await response.json().catch(()=>({ok:false,error:'服务器返回无法识别的数据'}));
+   }catch(error){
+    current=await getState();queue=Array.isArray(current.queue)?current.queue:[];
+    await setStatus('offline','网络连接失败；'+queue.length+' 条已留在本机，稍后自动重试',tabId,{lastError:error.message||'网络错误'});
+    await scheduleRetry(queue.length);
+    return {ok:false,queued:queue.length};
+   }
+   if(response.status===401){
+    await chrome.storage.local.remove('session');
+    current=await getState();queue=Array.isArray(current.queue)?current.queue:[];
+    await setStatus('auth_required','登录已过期；'+queue.length+' 条仍保存在本机，请重新输入 PIN',tabId);
+    await scheduleRetry(queue.length);
+    return {ok:false,queued:queue.length,authRequired:true};
+   }
+   if(!response.ok||!body?.ok){
+    current=await getState();queue=Array.isArray(current.queue)?current.queue:[];
+    await setStatus('error','同步失败：'+(body?.error||'服务器错误')+'；'+queue.length+' 条仍保存在本机',tabId,{lastError:body?.error||'服务器错误'});
+    await scheduleRetry(queue.length);
+    return {ok:false,queued:queue.length,error:body?.error||'服务器错误'};
+   }
+   const latest=await getState(),remaining=(Array.isArray(latest.queue)?latest.queue:[]).filter(x=>!(x.queueId===item.queueId&&x.queuedAt===item.queuedAt));
+   await chrome.storage.local.set({
+    queue:remaining,
+    lastSyncedAt:new Date().toISOString(),
+    lastResult:{platformKey:body.platformKey||item.queueId,status:body.status||'saved',houseId:body.houseId||'',community:item.community||'',title:item.title||'',price:item.price||null,area:item.area||null}
+   });
+   current=await getState();queue=Array.isArray(current.queue)?current.queue:[];
+   await setStatus(queue.length?'syncing':'synced',queue.length?'已同步 '+(total-queue.length)+'/'+total+' 条，剩余 '+queue.length+' 条':'同步成功！房源已写入云端',tabId);
+  }
+  current=await getState();queue=Array.isArray(current.queue)?current.queue:[];
+  await scheduleRetry(queue.length);
+  return {ok:queue.length===0,queued:queue.length};
+ }finally{busy=false;}
+}
+async function captureActiveTab(){
+ const [tab]=await chrome.tabs.query({active:true,currentWindow:true});
+ if(!tab?.id)throw Error('没有找到当前浏览器标签页');
+ const tabId=tab.id;
+ if(capturingTabs.has(tabId))return {ok:true,busy:true};
+ capturingTabs.add(tabId);
+ try{
+  await chrome.storage.local.set({activeTabId:tabId});
+  try{await chrome.scripting.executeScript({target:{tabId},files:['status-overlay.js']});}catch(_){}
+  await setStatus('extracting','正在读取当前房源页面…',tabId);
+  const result=await chrome.scripting.executeScript({target:{tabId},files:['extract.js']});
+  const record=result?.[0]?.result;
+  if(!record||record.error)throw Error(record?.error||'未能读取房源信息');
+  await setStatus('queued','已识别房源，正在本机留存…',tabId,{lastCapture:record});
+  return await capture(record,tabId);
+ }catch(error){
+  await setStatus('error','采集失败：'+(error.message||String(error)),tabId,{lastError:error.message||String(error)});
+  throw error;
+ }finally{capturingTabs.delete(tabId);}
+}
+chrome.runtime.onMessage.addListener((message,sender,reply)=>{
  (async()=>{
-  if(msg?.type==='CAPTURE')return capture(msg.record);
-  if(msg?.type==='AUTH')return login(String(msg.pin||''));
-  if(msg?.type==='STATUS'){const s=await state();return {ok:true,queued:(s.queue||[]).length,authed:!!s.session,status:s.syncStatus||'',lastSyncedAt:s.lastSyncedAt||''}}
-  if(msg?.type==='WAKE_SYNC'){await flush();return {ok:true}}
+  if(message?.type==='CAPTURE_ACTIVE')return captureActiveTab();
+  if(message?.type==='CAPTURE')return capture(message.record,message.tabId||sender.tab?.id);
+  if(message?.type==='AUTH')return login(String(message.pin||''));
+  if(message?.type==='STATUS'){
+   const current=await getState();
+   return {ok:true,queued:(current.queue||[]).length,authed:!!current.session,status:current.syncStatus||'',phase:current.syncPhase||'idle',lastSyncedAt:current.lastSyncedAt||'',lastCapture:current.lastCapture||null,lastResult:current.lastResult||null,lastError:current.lastError||''};
+  }
+  if(message?.type==='WAKE_SYNC')return flush(message.tabId||sender.tab?.id);
   throw Error('未知操作');
- })().then(reply).catch(e=>reply({ok:false,error:e.message||String(e)}));return true;
+ })().then(reply).catch(error=>reply({ok:false,error:error.message||String(error)}));
+ return true;
 });
-chrome.alarms.onAlarm.addListener(a=>{if(a.name===ALARM)flush()});
+chrome.alarms.onAlarm.addListener(alarm=>{if(alarm.name===ALARM)flush()});
 chrome.runtime.onStartup.addListener(()=>flush());
 chrome.runtime.onInstalled.addListener(()=>flush());
-
-// 点一次插件图标直接执行采集，不展示中间操作按钮。
-async function reportBadge(tabId,text,title){
- try{await chrome.action.setBadgeText({tabId,text});await chrome.action.setBadgeBackgroundColor({tabId,color:text==='!'?'#c94a41':text==='✓'?'#167a63':'#b0741b'});await chrome.action.setTitle({tabId,title})}catch(_){}
-}
-chrome.action.onClicked.addListener(async tab=>{
- if(!tab?.id)return;
- await reportBadge(tab.id,'…','正在读取并保存当前官方房源');
- try{
-  const result=await chrome.scripting.executeScript({target:{tabId:tab.id},files:['extract.js']});
-  const record=result?.[0]?.result;
-  if(!record||record.error)throw Error(record?.error||'无法读取当前房源');
-  const outcome=await capture(record);if(!outcome.ok)throw Error(outcome.error||'保存失败');
-  const statusInfo=await state();
-  await reportBadge(tab.id,statusInfo.session?'↥':'1',statusInfo.session?'已采集，自动上传中':'已暂存，输入 PIN 后自动上传');
-  if(!statusInfo.session)await chrome.runtime.openOptionsPage();
- }catch(e){await status('采集失败：'+e.message);await reportBadge(tab.id,'!','未保存：'+e.message)}
-});
 chrome.storage.onChanged.addListener(async(changes,area)=>{
  if(area!=='local'||!changes.queue)return;
  const queue=changes.queue.newValue||[];
- const badge=queue.length===0?'✓':queue.length>99?'99':String(queue.length);
- try{await chrome.action.setBadgeText({text:badge});await chrome.action.setBadgeBackgroundColor({color:queue.length?'#b0741b':'#167a63'});await chrome.action.setTitle({title:queue.length?'本地待同步 '+queue.length+' 条；浏览器会自动重试':'所有房源均已同步云端'})}catch(_){}
+ await reportBadge(null,queue.length?'queued':'synced',queue.length);
 });
