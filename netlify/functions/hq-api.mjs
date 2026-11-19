@@ -6,7 +6,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 const AUTH_TTL_MS = 7 * 86400000;
-const ATTEMPTS = new Map(); // 单进程尽力限制。生产建议边缘限速；4位PIN不适合作为高强度认证。
 const norm = s => String(s ?? '').trim();
 const b64 = x => Buffer.from(x).toString('base64url');
 const unb64 = x => Buffer.from(x,'base64url').toString();
@@ -92,10 +91,9 @@ export default async function handler(request){
  const action=norm(data?.action);
  if(action==='login'){
   if(!env('HQ_PIN')||!env('HQ_SESSION_SECRET'))return response({ok:false,error:'云端安全配置尚未设置'},503,origin);
-  const ip=str(request.headers.get('x-nf-client-connection-ip')||request.headers.get('x-forwarded-for')||'unknown',80),now=Date.now(),hit=ATTEMPTS.get(ip)||{count:0,until:0};
-  if(hit.until>now)return response({ok:false,error:'尝试次数过多，请稍后再试'},429,origin);
-  if(!/^\d{4}$/.test(data.pin||'')||!equal(data.pin,env('HQ_PIN'))){hit.count++;if(hit.count>=5){hit.until=now+15*60000;hit.count=0}ATTEMPTS.set(ip,hit);return response({ok:false,error:'PIN 不正确'},401,origin)}
-  ATTEMPTS.delete(ip);return response({ok:true,session:makeSession(),expiresIn:AUTH_TTL_MS},200,origin);
+  // PIN is a simple everyday access barrier; no brute-force lockout is applied.
+  if(!/^\d{4}$/.test(String(data.pin||''))||!equal(data.pin,env('HQ_PIN')))return response({ok:false,error:'PIN 不正确'},401,origin);
+  return response({ok:true,session:makeSession(),expiresIn:AUTH_TTL_MS},200,origin);
  }
  if(action==='health')return response({ok:true,configured:!!(env('HQ_GOOGLE_URL')&&env('HQ_GOOGLE_TOKEN')&&env('HQ_PIN')&&env('HQ_SESSION_SECRET'))},200,origin);
  if(!validSession(headerSession(request)))return response({ok:false,error:'登录已过期，请输入四位 PIN'},401,origin);
