@@ -49,7 +49,7 @@ netlify deploy --prod
 
 如果已关联项目，第二条 link 可省略。命令会读取 netlify.toml，发布 site/ 与 netlify/functions/。
 【重要】本版本不能采用「仅拖拽一个 index.html/ZIP 到 Netlify」的旧部署方式来启用云端接口。
-如果不想使用命令行：可以将目录上传到自己私有 GitHub 仓库，并在 Netlify 项目里连接该仓库。以后推送 Git 提交可自动触发站点部署，但仍会消耗 Netlify 相应构建与使用额度。
+如果不想使用命令行：在完成仓库安全审计并确认没有真实凭据后，将代码放到公开 GitHub 仓库，再连接 Netlify Free。私有仓库在当前 Free 套餐下可能触发 Git Contributor 限制；如必须保留私有仓库，应考虑 Netlify Pro 或 Cloudflare Pages。以后推送 Git 提交可自动触发站点部署。
 
 四、上线验收（在浏览器手动核查）
 ----------------------------------------
