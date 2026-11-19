@@ -97,7 +97,7 @@ def conflict_route_factory():
             remote_state.update(committed)
             route.fulfill(status=200, content_type='application/json', body=json.dumps({'ok': True, 'version': 9, 'updatedAt': '2026-11-19T10:01:00Z'}))
         elif action == 'config':
-            route.fulfill(status=200, content_type='application/json', body=json.dumps({'ok': True, 'config': {}, 'hash': 'test-config'}))
+            route.fulfill(status=200, content_type='application/json', body=json.dumps({'ok': True, 'config': remote_state.get('pageConfig', {}), 'hash': 'test-config'}))
         else:
             route.fulfill(status=200, content_type='application/json', body=json.dumps({'ok': True}))
     return route, begin_versions, commits
