@@ -705,17 +705,44 @@ async function compressVisitPhoto(file){
  throw Error('缩略图仍过大，请选更简单的照片或附云盘链接');
 }
 
+
+const BH_PATHS={
+ menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',
+ house:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V10Z"/><path d="M9 21v-8h6v8"/>',
+ calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>',
+ chart:'<path d="M3 3v18h18M7 16l4-5 4 3 6-8"/>',
+ bars:'<path d="M3 20h18M7 17V9M12 17V4M17 17v-5"/>',
+ building:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 7h2M15 7h.01M9 11h2M15 11h.01M9 15h2M15 15h.01M11 21v-4h3v4"/>',
+ settings:'<circle cx="12" cy="12" r="3"/><path d="M20 11v2M4 11v2M11 4h2M11 20h2M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2"/>',
+ search:'<circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/>',
+ grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+ list:'<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01" stroke-width="3"/>',
+ down:'<path d="m6 9 6 6 6-6"/>',
+ refresh:'<path d="M20 11a8 8 0 1 0 1 3M20 4v7h-7"/>',
+ info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v.1"/>',
+ plus:'<path d="M12 4v16M4 12h16"/>'
+};
+function bhIcon(name,size=19){return '<svg viewBox="0 0 24 24" width="'+size+'" height="'+size+'" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(BH_PATHS[name]||BH_PATHS.info)+'</svg>'}
+function metricIcon(type){
+ const icons={
+ house:'<path fill="#f7f7e7" d="M7 11h18v19H7z"/><path fill="#478c62" d="m4 12 12-9 12 9-2 3-10-7-10 7z"/><path fill="#99c79f" d="M11 15h4v5h-4zM19 15h4v5h-4zM11 23h4v5h-4z"/><path fill="#397b59" d="M19 23h4v7h-4z"/><circle fill="#79ab77" cx="5" cy="28" r="4"/><circle fill="#79ab77" cx="28" cy="28" r="4"/>',
+ shield:'<path fill="#f6f6e5" stroke="#43895f" stroke-width="3" stroke-linejoin="round" d="M16 3 28 8v9c0 7-4 11-12 16C8 28 4 24 4 17V8z"/><path fill="none" stroke="#559e69" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" d="m10 17 4 4 8-9"/>',
+ bookmark:'<path fill="#64a378" stroke="#39865d" stroke-width="2.6" stroke-linejoin="round" d="M7 4h18v27l-9-6-9 6z"/><path fill="#ffecb3" d="m16 10 2.1 4.3 4.8.7-3.5 3.4.8 4.8L16 21l-4.2 2.2.8-4.8L9.1 15l4.8-.7z"/>',
+ archive:'<rect fill="#f8f2dd" stroke="#47885d" stroke-width="2.2" x="5" y="11" width="22" height="19" rx="4"/><rect fill="#91c69d" stroke="#3b8256" stroke-width="2.5" x="3" y="5" width="26" height="9" rx="4"/><path d="M12 21h8" stroke="#458a62" stroke-width="3.1" stroke-linecap="round"/>'
+ };
+ return '<span class="bh-metric-icon" aria-hidden="true"><svg viewBox="0 0 32 36" width="31" height="31" aria-hidden="true">'+(icons[type]||icons.house)+'</svg></span>';
+}
+function closeBhDrawer(){document.body.classList.remove('bh-drawer-open');const d=document.getElementById('navDrawer'),b=document.getElementById('navToggle');if(d)d.setAttribute('aria-hidden','true');if(b)b.setAttribute('aria-expanded','false')}
+function openBhDrawer(){document.body.classList.add('bh-drawer-open');const d=document.getElementById('navDrawer'),b=document.getElementById('navToggle');if(d)d.setAttribute('aria-hidden','false');if(b)b.setAttribute('aria-expanded','true')}
 function renderNav(){
- const labels=state.pageConfig?.navLabels||DEFAULT_PAGE_CONFIG.navLabels;
- const desktop=navs.map(([id,icon,label])=>`<button class="${tab===id?'active':''}" data-tab="${id}"><span class="ico">${icon}</span>${esc(labels[id]||label)}</button>`).join('');
- const mobile=navs.map(([id,icon,label])=>`<button type="button" class="${tab===id?'active':''}" data-tab="${id}" aria-label="${esc(labels[id]||label)}" ${tab===id?'aria-current="page"':''}><b aria-hidden="true">${icon}</b><span>${esc((labels[id]||label).slice(0,4))}</span></button>`).join('');
- document.getElementById('nav').innerHTML=desktop;
- document.getElementById('mobileNav').innerHTML=mobile;
+ document.getElementById('nav').innerHTML=navs.map(([id,icon,label])=>'<button type="button" class="'+(tab===id?'active':'')+'" data-tab="'+id+'" aria-label="'+esc(label)+'" '+(tab===id?'aria-current="page"':'')+'><span class="ico">'+bhIcon(icon,20)+'</span>'+esc(label)+'</button>').join('');
+ const fab=document.getElementById('fabNew');if(fab){fab.hidden=tab!=='houses';fab.innerHTML=bhIcon('plus',27)}
+ const toggle=document.getElementById('navToggle');if(toggle)toggle.innerHTML=bhIcon('menu',21);
 }
 
 function render(){
- renderNav();document.getElementById('pageTitle').textContent=state.pageConfig.navLabels[tab]||titles[tab][0];document.getElementById('pageSub').textContent=titles[tab][1];
- let root=document.getElementById('root');const readOnlyBanner=!cloudConfig.token?'<div class="alert">公开只读模式：房源和历史记录可浏览、搜索与导出；修改、采集同步和配置保存需要在「数据管理」输入 PIN 解锁。</div>':'';root.innerHTML=readOnlyBanner+(tab==='houses'?renderHouses():tab==='visits'?renderVisits():tab==='changes'?renderChanges():tab==='benchmark'?renderBenchmark():tab==='scopes'?renderScopes():tab==='config'?renderPageConfig():renderSettings());
+ if(tab==='config')tab='houses';renderNav();document.getElementById('pageTitle').textContent=titles[tab][0];document.getElementById('pageSub').textContent=titles[tab][1];document.title=(tab==='houses'?'买房助手':titles[tab][0]+' · 买房助手');
+ let root=document.getElementById('root');const readOnlyBanner=!cloudConfig.token&&tab!=='houses'?'<div class="bh-readonly-note">公开只读 · 在数据管理输入 PIN 后可编辑</div>':'';root.innerHTML=readOnlyBanner+(tab==='houses'?renderHouses():tab==='visits'?renderVisits():tab==='changes'?renderChanges():tab==='benchmark'?renderBenchmark():tab==='scopes'?renderScopes():renderSettings());
  if(tab==='houses'){
   let inp=document.getElementById('search');
   if(inp){
