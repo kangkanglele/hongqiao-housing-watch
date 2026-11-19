@@ -5,7 +5,7 @@
 ## 目录结构
 
 - `site/index.html`：H5 前端
-- `netlify/functions/hq-api.mjs`：Netlify 服务端网关；Google Token 只在 Netlify Functions 环境变量中
+- `netlify/functions/hq-api.mjs`：Netlify 服务端网关；`HQ_GOOGLE_TOKEN` 只在 Netlify Functions 环境变量中，Apps Script 侧 `API_TOKEN` 只留在 Apps Script 服务端
 - `apps-script/Code.gs.example`：不含真实凭据的 Apps Script 模板；部署时替换占位符
 - `netlify.toml`：Netlify 发布目录与 Functions 配置
 - `extension/`：Chrome Manifest V3 扩展，独立安装
