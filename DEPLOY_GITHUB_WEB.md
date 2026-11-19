@@ -16,7 +16,7 @@
 Netlify → Project configuration → Environment variables。分别新增：
 - `HQ_GOOGLE_URL`：现有 Apps Script `/exec` URL
 - `HQ_GOOGLE_TOKEN`：Apps Script `API_TOKEN`，勾选 Contains secret values
-- `HQ_PIN`：`1111`，勾选 Contains secret values
+- `HQ_PIN`：自行选择的四位数字（不要使用 `1111`），勾选 Contains secret values；仅作为日常访问门槛
 - `HQ_SESSION_SECRET`：至少 32 字节随机值，勾选 Contains secret values
 
 四项都选 All scopes，Same value for all deploy contexts。已有 `HQ_GOOGLE_URL` 就保留，不要重复新增。
@@ -25,7 +25,12 @@ Netlify → Project configuration → Environment variables。分别新增：
 
 ## D. 验收
 1. 打开 https://hongqiao-housing-watch.netlify.app/
-2. 数据管理输入 PIN `1111`
+2. 数据管理输入你在 Netlify 环境变量中设置的 PIN
 3. 应读取原 Google Sheets 快照，而不是初始化空库
 4. 如报 `云端安全配置尚未设置`，检查四项变量是否齐全且 Functions scope 生效
 5. 如 API 404，检查 Functions 是否随仓库部署；不要用静态拖拽部署代替 Git 部署
+
+
+## 安全说明
+
+本项目允许公开源代码和房源观察数据。请勿把真实运行凭据提交到仓库。PIN 仅用于防止随手访问和误操作，不提供暴力破解防护；项目不设置输错次数锁定。Google Sheets 的旧快照应保留，不能用“先清空旧数据再写入”的方式提交新版本。
