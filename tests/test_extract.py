@@ -1,9 +1,9 @@
 from playwright.sync_api import sync_playwright
 from pathlib import Path
-src=Path('/mnt/data/hongqiao_v3_5_source/extension/extract.js').read_text()
+src=(Path(__file__).resolve().parents[1] / 'extension' / 'extract.js').read_text()
 page_html='''<!doctype html><html><head><title>水木天成碧杉园 一室 朝南</title></head><body><h1>水木天成碧杉园 南向一室</h1><div class="totalPrice"><span>56</span> 万</div><p>建筑面积：71.31㎡</p><p>1室0厅</p><p>高楼层/7层</p><p>朝向：南</p></body></html>'''
 with sync_playwright() as pw:
- b=pw.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox'])
+ b=pw.chromium.launch(headless=True,args=['--no-sandbox'])
  for u in ['https://m.ke.com/tj/ershoufang/101126703003.html?shareSource=beike_app','https://m.5i5j.com/tj/ershoufang/819644244.html?said=TEST']:
   page=b.new_page();page.set_content(page_html)
   import json
