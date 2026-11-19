@@ -1,5 +1,6 @@
 const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
 let data={},listeners={},openedOptions=0,alarms=new Map(),apiCalls=[],remoteOnline=true,badge='';
+const testPin=String(1000+Math.floor(Math.random()*9000));
 const event=()=>({addListener(fn){this.fn=fn}});
 const chrome={
  storage:{local:{async get(keys){return Object.fromEntries(keys.map(k=>[k,data[k]]))},async set(o){const old={...data};Object.assign(data,o);if(listeners.changed){let changes={};for(const k of Object.keys(o))changes[k]={oldValue:old[k],newValue:data[k]};listeners.changed(changes,'local')}} ,async remove(k){delete data[k]}} , onChanged:{addListener(fn){listeners.changed=fn}}},
@@ -16,7 +17,7 @@ async function send(type,rest={}){return new Promise((res,rej)=>{chrome.runtime.
 (async()=>{
  await chrome.action.onClicked.fn({id:44});await sleep(20);
  assert.equal((data.queue||[]).length,1);assert.equal(openedOptions,1);assert.equal(apiCalls.length,0);
- const auth=await send('AUTH',{pin:'1111'});assert.equal(auth.ok,true);await sleep(20);
+ const auth=await send('AUTH',{pin:testPin});assert.equal(auth.ok,true);await sleep(20);
  assert.equal((data.queue||[]).length,0);assert.ok(data.lastSyncedAt);assert.ok(!alarms.size);
  remoteOnline=false;await chrome.action.onClicked.fn({id:44});await sleep(20);
  assert.equal((data.queue||[]).length,1);assert.ok(alarms.has('hq_failed_sync_retry'));
