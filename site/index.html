@@ -182,7 +182,7 @@ body{font-size:calc(14px * var(--hq-text-scale))}
 .visit-entry-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 @media(max-width:700px){.visit-item{grid-template-columns:1fr;gap:8px}.visit-actions{justify-content:flex-start}.visit-session{padding:14px}.visit-hero{gap:10px}.visit-photo{width:80px;height:64px}}
 </style></head><body>
-<div class="app"><aside class="sidebar"><div class="brand"><div class="brand-icon">⌂</div><div><strong>红桥房源观察站</strong><small>PROPERTY INTELLIGENCE</small></div></div><nav class="nav" id="nav"></nav><div class="sidebar-bottom"><div class="online" id="cloudSidebarStatus">云端接口待配置</div><div class="tiny">0.5 · 基础采集 / 本地留存 / 云端同步。</div></div></aside><main class="content"><div class="main-inner"><div class="topline"><div><div class="eyebrow">TIANJIN · HONGQIAO / PERSONAL HOME WATCH</div><h1 class="title" id="pageTitle">房源总览</h1><div class="subtitle" id="pageSub">可一键采集官方房源，硬伤自动标记排除，保留档案。</div></div><div class="head-actions"><button class="btn" data-action="export">↧ 导出备份</button><button class="btn" data-tab="visits">☷ 看房行程</button><button class="btn primary" data-action="new">＋ 新增房源</button></div></div><div id="root"></div></div></main></div><nav class="mobile-nav" id="mobileNav" role="navigation" aria-label="页面快捷导航"></nav><div id="overlay"></div><input id="importInput" type="file" accept=".json,application/json" hidden>
+<div class="app"><aside class="sidebar"><div class="brand"><div class="brand-icon">⌂</div><div><strong>红桥房源观察站</strong><small>PROPERTY INTELLIGENCE</small></div></div><nav class="nav" id="nav"></nav><div class="sidebar-bottom"><div class="online" id="cloudSidebarStatus">云端接口待配置</div><div class="tiny">0.5 · 本地留存 / 刷新时双向同步。</div></div></aside><main class="content"><div class="main-inner"><div class="topline"><div><div class="eyebrow">TIANJIN · HONGQIAO / PERSONAL HOME WATCH</div><h1 class="title" id="pageTitle">房源总览</h1><div class="subtitle" id="pageSub">可一键采集官方房源，硬伤自动标记排除，保留档案。</div></div><div class="head-actions"><button class="btn" data-action="export">↧ 导出备份</button><button class="btn" data-tab="visits">☷ 看房行程</button><button class="btn primary" data-action="new">＋ 新增房源</button></div></div><div id="root"></div></div></main></div><nav class="mobile-nav" id="mobileNav" role="navigation" aria-label="页面快捷导航"></nav><div id="overlay"></div><input id="importInput" type="file" accept=".json,application/json" hidden>
 <script src="/sync-merge.js"></script>
 <script>
 (function(){'use strict';
@@ -260,7 +260,7 @@ function nextHouseId(){const nums=[...state.houses,...(state.quarantine||[])].ma
 const parks=['翠杨园','依湖园','逸树园','望汀园','阁林园','碧杉园','闻涛园','临湾园'];
 const scopesSeed=[...parks.map((p,i)=>({id:'S'+(i+1),name:'水木天成'+p,group:'水木天成',env:'待评',priority:i<4?'核心内圈':'外圈备选'})),...['民畅园','河怡花园','燕宇新城','龙禧园','西河名邸','金筑家园','子牙南里','礼貌楼','礼貌东里'].map((p,i)=>({id:'S'+(i+9),name:p,group:i>=6?'补充':'师附小备选',env:'待评',priority:i>=4?'补充关注':'周末待实勘'}))];
 const ev=(date,title,desc,kind='manual',demo=false)=>({id:'E'+Math.random().toString(36).slice(2,9),date,title,desc,kind,demo});
-// V3.3：数据按需刷新，真实修改自动保存；运行时代码固定，页面配置是云端数据；改设置不需要重发 Netlify。
+// V3.3：数据按需刷新，真实修改先本地保存、刷新时同步；运行时代码固定，页面配置是云端数据；改设置不需要重发 Netlify。
 const DEFAULT_PAGE_CONFIG=Object.freeze({
   schema:1, colorPrimary:'#167a63',colorBackground:'#f5f6f8',textScale:1,
   cardRadius:18,cardGap:15,cardPhotoHeight:165,cardColumns:2,mobileNav:'right',detailTop:20,
@@ -333,7 +333,7 @@ function hasUnsafeLocalChanges(){return localPending||cloudSyncBusy||!!cloudTime
 function markLocalPending(){localPending=true;localMutationSeq++;try{localStorage.setItem(LOCAL_PENDING_KEY,'1')}catch(e){}}
 function clearLocalPending(){localPending=false;try{localStorage.removeItem(LOCAL_PENDING_KEY)}catch(e){}}
 
-function save(){if(!cloudConfig.token&&!cloudApplying){toast('当前为公开只读模式，请在数据管理中输入 PIN 后编辑');return false;}try{localStorage.setItem(KEY,JSON.stringify(state));if(!cloudApplying)markLocalPending();if(cloudConfig.url&&cloudConfig.token&&!cloudApplying)scheduleCloudSave();return true}catch(e){toast('当前浏览器未能写入本地存储，请导出备份');return false}}
+function save(){if(!cloudConfig.token&&!cloudApplying){toast('当前为公开只读模式，请在数据管理中输入 PIN 后编辑');return false;}try{localStorage.setItem(KEY,JSON.stringify(state));if(!cloudApplying){markLocalPending();if(cloudConfig.url&&cloudConfig.token)setCloudStatus('本机已保存 · 刷新页面时同步到云端');}return true}catch(e){toast('当前浏览器未能写入本地存储，请导出备份');return false}}
 function setCloudStatus(t){cloudStatusText=t;const el=document.getElementById('cloudStatusText');if(el)el.textContent=t;const badge=document.getElementById('cloudBadge');if(badge)badge.textContent=cloudConfig.token?'云端已解锁':'公开只读 · 待解锁';const side=document.getElementById('cloudSidebarStatus');if(side)side.textContent=cloudConfig.token?'云端同步 · '+t:'云端待解锁'}
 async function cloudJsonp(params){
   const publicRead=params?.action==='load'||params?.action==='ping';
@@ -403,38 +403,9 @@ async function cloudConfigPull(quiet=false){
   if(!quiet)toast('页面配置已刷新，无需重新部署');return true;
  }catch(e){if(!quiet)toast('刷新配置失败：'+e.message);return false;}
 }
-// 只由真实用户操作触发的轻量版本查询；没有后台轮询、切回页面检测、常驻连接。
-// 短时间连续点选只检查一次；有未保存修改/编辑中的表单时一律不覆盖。
-let userActionCheckBusy=false,lastUserActionCheck=0,lastPendingRetry=0;
-async function refreshOnUserAction(force=false){
- if(!cloudConfig.url||userActionCheckBusy||cloudSyncBusy||hqBridgeBusy||isEditingNow())return false;
- const now=Date.now();
- // 上次云端上传失败、断网后保留在本地的修改：下一次主动操作时自动补传。
- // 失败至少间隔30秒再次尝试，避免冲突/断网时反复请求。
- if(localPending){
-  if(cloudTimer||cloudDirty||(!force&&now-lastPendingRetry<30000))return false;
-  lastPendingRetry=now;await cloudPush(true);
-  if(localPending)return false;
- }
- if(hasUnsafeLocalChanges())return false;
- if(!force&&now-lastUserActionCheck<15000)return false;
- lastUserActionCheck=now;userActionCheckBusy=true;
- try{
-  const status=await cloudJsonp({action:'ping'});
-  if(!status.ok)throw Error(status.error||'版本检查失败');
-  const remoteVersion=Number(status.version||0);
-  if(remoteVersion>cloudVersion){
-   if(hasUnsafeLocalChanges()){setCloudStatus('云端有新数据 · 先完成本地保存');return false;}
-   const loaded=await cloudPull(true,false,false);
-   if(!loaded.ok)return false;
-  }
-  // 新版配置接口独立于房源快照；只在操作触发时检查，不参与保存队列。
-  if(configApiSupported&&!hasUnsafeLocalChanges())await cloudConfigPull(true);
-  return true;
- }catch(e){setCloudStatus('按需同步暂不可用：'+e.message);return false}
- finally{userActionCheckBusy=false;}
-}
-function scheduleCloudSave(){if(cloudTimer)clearTimeout(cloudTimer);cloudTimer=setTimeout(()=>{cloudTimer=null;cloudPush(true)},1400)}
+// H5 采用刷新触发同步：页面加载时由 initCloud 执行一次双向同步。
+// 页面停留期间不轮询，也不因点击、切页、切回标签或网络恢复而主动请求云端。
+// 所有编辑先写入 localStorage 并标记待同步；下次刷新时先合并并上传，再读取云端最新快照。
 async function cloudPush(silent=false){
  if(!cloudConfig.url||!cloudConfig.token){if(!silent)toast('请先连接云端');return false;}
  if(cloudSyncBusy){cloudDirty=true;return false;}
@@ -477,7 +448,7 @@ async function cloudPush(silent=false){
   return false;
  }finally{
   cloudSyncBusy=false;
-  if(cloudDirty)scheduleCloudSave();
+  if(cloudDirty){cloudDirty=false;if(localPending)setCloudStatus('同步期间有新修改 · 已保留在本机，刷新页面时同步');}
  }
 }
 async function connectCloud(){
@@ -773,7 +744,7 @@ function renderPageConfig(){
  const number=(id,title,lo,hi,step='1',help='')=>`<div class="form-item"><label>${title}</label><input data-cfg="${id}" type="number" min="${lo}" max="${hi}" step="${step}" value="${esc(c[id])}"><small>${help}</small></div>`;
  const pick=(id,title,options)=>`<div class="form-item"><label>${title}</label><select data-cfg="${id}">${options.map(([val,label])=>`<option value="${esc(val)}" ${String(c[id])===String(val)?'selected':''}>${esc(label)}</option>`).join('')}</select></div>`;
  const check=(id,title,help)=>`<div class="form-item config-full"><label style="display:flex;align-items:center;gap:10px"><input data-cfg="${id}" type="checkbox" ${c[id]?'checked':''}>${title}</label><small>${help||''}</small></div>`;
- return `<div class="alert"><span>◈</span><div><b>页面配置支持云端更新，不用重发 Netlify。</b>打开网页时读取一次配置；之后在你切换页面、筛选或查看档案等主动操作时，检查云端的新版本。没有操作就不会访问后台；如果当前正在编辑，则等保存完成后再检查。下方有故障时使用的手动刷新按钮。新增代码功能仍需部署。<br><b>当前配置读取模式：</b>${configApiSupported?'独立配置表（Google Sheets 页面配置）':'兼容模式（云端完整快照）'}。不需要重新上传 Netlify。</div></div>
+ return `<div class="alert"><span>◈</span><div><b>页面配置支持云端更新，不用重发 Netlify。</b>每次打开或刷新网页时读取一次配置；页面停留期间不自动检查。页面配置仍在点击保存时写入云端。下方有故障时使用的手动刷新按钮。新增代码功能仍需部署。<br><b>当前配置读取模式：</b>${configApiSupported?'独立配置表（Google Sheets 页面配置）':'兼容模式（云端完整快照）'}。不需要重新上传 Netlify。</div></div>
  <div class="box"><div class="sectionhead" style="margin:0 0 15px"><h2>页面样式与布局</h2><span class="hint">支持回滚 · 自动校验参数</span></div>
  <div class="config-form">
  <div class="form-item"><label>主色调</label><input data-cfg="colorPrimary" type="color" value="${esc(c.colorPrimary)}"></div>
@@ -834,7 +805,7 @@ async function commitPageConfig(next){
 }
 function renderSettings(){
  if(!cloudConfig.token)return `<div class="box"><h3>🔐 数据管理 · 公开只读模式</h3><p>房源、价格变化、小区观察和历史记录可以公开浏览。输入四位 PIN 后才能新增、修改、归档或同步数据。PIN 只用于防止随手访问和误操作。</p><div class="form-grid"><div class="form-item"><label>四位数字 PIN</label><input id="adminPin" type="password" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" autocomplete="off" placeholder="••••"></div></div><div class="modal-actions" style="justify-content:flex-start"><button class="btn primary" data-action="saveCloudConfig">解锁编辑与云端同步</button><button class="btn" data-action="cloudPull">刷新公开数据</button></div><div class="modal-actions" style="justify-content:flex-start"><button class="btn" data-action="export">导出全部 JSON</button><button class="btn" data-action="exportLinks">导出链接清单 CSV</button></div><p id="cloudStatusText" class="muted">${esc(cloudStatusText)}</p></div>`;
- return `<div class="box"><h3>Google Sheets 云端 · 已解锁 <span class="badge good" id="cloudBadge">已连接</span></h3><p>此设备已通过 PIN 登录。数据保存后自动写入云端；插件直接上传，无需跳转至此页面。</p><div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap"><button class="btn" data-action="cloudPull">检查云端更新</button><button class="btn" data-action="cloudPush">重试未上传的修改</button><button class="btn danger" data-action="lockCloud">锁定数据管理</button></div><p><b>连接状态：</b><span id="cloudStatusText">${esc(cloudStatusText)}</span></p></div><div class="grid2"><div class="box"><h3>本地备份</h3><p>当前 ${state.houses.length} 套正式房源 · ${(state.marketScans||[]).length} 条市场扫描 · ${(state.saleLeads||[]).length} 条待核成交线索 · ${state.scopes.length} 个小区。建议在重大调整前导出备份。</p><button class="btn primary" data-action="export">↧ 导出全部 JSON</button> <button class="btn" data-action="exportLinks">↗ 导出链接清单 CSV</button> <button class="btn" data-action="import">↥ 导入JSON</button></div><div class="box"><h3>数据恢复</h3><p>导入备份会覆盖当前浏览器数据。云端已连接时，导入后也会自动同步到 Google Sheets。</p><button class="btn danger" data-action="reset">↺ 恢复空白模板</button></div></div><div class="box"><h3>云端数据结构</h3><p>页面配置已独立于程序代码。若启用新版 Apps Script 配置接口，可直接编辑 Google Sheets「页面配置」工作表，网页自动检测最新值；旧版接口也支持通过「页面配置」界面修改云端快照，无需 Netlify 重新发布。页面配置随页面主动操作按需检查，不运行定时轮询。</p><p>Google Sheets 主数据库 ID：1e20_7X0TdgKy3j9IXLe32X4eWS-poyom5YTmLK6aKt4。云端快照保存在独立标签页，房源、渠道、变动、小区、成交基准和人工反馈等原始表继续保留，方便后续分析和迁移。</p><p>网站前端仍托管在 Netlify；Google Sheets 是长期数据源。每日公开房源监控和云端数据库写入是两项独立工作。</p></div><div class="box"><h3>已隐藏房源档案 <span class="badge neutral">${state.houses.filter(h=>h.deletedAt).length} 条</span></h3><p>隐藏不会删除档案。再次发现相同平台详情链接时，系统会识别为已隐藏记录，不会自动重新加入正式列表。你可以在这里手动恢复。</p>${state.houses.filter(h=>h.deletedAt).map(h=>`<div class="quarantine-item"><div><strong>${esc(h.community)} · ${esc(h.title||h.id)}</strong><div class="muted">${esc(h.id)} · 隐藏于 ${esc(h.deletedAt)} · ${(validSources(h).length)} 条详情链接</div>${validSources(h).map(x=>`<div><a href="${esc(urlSafe(x.originalUrl||x.url))}" target="_blank" rel="noopener noreferrer">${esc(x.channel)} 原始详情 ↗</a></div>`).join('')}</div><button class="btn sm" data-action="restoreHouse" data-id="${esc(h.id)}">恢复显示</button></div>`).join('')||'<p class="muted">暂无隐藏档案。</p>'}</div><div class="box"><h3>未入正式库的旧记录 <span class="badge warn">${(state.quarantine||[]).length} 条</span></h3><p>以前从小区列表抓取的索引记录，以及没有独立详情链接的模拟数据，都已隔离，不能用来计算挂牌数、调价和成交基准。保留是为了避免丢失你以前的人工笔记，只有补齐单套房源链接才可以恢复到正式库。</p>${(state.quarantine||[]).length?`<div class="quarantine-list">${(state.quarantine||[]).map(h=>`<div class="quarantine-item"><div><strong>${esc(h.community)} · ${esc(h.title||h.id)}</strong><div class="muted">${esc(h.id)} · ${esc(h.quarantineReason||'无有效单套详情链接')}</div></div><button class="btn sm" data-action="repairHouse" data-id="${esc(h.id)}">补链接入库</button></div>`).join('')}</div>`:'<p class="muted">暂无待补链接的旧记录。</p>'}</div>`}
+ return `<div class="box"><h3>Google Sheets 云端 · 已解锁 <span class="badge good" id="cloudBadge">已连接</span></h3><p>此设备已通过 PIN 登录。H5 新增、编辑和评价先保存到本机；刷新页面时自动合并本机待同步修改并读取云端最新数据。页面停留期间不会后台自动上传或轮询。Chrome 插件采集仍直接上传云端，不受此设置影响。</p><div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap"><button class="btn" data-action="cloudPull">检查云端更新</button><button class="btn" data-action="cloudPush">重试未上传的修改</button><button class="btn danger" data-action="lockCloud">锁定数据管理</button></div><p><b>连接状态：</b><span id="cloudStatusText">${esc(cloudStatusText)}</span></p></div><div class="grid2"><div class="box"><h3>本地备份</h3><p>当前 ${state.houses.length} 套正式房源 · ${(state.marketScans||[]).length} 条市场扫描 · ${(state.saleLeads||[]).length} 条待核成交线索 · ${state.scopes.length} 个小区。建议在重大调整前导出备份。</p><button class="btn primary" data-action="export">↧ 导出全部 JSON</button> <button class="btn" data-action="exportLinks">↗ 导出链接清单 CSV</button> <button class="btn" data-action="import">↥ 导入JSON</button></div><div class="box"><h3>数据恢复</h3><p>导入备份会覆盖当前浏览器数据。云端已连接时，导入后也会自动同步到 Google Sheets。</p><button class="btn danger" data-action="reset">↺ 恢复空白模板</button></div></div><div class="box"><h3>云端数据结构</h3><p>页面配置已独立于程序代码。若启用新版 Apps Script 配置接口，可直接编辑 Google Sheets「页面配置」工作表，网页自动检测最新值；旧版接口也支持通过「页面配置」界面修改云端快照，无需 Netlify 重新发布。页面配置随页面主动操作按需检查，不运行定时轮询。</p><p>Google Sheets 主数据库 ID：1e20_7X0TdgKy3j9IXLe32X4eWS-poyom5YTmLK6aKt4。云端快照保存在独立标签页，房源、渠道、变动、小区、成交基准和人工反馈等原始表继续保留，方便后续分析和迁移。</p><p>网站前端仍托管在 Netlify；Google Sheets 是长期数据源。每日公开房源监控和云端数据库写入是两项独立工作。</p></div><div class="box"><h3>已隐藏房源档案 <span class="badge neutral">${state.houses.filter(h=>h.deletedAt).length} 条</span></h3><p>隐藏不会删除档案。再次发现相同平台详情链接时，系统会识别为已隐藏记录，不会自动重新加入正式列表。你可以在这里手动恢复。</p>${state.houses.filter(h=>h.deletedAt).map(h=>`<div class="quarantine-item"><div><strong>${esc(h.community)} · ${esc(h.title||h.id)}</strong><div class="muted">${esc(h.id)} · 隐藏于 ${esc(h.deletedAt)} · ${(validSources(h).length)} 条详情链接</div>${validSources(h).map(x=>`<div><a href="${esc(urlSafe(x.originalUrl||x.url))}" target="_blank" rel="noopener noreferrer">${esc(x.channel)} 原始详情 ↗</a></div>`).join('')}</div><button class="btn sm" data-action="restoreHouse" data-id="${esc(h.id)}">恢复显示</button></div>`).join('')||'<p class="muted">暂无隐藏档案。</p>'}</div><div class="box"><h3>未入正式库的旧记录 <span class="badge warn">${(state.quarantine||[]).length} 条</span></h3><p>以前从小区列表抓取的索引记录，以及没有独立详情链接的模拟数据，都已隔离，不能用来计算挂牌数、调价和成交基准。保留是为了避免丢失你以前的人工笔记，只有补齐单套房源链接才可以恢复到正式库。</p>${(state.quarantine||[]).length?`<div class="quarantine-list">${(state.quarantine||[]).map(h=>`<div class="quarantine-item"><div><strong>${esc(h.community)} · ${esc(h.title||h.id)}</strong><div class="muted">${esc(h.id)} · ${esc(h.quarantineReason||'无有效单套详情链接')}</div></div><button class="btn sm" data-action="repairHouse" data-id="${esc(h.id)}">补链接入库</button></div>`).join('')}</div>`:'<p class="muted">暂无待补链接的旧记录。</p>'}</div>`}
 function selectOptions(arr,current){return arr.map(x=>`<option value="${esc(x)}" ${x===current?'selected':''}>${esc(x)}</option>`).join('')}
 function openDetail(id){const h=state.houses.find(x=>x.id===id);if(!h)return;detail=id;const hard=issue(h);document.getElementById('overlay').innerHTML=`<div class="shade detail-shade" data-close="1"><div class="drawer detail-sheet" role="dialog" aria-modal="true" aria-label="房源详情"><div class="drawer-body"><div class="modal-header"><span class="eyebrow">PROPERTY DOSSIER / ${esc(h.id)}</span><button class="icon-btn" data-close="1" aria-label="关闭">×</button></div><div class="source-row" style="margin-bottom:10px"><button class="btn sm primary" data-action="shareHouse" data-id="${esc(h.id)}">↗ 分享 / 复制房源链接</button><span class="muted">链接即房源身份</span></div><div class="badges" style="justify-content:flex-start;margin-bottom:12px">${origin(h)}${scene(h)}${visitBadgeForHouse(h)}<span class="badge neutral">${esc(h.stage)}</span></div>${photoMarkup(h,'detail')}<div class="detail-title">${esc(h.community)}<br>${esc(h.title)}</div><div class="detail-sub">档案编号 ${esc(h.id)} · 首次记录 ${esc(h.firstSeen)} · 末次观察 ${esc(h.lastSeen)}</div><div class="detail-price">${fmtMoney(h)}<small> 万</small><span style="font-size:13px;font-weight:400;color:#8d98a2;margin-left:12px">${unit(h)}</span></div><div class="fact-grid"><div class="fact"><small>面积 / 户型</small><strong>${fmt(h.area)}㎡ / ${esc(h.rooms)}</strong></div><div class="fact"><small>楼层</small><strong>${esc(h.floor||'未知')} / ${esc(h.total||'未知')} 层</strong></div><div class="fact"><small>环境等级</small><strong>${esc(envFor(h))}</strong></div><div class="fact"><small>电梯</small><strong>${esc(h.elevator)}</strong></div><div class="fact"><small>噪声</small><strong>${esc(h.noise)}</strong></div><div class="fact"><small>装修</small><strong>${esc(h.decoration)}</strong></div></div><div class="minihead">自动筛选结论</div>${issueTags(h)}<div class="help">${hard.length?`<b style="color:#b65047">一票否决：${hard.map(esc).join('、')}</b>`:unknown(h)?'<b>待核验：</b>存在环境、噪声、楼层/电梯、产权或一楼特殊风险信息缺失，不能直接认定无硬伤。':'<b style="color:#188066">初筛通过：</b>根据已填字段暂未触发已定义硬伤。仍应现场和产权核验。'}</div><div class="minihead">各平台来源 <button class="btn sm" data-action="editSource" data-id="${esc(h.id)}">＋ 关联 / 修改</button></div>${h.sources.length?h.sources.map((s,i)=>`<div class="source-box"><div class="row"><strong>${esc(s.channel)}</strong><span class="badge neutral">${esc(s.relation||'未核验')}</span></div><div class="muted" style="margin:5px 0">平台ID：${esc(s.platformId||'未知')} · ${esc(s.urlType||'未注明')}</div><div class="row">${urlSafe(s.originalUrl||s.url)?`<a href="${esc(urlSafe(s.originalUrl||s.url))}" target="_blank" rel="noopener noreferrer">直接打开原始房源 ↗</a>`:'<span class="nourl">暂无链接</span>'}<span><button class="btn text sm" data-action="editSource" data-id="${esc(h.id)}" data-index="${i}">修改</button><button class="btn text sm" data-action="splitSource" data-id="${esc(h.id)}" data-index="${i}">拆分</button><button class="btn text sm danger" data-action="detachSource" data-id="${esc(h.id)}" data-index="${i}">解绑</button></span></div></div>`).join(''):'<div class="help">尚未关联来源，点击上方按钮添加贝壳或我爱我家详情链接。</div>'}<div class="minihead">历史带看记录 <button class="btn sm" data-tab="visits">查看行程 →</button></div>${visitsForHouse(h).map(v=>`<div class="visit-feedback"><b>${esc(v.session.date)} · ${esc(v.session.broker||'现场看房')}</b><br>${esc(v.entry.decision||'待判断')} · ${esc(v.entry.impression||'暂无备注')}${v.entry.photoData?`<div><img src="${esc(v.entry.photoData)}" alt="现场照片" class="visit-photo"></div>`:''}</div>`).join('')||'<p class="muted">尚无实际带看记录。中介发来的链接应先加入「看房行程」。</p>'}<div class="minihead">你的判断与看房记录 <button class="btn sm soft" data-action="saveHouse" data-id="${esc(h.id)}">保存修改</button></div><div class="form-grid"><div class="form-item"><label>是否合适</label><select id="editSuit">${selectOptions(['待判断','合适','不合适'],h.suitability)}</select></div><div class="form-item"><label>行动状态</label><select id="editStage">${selectOptions(['观察中','重点关注','准备看房','已看房','放弃'],h.stage)}</select></div><div class="form-item"><label>小区环境（继承目录）</label><div class="environment-readonly">${esc(envFor(h))}级 · 在「监控小区」里统一修改</div></div><div class="form-item"><label>噪音</label><select id="editNoise">${selectOptions(['未知','安静','一般可接受','严重'],h.noise)}</select></div><div class="form-item"><label>真实楼层</label><input id="editFloor" type="number" min="0" max="99" value="${esc(h.floor||'')}"></div><div class="form-item"><label>电梯</label><select id="editElevator">${selectOptions(['未知','有','无'],h.elevator)}</select></div><div class="form-item"><label>目前报价（万）</label><input id="editPrice" type="number" min="0.1" step="0.1" value="${esc(h.price??'')}"></div><div class="form-item"><label>产权/入学核查</label><select id="editLegal">${selectOptions(['待核实','普通住宅待核学位','已核实符合','产权/入学不符'],h.legal||'待核实')}</select></div></div>
 <div class="defects-block"><h4>⛔ 一票否决硬伤（可多选）</h4><p class="subnote">任一项勾选后自动归入「硬伤排除」，不会从数据库删除，可随时改回。</p>${defectMarkup('editHard',HARD_DEFECTS,h.defects||[])}</div>
@@ -881,16 +852,8 @@ function val(id){return document.getElementById(id)?.value||''}
 function changed(h,what,desc){h.events=h.events||[];h.events.unshift(ev(nowStamp(),what,desc,'manual',false));h.lastSeen=nowDay()}
 document.addEventListener('input',e=>{if(e.target.matches('[data-cfg],[data-cfg-label]'))configFormDirty=true});
 document.addEventListener('change',e=>{if(e.target.matches('[data-cfg],[data-cfg-label]'))configFormDirty=true});
-// 保存操作自动上传；切回页面、恢复网络和正常导航时自动检查云端版本。
-// 本地有待同步修改时先自动合并，再提交；不要求用户手动拉取。
-document.addEventListener('click',e=>{
- const actionable=e.target.closest('[data-tab],[data-filter],[data-view],[data-open],[data-close],[data-action]');
- if(actionable)Promise.resolve().then(()=>refreshOnUserAction());
-},true);
-window.addEventListener('focus',()=>refreshOnUserAction());
-window.addEventListener('pageshow',()=>refreshOnUserAction());
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshOnUserAction();});
-window.addEventListener('online',()=>{if(localPending)cloudPush(true);else refreshOnUserAction(true);});
+// 被动同步：仅在页面首次加载或用户手动刷新时执行 initCloud。
+// H5 内的修改先保存到本机；不在点击、切页、切换标签或网络恢复时自动访问云端。
 document.addEventListener('click',e=>{const close=e.target.closest('[data-close]');if(close&&(close===e.target||e.target.closest('button[data-close]'))){closeOverlay();return}const nt=e.target.closest('[data-tab]');if(nt){if(configFormDirty&&tab==='config'&&nt.dataset.tab!=='config'){if(!confirm('页面配置有未保存的修改，确认放弃吗？'))return;configFormDirty=false;}tab=nt.dataset.tab;filter=state.pageConfig.defaultFilter;search='';render();window.scrollTo(0,0);return}const ff=e.target.closest('[data-filter]');if(ff){window.__hqUserFiltersTouched=true;filter=ff.dataset.filter;render();return}const vv=e.target.closest('[data-view]');if(vv){window.__hqUserFiltersTouched=true;view=vv.dataset.view;render();return}const oo=e.target.closest('[data-open]');if(oo){openDetail(oo.dataset.open);return}const a=e.target.closest('[data-action]');if(!a)return;const action=a.dataset.action;const publicActions=new Set(['visitFilter','reopen','shareHouse','exportLinks','export','saveCloudConfig','lockCloud','cloudPull']);if(!cloudConfig.token&&!publicActions.has(action)){toast('当前为公开只读模式；输入 PIN 解锁后才能修改数据');tab='settings';render();return;}const id=a.dataset.id, h=state.houses.find(x=>x.id===id);switch(action){
  case 'visitNew':editVisitSession();break;
  case 'visitEditSession':editVisitSession(id);break;
