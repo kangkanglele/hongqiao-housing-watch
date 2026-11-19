@@ -32,8 +32,9 @@ Google Sheets 是业务数据源；首次部署不会重置或清空表格。App
 ## 安全边界
 
 - 源代码可以公开；仓库不得包含真实运行凭据。
-- 房源和小区信息按可公开查看的数据设计；管理写入仍需通过服务端 PIN 会话。
+- 房源和小区信息可公开查看；`load`/`ping` 为公开只读接口，管理写入仍需通过服务端 PIN 会话。
 - PIN 只用于防止随手访问和误操作，不作为强认证；项目不实施输错次数锁定。
 - Google Token 与 Session Secret 只保存在 Netlify Functions 环境变量中。
 - Google Sheets 的完整 JSON 快照是权威数据；新版本先追加并校验，旧快照保留作为回滚依据。
+- `apps-script/Code.gs.example` 是不含真实凭据的公开模板；部署前替换两个占位符，并将相同 API Token 配置到 Netlify 的 `HQ_GOOGLE_TOKEN`。
 - 删除优先使用归档/软删除；同步失败时保留本地待同步队列。
