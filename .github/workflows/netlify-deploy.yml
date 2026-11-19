@@ -1,4 +1,5 @@
 
+# Trigger Netlify after linking the GitHub identity in Netlify.
 name: Deploy to Netlify
 
 on:
