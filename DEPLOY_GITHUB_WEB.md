@@ -13,6 +13,9 @@
 4. 提交到 `main` 分支（Commit changes）。
 
 ## C. Netlify 连接仓库
+
+使用 Netlify Free 自动部署时，仓库应在完成安全审计后设为 Public；Free 套餐连接私有仓库可能因 Git Contributor 规则阻止构建。若必须保持 Private，需要另行选择支持该权限的套餐或托管平台。
+
 1. 打开 https://app.netlify.com/projects/hongqiao-housing-watch
 2. Project configuration → Build & deploy / Continuous deployment → Link repository
 3. 选择 GitHub → `kangkanglele/hongqiao-housing-watch` → `main`
