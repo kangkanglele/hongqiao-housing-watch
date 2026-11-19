@@ -167,7 +167,7 @@ with sync_playwright() as pw:
     assert len(committed['marketScans']) == 2
     assert {entry['id'] for entry in committed['visitSessions'][0]['entries']} == {'ENTRY-LOCAL', 'ENTRY-REMOTE'}
     assert committed['pageConfig']['colorPrimary'] == '#123456'
-    assert committed['pageConfig']['colorBackground'] == '#ffffff'
+    assert committed['pageConfig'].get('colorBackground') == '#ffffff', f"remote pageConfig was not preserved: {committed.get('pageConfig')}"
     assert committed['syncConflicts'], 'same-field differences must be archived for later review'
     assert not conflict_errors, conflict_errors
     print('PASS H5: PIN-gated editing, automatic merge after stale-version conflict, union of both devices, conflict audit; page errors=', conflict_errors)
