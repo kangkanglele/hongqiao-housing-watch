@@ -6,12 +6,16 @@ import secrets
 ROOT = Path(__file__).resolve().parents[1]
 html = (ROOT / 'site' / 'index.html').read_text()
 merge_js = (ROOT / 'site' / 'sync-merge.js').read_text()
+layout_css = (ROOT / 'site' / 'buyhouse-v08.css').read_text()
 test_pin = str(1000 + secrets.randbelow(9000))
 
 def basic_route(route):
     request = route.request
     if request.resource_type == 'document':
         route.fulfill(status=200, content_type='text/html; charset=utf-8', body=html)
+        return
+    if request.url.endswith('/buyhouse-v08.css'):
+        route.fulfill(status=200, content_type='text/css; charset=utf-8', body=layout_css)
         return
     if request.url.endswith('/sync-merge.js'):
         route.fulfill(status=200, content_type='text/javascript; charset=utf-8', body=merge_js)
@@ -59,6 +63,9 @@ def conflict_route_factory():
         request = route.request
         if request.resource_type == 'document':
             route.fulfill(status=200, content_type='text/html; charset=utf-8', body=html)
+            return
+        if request.url.endswith('/buyhouse-v08.css'):
+            route.fulfill(status=200, content_type='text/css; charset=utf-8', body=layout_css)
             return
         if request.url.endswith('/sync-merge.js'):
             route.fulfill(status=200, content_type='text/javascript; charset=utf-8', body=merge_js)
@@ -117,8 +124,11 @@ with sync_playwright() as pw:
     page.goto('https://hongqiao-housing-watch.netlify.app/', wait_until='domcontentloaded')
     page.wait_for_timeout(300)
     root_text = page.locator('#root').inner_text()
-    assert '公开只读模式' in root_text, f'should open read-only; errors={errors}; root={root_text[:500]}'
+    assert page.locator('.bh-overview-head h1').inner_text() == '房源概览', f'new dynamic overview missing; errors={errors}; root={root_text[:500]}'
+    assert page.locator('.bh-metric').count() == 4, 'four real-data dashboard metrics expected'
+    assert page.locator('#nav [data-tab="config"]').count() == 0, 'page configuration must not appear in navigation'
     assert page.locator('#adminPin').count() == 0
+    page.locator('#navToggle').click()
     page.locator('#nav [data-tab="settings"]').click()
     assert page.locator('#adminPin').count() == 1
     assert page.locator('#cloudToken').count() == 0
@@ -126,6 +136,7 @@ with sync_playwright() as pw:
     page.locator('[data-action="saveCloudConfig"]').click()
     page.wait_for_timeout(500)
     assert page.locator('#adminPin').count() == 0
+    page.locator('#navToggle').click()
     page.locator('#nav [data-tab="settings"]').click()
     assert '已解锁' in page.locator('#root').inner_text()
     page.locator('[data-action="lockCloud"]').click()
@@ -179,6 +190,7 @@ with sync_playwright() as pw:
     conflict_page.wait_for_timeout(2000)
     assert actions == finished_actions, f'background request detected without user activity: {actions[len(finished_actions):]}'
     # Switching a H5 view is an explicit event; it may check the version once.
+    conflict_page.locator('#navToggle').click()
     conflict_page.locator('#nav [data-tab="scopes"]').click()
     conflict_page.wait_for_function("document.getElementById('cloudSidebarStatus')?.textContent.includes('已同步')", timeout=6000)
     conflict_page.wait_for_timeout(400)
