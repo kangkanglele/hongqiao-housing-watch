@@ -104,7 +104,7 @@ def conflict_route_factory():
             route.fulfill(status=200, content_type='application/json', body=json.dumps({'ok': True, 'config': remote_state.get('pageConfig', {}), 'hash': 'test-config'}))
         else:
             route.fulfill(status=200, content_type='application/json', body=json.dumps({'ok': True}))
-    return route, begin_versions, commits, actions
+    return route, begin_versions, commits, actions, remote_state
 
 with sync_playwright() as pw:
     browser = pw.chromium.launch(headless=True, args=['--no-sandbox'])
@@ -149,7 +149,7 @@ with sync_playwright() as pw:
     conflict_page = browser.new_page(viewport={'width': 900, 'height': 800})
     conflict_errors = []
     conflict_page.on('pageerror', lambda error: conflict_errors.append(str(error)))
-    conflict_route, begin_versions, commits, actions = conflict_route_factory()
+    conflict_route, begin_versions, commits, actions, remote_state = conflict_route_factory()
     conflict_page.route('**/*', conflict_route)
     conflict_page.add_init_script("""
       localStorage.setItem('hongqiao_watch_v1_20261118', %s);
