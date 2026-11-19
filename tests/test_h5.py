@@ -71,7 +71,7 @@ def conflict_route_factory():
             answer = {'ok': True, 'version': 8}
             route.fulfill(status=200, content_type='application/json', body=json.dumps(answer))
         elif action == 'load':
-            answer = {'ok': True, 'version': 8, 'updatedAt': '2026-11-19T10:00:00Z', 'state': remote_state}
+            answer = {'ok': True, 'version': 9 if commits else 8, 'updatedAt': '2026-11-19T10:00:00Z', 'state': remote_state}
             route.fulfill(status=200, content_type='application/json', body=json.dumps(answer, ensure_ascii=False))
         elif action == 'begin':
             begin_versions.append(int(data.get('expectedVersion', 0)))
@@ -93,6 +93,8 @@ def conflict_route_factory():
             payload = ''.join(upload['chunks'][i] for i in range(upload['total']))
             committed = json.loads(payload)
             commits.append(committed)
+            remote_state.clear()
+            remote_state.update(committed)
             route.fulfill(status=200, content_type='application/json', body=json.dumps({'ok': True, 'version': 9, 'updatedAt': '2026-11-19T10:01:00Z'}))
         elif action == 'config':
             route.fulfill(status=200, content_type='application/json', body=json.dumps({'ok': True, 'config': {}, 'hash': 'test-config'}))
@@ -152,7 +154,7 @@ with sync_playwright() as pw:
       localStorage.setItem('HQ_V35_SESSION', 'test-signed-session');
     """ % json.dumps(json.dumps(local_state, ensure_ascii=False)))
     conflict_page.goto('https://hongqiao-housing-watch.netlify.app/', wait_until='domcontentloaded')
-    conflict_page.wait_for_function("document.getElementById('cloudSidebarStatus')?.textContent.includes('自动合并并同步成功')", timeout=8000)
+    conflict_page.wait_for_function("document.getElementById('cloudSidebarStatus')?.textContent.includes('已同步 · v9')", timeout=8000)
     assert begin_versions[:2] == [7, 8], f'expected stale v7 then automatic retry at v8; got {begin_versions}'
     assert len(commits) == 1, f'expected one merged commit; got {len(commits)}'
     committed = commits[0]
