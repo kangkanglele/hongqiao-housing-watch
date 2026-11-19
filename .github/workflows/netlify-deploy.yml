@@ -26,6 +26,8 @@ jobs:
         run: node tests/test_gateway.mjs
       - name: Test Chrome extension queue
         run: node tests/test_extension.cjs
+      - name: Test Apps Script snapshot safety
+        run: node tests/test_apps_script_snapshot.cjs
 
   deploy:
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
