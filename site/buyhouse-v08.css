@@ -278,3 +278,161 @@ html,body,.app{background:#EAECF4!important;color:#303743}
 .btn.primary,.bh-fab{background:#59616F!important;border-color:#59616F!important;color:#fff!important}
 .btn.primary:hover,.bh-fab:hover{background:#454D59!important}
 .bh-icon-svg{color:inherit}
+
+
+/* 2026-11-20 — Marvis-inspired monochrome visual system.
+   Presentation-only overrides: preserve page structure, data flow and interactions. */
+:root{
+ color-scheme:light;
+ --bg:#FFFFFF;--paper:#FFFFFF;--line:#EAEAEA;--ink:#171717;--sub:#858585;--light:#A4A4A4;
+ --green:#171717;--greenbg:#F2F2F2;--amber:#666666;--amberbg:#F3F3F3;
+ --red:#B42318;--redbg:#F5F5F5;--blue:#555555;--bluebg:#F2F2F2;
+ --shadow:0 6px 24px rgba(0,0,0,.045);--radius:16px;
+ --bh-bg:#FFFFFF;--bh-ink:#171717;--bh-green:#171717;--bh-mute:#858585;--bh-line:#EAEAEA;--bh-mint:#F3F3F3;
+ --active:#111111;--bh-primary:#111111;--bh-surface:#F5F5F5;
+}
+html,body,.app,.app .content,#root{background:#FFFFFF!important;color:#171717!important}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft Yahei",Inter,sans-serif}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #222!important;outline-offset:3px!important;box-shadow:none!important}
+input,textarea,select{background:#FFFFFF!important;border:1px solid #E7E7E7!important;border-radius:12px!important;color:#222!important}
+input::placeholder,textarea::placeholder{color:#B0B0B0!important}
+input:focus,textarea:focus,select:focus{border-color:#777!important;box-shadow:0 0 0 3px rgba(0,0,0,.045)!important}
+input[type="checkbox"],input[type="radio"]{accent-color:#111111!important}
+
+/* Navigation and page chrome */
+.topbar-shell,.bh-topbar{background:#FFFFFF!important;border-color:#EEEEEE!important}
+.topbar-shell{border-bottom:1px solid #F0F0F0!important}
+.bh-logo,.bh-drawer-brand strong{color:#111111!important}
+.bh-icon-btn{background:#F4F4F4!important;border:0!important;color:#222!important;border-radius:12px!important}
+.bh-icon-btn:hover{background:#ECECEC!important}
+.bh-menu-btn{background:transparent!important;border:0!important}
+.bh-drawer-head{border-bottom:1px solid #EEEEEE!important}
+.bh-drawer-glyph{background:#F2F2F2!important;color:#222!important;border:0!important;border-radius:13px!important}
+.bh-drawer-brand small,.bh-drawer-label,.bh-drawer-bottom{color:#929292!important}
+.bh-drawer-label{letter-spacing:.04em!important}
+#cloudSidebarStatus{color:#555!important}
+#nav.drawer-links button{color:#666!important;border-radius:12px!important}
+#nav.drawer-links button .ico{color:#666!important}
+#nav.drawer-links button:hover{background:#F7F7F7!important}
+#nav.drawer-links button.active{background:#F0F0F0!important;color:#111!important}
+#nav.drawer-links button.active .ico{color:#111!important}
+.mobile-nav{background:rgba(255,255,255,.97)!important;border-color:#EEEEEE!important}
+.mobile-nav button{color:#999!important}
+.mobile-nav button.active{background:#F1F1F1!important;color:#111!important}
+.bh-overview-head h1,.bh-list-title h2,.bh-listing-name{color:#171717!important}
+.bh-live-label{background:#F5F5F5!important;border:1px solid #EEEEEE!important;color:#777!important}
+
+/* Cards, statistics and listing surfaces */
+.bh-metric,.bh-listing,.box,.scope,.source-box,.source-primary,.visit-v2-row,.visit-v2-state-editor,.hq-media-controls,.bh-pending-details{
+ background:#FFFFFF!important;border:1px solid #ECECEC!important;box-shadow:0 3px 16px rgba(0,0,0,.025)!important;
+}
+.bh-metric{border-radius:16px!important}
+.bh-metric-label,.bh-listing-meta,.bh-view-detail,.muted,.tiny,.scope small,.unit{color:#888888!important}
+.bh-metric-value,.bh-listing-price,.bh-listing-price b,.visit-v2-price b{color:#171717!important}
+.bh-metric-value small{color:#999!important}
+.bh-metric-icon,.bh-drawer-glyph{background:#F3F3F3!important;border:0!important;color:#333!important}
+.bh-metric-icon svg{width:21px!important;height:21px!important;filter:none!important}
+.bh-listing{border-radius:16px!important;box-shadow:none!important}
+.bh-listing-main:hover{background:#FAFAFA!important}
+.bh-listing-media{background:#F3F3F3!important}
+.photo-placeholder,.photo-placeholder .photo-symbol,.empty-icon{color:#999!important}
+.photo-placeholder .photo-symbol .bh-metric-icon{background:transparent!important;border:0!important}
+.photo-placeholder .photo-symbol .bh-metric-icon svg{width:38px!important;height:38px!important}
+.property-photo{background:#F5F5F5!important}
+.property-photo .photo-label{background:rgba(255,255,255,.92)!important;color:#555!important}
+.fact,.help,.hq-media-locked,.bh-readonly-note{background:#F5F5F5!important;border-color:#EAEAEA!important;color:#666!important}
+.fact small,.scope small,.bh-readonly-note{color:#888!important}
+.sectionhead h2,.box h3,.detail-title,.modal-header h2,.visit-v2-heading h3{color:#171717!important}
+.box p,.box li,.visit-v2-heading p{color:#777!important}
+.divide,.history,.hist:before,.visit-v2-tabs{border-color:#EAEAEA!important}
+
+/* Button hierarchy: black primary, pale-gray secondary, neutral icon controls */
+.btn{background:#FFFFFF!important;color:#333333!important;border:1px solid #E6E6E6!important;border-radius:999px!important;font-weight:600!important}
+.btn:hover{background:#F7F7F7!important;border-color:#D5D5D5!important}
+.btn.primary{background:#111111!important;color:#FFFFFF!important;border-color:#111111!important}
+.btn.primary:hover{background:#303030!important;border-color:#303030!important}
+.btn.soft,.btn:not(.primary):not(.danger).soft{background:#F1F1F1!important;color:#222!important;border:1px solid #F1F1F1!important}
+.btn.text{background:transparent!important;border:0!important;color:#444!important}
+.btn.danger{color:#B42318!important}
+.btn.sm{border-radius:999px!important}
+.bh-tool-btn,.bh-browse-toolbar select{background:#FFFFFF!important;border:1px solid #E7E7E7!important;color:#333!important;border-radius:11px!important}
+.bh-tool-btn:hover{background:#F7F7F7!important}
+.bh-tool-btn.active{background:#F0F0F0!important;border-color:#E1E1E1!important;color:#111!important}
+.bh-view-switch{background:#F4F4F4!important;border:1px solid #ECECEC!important;border-radius:12px!important}
+.bh-view-switch .bh-tool-btn.active{background:#FFFFFF!important;box-shadow:0 1px 4px rgba(0,0,0,.08)!important}
+.bh-fab{background:#111111!important;color:#FFFFFF!important;border:0!important;border-radius:15px!important;box-shadow:0 6px 18px rgba(0,0,0,.16)!important}
+.bh-fab:hover{background:#303030!important}
+
+/* Filters and status labels */
+.chip{background:#FFFFFF!important;border:1px solid #E7E7E7!important;color:#666!important;border-radius:999px!important}
+.chip:hover{background:#F7F7F7!important}
+.chip.active{background:#111111!important;border-color:#111111!important;color:#FFFFFF!important}
+.segments{background:#F3F3F3!important;border:1px solid #EEEEEE!important;border-radius:999px!important}
+.segments button{border-radius:999px!important;color:#777!important}
+.segments button.active{background:#111111!important;color:#FFFFFF!important}
+.badge,.badge.good,.badge.warn,.badge.bad,.badge.neutral,.badge.blue{
+ color:#555555!important;background:#F1F1F1!important;border:0!important;border-radius:999px!important;
+}
+.bh-stage,.bh-stage.neutral,.bh-stage.warn,.bh-stage.bad,.tiny-tag,.source-tag,.source-tag.ready,.bad-source{
+ color:#555555!important;background:#F2F2F2!important;border-color:#E8E8E8!important;border-radius:999px!important;
+}
+.bh-stage.warn,.bh-stage.bad{background:#EEEEEE!important;color:#444!important}
+.alert,.screening-hint,.help{background:#F5F5F5!important;border:1px solid #ECECEC!important;color:#555!important;border-radius:13px!important}
+.alert b,.screening-hint strong{color:#222!important}
+.alert span{color:#555!important}
+.source-primary{background:#F8F8F8!important;border-color:#ECECEC!important}
+.source-primary small,.source-box small{color:#888!important}
+.source-box a,.main-table .cell-btn{color:#333!important}
+.empty{background:#FFFFFF!important;border-color:#E5E5E5!important;color:#8A8A8A!important}
+.rich-empty strong{color:#222!important}
+
+/* Dialogs, drawers, tables and timeline */
+.shade,.bh-backdrop{background:rgba(0,0,0,.42)!important}
+.drawer,.modal,.detail-sheet,.hq-upload-panel{background:#FFFFFF!important;border:1px solid #EEEEEE!important;box-shadow:0 16px 48px rgba(0,0,0,.16)!important}
+.modal,.detail-sheet{border-radius:18px!important}
+.modal-header h2{font-weight:700!important}
+.icon-btn{background:#F2F2F2!important;color:#444!important;border:0!important;border-radius:50%!important}
+.detail-sheet .modal-header{background:rgba(255,255,255,.97)!important;border-bottom:1px solid #EEEEEE!important}
+.table-wrap{background:#FFFFFF!important;border:1px solid #ECECEC!important;border-radius:14px!important}
+.main-table th{background:#F5F5F5!important;color:#777!important}
+.main-table td{border-color:#EEEEEE!important;color:#666!important}
+.main-table td strong{color:#222!important}
+.main-table tr:hover td{background:#FAFAFA!important}
+.log-ico{background:#F2F2F2!important;color:#444!important;border-radius:10px!important}
+.log-item{border-color:#EEEEEE!important}
+.visit-v2-tabs{display:inline-flex!important;width:max-content;max-width:100%;gap:4px!important;padding:4px!important;border:0!important;border-radius:12px!important;background:#F2F2F2!important}
+.visit-v2-tabs button{background:transparent!important;color:#888!important;border:0!important;border-radius:9px!important;padding:9px 14px!important}
+.visit-v2-tabs button.active{background:#FFFFFF!important;color:#111!important;border:0!important;box-shadow:0 1px 4px rgba(0,0,0,.08)!important}
+.visit-v2-date{border-left-color:#222!important;color:#555!important}
+.visit-v2-date small,.visit-v2-history-meta small{color:#999!important}
+.visit-v2-state-editor{background:#F8F8F8!important}
+.visit-state-choices label{background:#FFFFFF!important;border:1px solid #E5E5E5!important;color:#666!important;border-radius:999px!important}
+.visit-state-choices label:has(input:checked){background:#111111!important;border-color:#111111!important;color:#FFFFFF!important}
+
+/* Upload, media and file selection */
+.photo-file-picker{background:#FFFFFF!important;border:1px solid #E5E5E5!important;color:#333333!important;border-radius:16px!important;box-shadow:none!important}
+.photo-file-picker:hover{background:#FAFAFA!important;border-color:#CFCFCF!important}
+.photo-file-picker .photo-file-icon{color:#888888!important}
+.photo-file-picker .photo-file-name{color:#333333!important}
+.hq-media-controls{border:1px dashed #D8D8D8!important;background:#FAFAFA!important}
+.hq-media-icon{background:#F2F2F2!important;color:#555!important}
+.hq-upload-mini{background:rgba(255,255,255,.98)!important;border:1px solid #E8E8E8!important;box-shadow:0 4px 16px rgba(0,0,0,.06)!important}
+.hq-upload-mini button,.hq-upload-head strong,.hq-upload-task-top span:first-child{color:#222!important}
+.hq-upload-head,.hq-upload-actions,.hq-upload-task{border-color:#EEEEEE!important}
+.hq-upload-head small,.hq-upload-task-meta,.hq-upload-task-top span:last-child{color:#888!important}
+.hq-upload-bar{background:#EEEEEE!important}
+.hq-upload-bar i{background:#111111!important}
+.hq-upload-head button,.hq-upload-actions button,.hq-upload-chip,.hq-upload-task button{background:#F2F2F2!important;border:0!important;color:#333!important;border-radius:999px!important}
+.hq-upload-error{color:#B42318!important}
+.hq-media-locked strong{color:#333!important}
+.hq-media-locked p{color:#777!important}
+
+/* Consistent line icons */
+.bh-icon-svg{display:inline-block;flex:0 0 auto;fill:none!important;stroke:currentColor!important;stroke-width:1.8!important;stroke-linecap:round!important;stroke-linejoin:round!important;vertical-align:middle}
+.bh-metric-icon .bh-icon-svg{stroke-width:1.7!important}
+.photo-file-picker .bh-icon-svg{stroke-width:1.75!important}
+@media(max-width:760px){
+ .mobile-nav{background:rgba(255,255,255,.97)!important}
+ .bh-metric{box-shadow:none!important}
+ .visit-v2-tabs{width:100%;overflow-x:auto}
+}
