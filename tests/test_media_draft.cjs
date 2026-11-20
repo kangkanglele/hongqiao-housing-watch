@@ -58,5 +58,34 @@ run('site/media-client.js',context);
  assert.equal(saved.driveFileId,'draft-file-id-123456');
  assert.equal(generated.filter(x=>x.action==='mediaPart').length,2);
  assert.ok(generated.every(x=>x.action!=='mediaPart'||x.base64.length<800000));
+
+ // Chrome listing-photo archiver: verify a single source image larger than the old 8 MiB cap is chunked.
+ const extensionParts=[];
+ const largeImage=new Blob([Buffer.alloc(8*1024*1024+1,7)],{type:'image/jpeg'});
+ const extensionContext={
+  self:{},URL,Blob,Uint8Array,Buffer,Promise,Math,String,Number,Error,
+  btoa:s=>Buffer.from(s,'binary').toString('base64'),
+  fetch:async(url,options={})=>{
+   if(String(url).startsWith('https://image1.ljcdn.com/')){
+    return {ok:true,status:200,headers:{get:()=> 'image/jpeg'},blob:async()=>largeImage};
+   }
+   const payload=JSON.parse(options.body);extensionParts.push(payload);
+   let result={ok:true};
+   if(payload.action==='mediaStart')result={ok:true,uploadId:'extension-large-image',chunkSize:512*1024};
+   if(payload.action==='mediaPart')result={ok:true,next:payload.offset+Buffer.from(payload.base64,'base64').length};
+   if(payload.action==='mediaFinish')result={ok:true,file:{driveFileId:'large-image-drive-id',name:'listing-12345678-1.jpg',mimeType:'image/jpeg',size:largeImage.size}};
+   return {ok:true,status:200,json:async()=>result};
+  }
+ };
+ run('extension/media-upload.js',extensionContext);
+ const archived=await extensionContext.self.HQMediaExtension.upload(
+  {imageUrl:'https://image1.ljcdn.com/real-estate/large.jpg',platformId:'12345678',index:0,listingKey:'ke:12345678'},
+  'fake-extension-session'
+ );
+ assert.equal(archived.driveFileId,'large-image-drive-id');
+ assert.equal(archived.size,8*1024*1024+1);
+ assert.equal(extensionParts.filter(x=>x.action==='mediaPart').length,17,'large listing image should be uploaded in 512 KiB chunks');
+ assert.ok(!read('extension/media-upload.js').includes('8MB'));
+
  console.log('Media draft offline checks: PASS');
 })().catch(e=>{console.error(e);process.exitCode=1});
