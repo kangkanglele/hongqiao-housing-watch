@@ -154,7 +154,7 @@ export default async function handler(request){
   if(action==='mediaAttach'){
    const result=await attachMedia(data);return response({ok:true,...result},200,origin);
   }
-  if(['mediaStart','mediaPart','mediaFinish','mediaRead'].includes(action)){
+  if(['mediaStart','mediaPart','mediaFinish'].includes(action)){
    // Only an authenticated Netlify session can proxy file operations.
    const params={...data};delete params.action;delete params.token;delete params.session;delete params.pin;
    const result=await googlePost(action,params);return response(result,200,origin);
