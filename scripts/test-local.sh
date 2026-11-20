@@ -38,6 +38,9 @@ if command -v node >/dev/null 2>&1; then
   echo "==> Draft Drive media and listing-image tests (offline)"
   node tests/test_media_draft.cjs
 
+  echo "==> Visit V2 status and capture-time timeline tests (offline)"
+  node tests/test_visit_v2.cjs
+
   echo "==> Apps Script / Google Sheets snapshot simulation"
   node tests/test_apps_script_snapshot.cjs
 
