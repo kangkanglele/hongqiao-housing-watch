@@ -96,6 +96,8 @@ function setup({idbWorks=true,localWorks=true}={}){
  assert.ok(h5.includes('function pumpMediaQueue()'),'uploads must continue independently of the detail drawer');
  assert.ok(h5.includes('data-media-task-action="retryAll"'),'failed files must have a retry-all action');
  assert.ok(h5.includes('总体进度'),'the global upload dock must show overall progress');
+ assert.ok(h5.includes('#hqUploadDock{position:fixed;z-index:25;top:67px;'),'upload progress must dock at the top below the sticky header');
+ assert.ok(h5.includes('let mediaRunning=0,mediaDockCollapsed=true;'),'the top upload dock must start in compact progress-only mode');
  assert.ok(h5.includes('await uploadPendingMedia(task.item,progress=>'),'queue worker must upload the original File independently of the drawer');
  assert.ok(h5.includes('重新选择同一文件'),'media UI must tell user when original File needs reselecting');
  assert.ok(h5.includes('刷新或关闭网页后，可重新选择原文件从已确认分块继续'),'the UI must accurately explain resume after page reload');
