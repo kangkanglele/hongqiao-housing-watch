@@ -42,6 +42,8 @@ const fetch=async(url,options)=>{
  throw Error('unexpected action '+body.action);
 };
 const context={chrome,fetch,Date,Set,Array,Promise,console,Error,JSON,Math,String,Number};
+context.self=context;
+context.importScripts=(...files)=>{for(const file of files)vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../extension',file),'utf8'),context)};
 vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../extension/background.js'),'utf8'),context);
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function send(type,rest={}){return new Promise(resolve=>chrome.runtime.onMessage.fn({type,...rest},{},resolve))}
@@ -49,6 +51,8 @@ async function send(type,rest={}){return new Promise(resolve=>chrome.runtime.onM
  const captured=await send('CAPTURE_ACTIVE');
  assert.equal(captured.ok,true);
  assert.equal((data.queue||[]).length,1);
+ assert.equal(data.queue[0].visitStatus,'未看');
+ assert.equal(data.queue[0].visitStatusExplicit,false);
  assert.equal(data.syncPhase,'auth_required');
  assert.equal(apiCalls.length,0,'without PIN the listing must remain local');
  assert.ok(overlayMessages.some(x=>x.message.type==='HQ_SYNC_PROGRESS'),'page floating status should be updated');
@@ -63,8 +67,10 @@ async function send(type,rest={}){return new Promise(resolve=>chrome.runtime.onM
  assert.ok(!alarms.size);
 
  remoteOnline=false;
- await send('CAPTURE_ACTIVE');
+ await send('CAPTURE_ACTIVE',{visitStatus:'看房',visitStatusExplicit:true});
  await sleep(20);
+ assert.equal(data.queue[0].visitStatus,'看房');
+ assert.equal(data.queue[0].visitStatusExplicit,true);
  assert.equal((data.queue||[]).length,1);
  assert.equal(data.syncPhase,'offline');
  assert.ok(alarms.has('hq_failed_sync_retry'));
@@ -75,11 +81,13 @@ async function send(type,rest={}){return new Promise(resolve=>chrome.runtime.onM
  assert.equal((data.queue||[]).length,0);
  assert.equal(data.syncPhase,'synced');
  assert.equal(alarms.size,0);
-
+ assert.ok(apiCalls.some(x=>x.action==='capture'&&x.record.visitStatus==='看房'&&x.record.visitStatusExplicit));
+ 
  const manifest=JSON.parse(fs.readFileSync(path.resolve(__dirname,'../extension/manifest.json'),'utf8'));
  assert.equal(manifest.action.default_popup,'popup.html','toolbar click must open a visible popup');
  const popup=fs.readFileSync(path.resolve(__dirname,'../extension/popup.html'),'utf8');
  assert.ok(popup.includes('id="statusCard"')&&popup.includes('id="pin"')&&popup.includes('id="retry"'));
+ assert.ok(popup.includes('id="visitStatus"')&&popup.includes('采集并加入房源'),'popup must allow selecting the visit status before capture');
  const overlay=fs.readFileSync(path.resolve(__dirname,'../extension/status-overlay.js'),'utf8');
  assert.ok(overlay.includes('HQ_SYNC_PROGRESS')&&overlay.includes('position:fixed'));
  console.log('PASS extension: popup UI, click-to-capture, PIN login, floating page status, local queue, offline retry and cloud sync');
