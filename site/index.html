@@ -568,8 +568,8 @@ async function initCloud(){
   await cloudPull(true);
  }
 let tab='houses', filter=state.pageConfig.defaultFilter, search='', searchOpen=false, kind='all', view=state.pageConfig.defaultView, detail=null;
-const navs=[['houses','house','房源概览'],['visits','calendar','看房模块'],['changes','chart','市场记录'],['benchmark','bars','成交基准'],['scopes','building','监控小区'],['settings','settings','数据管理']];
-const titles={houses:['房源概览','实体房屋 × 跨平台关联 × 用户反馈'],visits:['看房模块','待看房源不计日期；历史按实际拍摄时间归档。'],changes:['市场记录','小区扫描快照与单套房源事件分开记录。'],benchmark:['成交基准','正常房基准与有缺陷房折价分开研究。'],scopes:['监控小区','周六实勘后逐个评级、调整筛选规则。'],config:['页面配置','动态修改样式、布局和筛选规则，无须重新发布。'],settings:['数据管理','资料核验 · 云端同步 · 备份。']};
+const navs=[['houses','house','房源概览'],['visits','calendar','看房行程'],['changes','chart','市场记录'],['benchmark','bars','成交基准'],['scopes','building','监控小区'],['settings','settings','数据管理']];
+const titles={houses:['房源概览','实体房屋 × 跨平台关联 × 用户反馈'],visits:['看房行程','待看房源不计日期；历史按实际拍摄时间归档。'],changes:['市场记录','小区扫描快照与单套房源事件分开记录。'],benchmark:['成交基准','正常房基准与有缺陷房折价分开研究。'],scopes:['监控小区','周六实勘后逐个评级、调整筛选规则。'],config:['页面配置','动态修改样式、布局和筛选规则，无须重新发布。'],settings:['数据管理','资料核验 · 云端同步 · 备份。']};
 const HARD_DEFECTS=[
  ['duplex','跃层／复式结构'],['top','顶层'],['severeNoise','卧室持续明显噪音'],
  ['legal','产权或入学条件不符'],['structure','漏水／结构安全问题'],['groundDamp','一楼严重返潮／潮湿'],
