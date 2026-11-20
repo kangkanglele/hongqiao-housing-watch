@@ -256,7 +256,7 @@ body{font-size:calc(14px * var(--hq-text-scale))}
 .hq-upload-chip{box-shadow:0 8px 24px #17372b25;background:#fff}
 @media(max-width:700px){#hqUploadDock{top:66px;right:10px;bottom:auto;width:calc(100vw - 20px)}.hq-upload-list{max-height:28vh}}
 
-</style><link rel="stylesheet" href="/buyhouse-v08.css"></head><body>
+</style><link rel="stylesheet" href="/buyhouse-v08.css?v=20261120-left-drawer-upload-auth"></head><body>
 
 <div class="topbar-shell"><header class="bh-topbar">
  <div class="bh-topbar-left"><button type="button" class="bh-icon-btn bh-menu-btn" id="navToggle" data-ui="drawerOpen" aria-expanded="false" aria-controls="navDrawer" aria-label="打开导航菜单">☰</button><strong class="bh-logo">买房助手</strong></div>
@@ -264,7 +264,7 @@ body{font-size:calc(14px * var(--hq-text-scale))}
 </header></div>
 <div class="app">
  <button type="button" class="bh-backdrop" id="navBackdrop" data-ui="drawerClose" aria-label="关闭导航菜单" tabindex="-1"></button>
- <aside class="app-drawer" id="navDrawer" aria-label="功能导航" aria-hidden="true">
+ <aside class="app-drawer" id="navDrawer" data-open="false" aria-label="功能导航" aria-hidden="true">
   <div class="bh-drawer-head"><div class="bh-drawer-brand"><span class="bh-drawer-glyph">⌂</span><div><strong>买房助手</strong><small>个人房源跟踪工具</small></div></div><button class="bh-icon-btn" type="button" data-ui="drawerClose" aria-label="关闭导航">×</button></div>
   <div class="bh-drawer-label">功能导航</div><nav class="nav drawer-links" id="nav"></nav>
   <div class="bh-drawer-bottom"><div id="cloudSidebarStatus">云端连接中</div>房源、成交记录和看房档案持续保留</div>
@@ -862,8 +862,8 @@ function metricIcon(type){
  };
  return '<span class="bh-metric-icon" aria-hidden="true"><svg viewBox="0 0 32 36" width="31" height="31" aria-hidden="true">'+(icons[type]||icons.house)+'</svg></span>';
 }
-function closeBhDrawer(){document.body.classList.remove('bh-drawer-open');const d=document.getElementById('navDrawer'),b=document.getElementById('navToggle');if(d)d.setAttribute('aria-hidden','true');if(b)b.setAttribute('aria-expanded','false')}
-function openBhDrawer(){document.body.classList.add('bh-drawer-open');const d=document.getElementById('navDrawer'),b=document.getElementById('navToggle');if(d)d.setAttribute('aria-hidden','false');if(b)b.setAttribute('aria-expanded','true')}
+function closeBhDrawer(){document.body.classList.remove('bh-drawer-open');const d=document.getElementById('navDrawer'),b=document.getElementById('navToggle');if(d){d.dataset.open='false';d.setAttribute('aria-hidden','true')}if(b)b.setAttribute('aria-expanded','false')}
+function openBhDrawer(){document.body.classList.add('bh-drawer-open');const d=document.getElementById('navDrawer'),b=document.getElementById('navToggle');if(d){d.dataset.open='true';d.setAttribute('aria-hidden','false')}if(b)b.setAttribute('aria-expanded','true')}
 function renderNav(){
  document.getElementById('nav').innerHTML=navs.map(([id,icon,label])=>'<button type="button" class="'+(tab===id?'active':'')+'" data-tab="'+id+'" aria-label="'+esc(label)+'" '+(tab===id?'aria-current="page"':'')+'><span class="ico">'+bhIcon(icon,20)+'</span>'+esc(label)+'</button>').join('');
  const fab=document.getElementById('fabNew');if(fab){fab.hidden=tab!=='houses';fab.innerHTML=bhIcon('plus',27)}
@@ -1071,7 +1071,11 @@ function houseMediaMarkup(h){
     <input id="houseMediaFiles" data-media-house="${esc(h.id)}" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" multiple>
     <button class="btn sm" data-media-task-action="open">查看上传任务</button>
     <p class="muted">支持多选，最多 2 个文件同时上传。任务独立运行，切换房源或关闭详情不会中断；刷新或关闭网页后，可重新选择原文件从已确认分块继续。</p>
-  </div>`:''}
+  </div>`:`<div class="hq-media-locked">
+    <strong>上传功能尚未解锁</strong>
+    <p>当前页面处于公开只读模式。请先在本预览站点的「数据管理」输入四位 PIN；预览站点与正式站点的登录状态相互独立。</p>
+    <button class="btn sm primary" type="button" data-tab="settings">前往数据管理解锁</button>
+  </div>`}
   ${sourceImages.length?`<p class="muted">网站来源还识别到 ${sourceImages.length} 张图片地址；只有成功写入 Drive 的文件才计入归档。</p>`:''}`;
 }
 function refreshHouseMedia(h){
