@@ -13,6 +13,35 @@
 - `scripts/mock-preview.mjs`：本机交互式模拟预览服务
 - `scripts/test-local.sh`：一条命令运行完整本地模拟测试
 
+
+## 开发中：Google Drive 媒体库（尚未发布）
+
+> 只在 `feature/drive-media-gallery-draft` 分支。**未合并 main，未修改正式 Apps Script 部署，未部署 Netlify，也未更新用户本机 Chrome 插件。** GitHub 上的代码不等于线上功能已经可用。
+
+本分支追加了：
+- 网站房源：支持用户主动打开的贝壳、链家、我爱我家单套详情；读取页面已出现的主图与房源相册图片地址，不访问未浏览的页面，不绕过验证码；插件可选归档一张主图或最多八张图片。
+- 图片持久化：扩展从官方图片 CDN 读取文件，逐块上传 Google Drive；成功后通过房源编号关联媒体索引到 Google Sheets。失败保留本地待传元数据和原始图片地址，重试时不删除房源正文。
+- 现场影像：在房源详情内多选 JPG/PNG/WebP、MP4/MOV/WebM 原文件，单个文件上限 120MB，上传前先写入浏览器 IndexedDB 待传队列；媒体字节不会被写入 Sheets 快照。
+- 向后兼容：原有的 `photoData` 单图缩略图仍保留；新增的 `media[]` 只追加，不清空历史文件。媒体的极小预览图（如有）仍可能缓存到快照以供列表显示，不是原图。
+- 私有权限：Drive 文件归上传时执行 Apps Script 的 Google 账号所有，**不设置公开分享**；当前 H5 打开原文件会跳到 Google Drive，由 Google 账户权限决定是否能够查看。当前房源数据库的公开只读快照仍可能暴露文件名、Drive 文件 ID、来源 URL 和少量缩略图，**不能当成隐私保险箱**。正式上线前如有敏感实拍内容，应升级公开读取权限。
+
+### Google 授权和分块协议
+
+浏览器 → PIN 授权 Netlify 网关 → Apps Script（私有服务端 Token）→ Drive Resumable Upload API。Apps Script 自己发起并保存 Drive 上传 session URL，客户端只收到随机 uploadId，不会拿到 Google OAuth Token、会话 URL 或服务端密钥；每块 512 KiB，上传会话在脚本缓存中，最长保留 6 小时，过期可从本地队列重新开始。Google Sheets 只保存引用信息和少量缩略图。文件保存在执行 Apps Script 的 Google 账号 Drive 下的「红桥房源观察站媒体库」文件夹。
+
+### 本地验证
+
+运行 `bash scripts/test-local.sh`，新增 `tests/test_media_draft.cjs` 做离线页面图片识别、链接域名白名单和多块传输模拟。**这不是线上 Google Drive 上传测试。**
+
+### 发布前必须验证
+
+1. 备份现有 Google Sheets 的云端状态，检查当前 Apps Script、Netlify 生产部署版本，并确认 GitHub `main` 不包含此分支代码。
+2. 在**单独测试用 Apps Script 部署和测试 Drive 文件夹**下，授权 Drive/UrlFetch 所需权限，确认运行身份就是应拥有素材的 Google 账号；检查 512KB 分块、网络中断重试、120MB 以内视频、私人文件默认权限。
+3. 在真实贝壳/链家/我爱我家单套页面测试一张和多张图片，检查官网反盗链、惰性加载、误抓推荐房源和下架后原地址失效场景。无权读取的图片必须保持未归档状态。
+4. 核对房源媒体去重、未匹配小区的暂存记录、H5 新增照片、历史缩略图、移动端上传进度，确认任意媒体同步失败不会删除房源正文。
+5. **等用户明确同意整体发布时**，才合并到 `main` 并升级正式 Apps Script，手动重新部署已安装 Chrome 插件。当前分支不会自动完成生产部署。
+
+
 ## 0.5 基础同步链路
 
 - Chrome 扩展把房源先保存到本地队列；只有云端确认成功后才从队列移除。
