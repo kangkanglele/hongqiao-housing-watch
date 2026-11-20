@@ -780,12 +780,12 @@ function renderVisits(){
  const renderRow=(h,isHistory,meta=null)=>{
   const image=firstImage(h);
   const source=validSources(h)[0];
-  const thumb=image?`<img class="visit-v2-thumb" src="${esc(image)}" referrerpolicy="no-referrer" loading="lazy" alt="房源照片">`:`<div class="visit-v2-thumb no-photo">${bhIcon('house',24)}</div>`;
+  const thumb=image?`<img class="visit-v2-thumb" src="${esc(image)}" referrerpolicy="no-referrer" loading="lazy" alt="房源照片">`:`<div class="visit-v2-thumb no-photo"><svg class="bh-icon-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7"/><path d="M5 9v12h14V9"/><path d="M9 21v-7h6v7"/></svg></div>`;
   const extras=(h.media||[]).filter(m=>!/(网站照片|网站图片|平台图片|网页采集)/.test(String(m.source||'')));
   const photos=extras.filter(m=>String(m.mimeType||'').startsWith('image/')).length;
   const videos=extras.filter(m=>String(m.mimeType||'').startsWith('video/')).length;
   const subtitle=[h.floorBand||[h.floor,h.total].filter(Boolean).join(' / '),h.rooms,h.community].filter(Boolean).map(esc).join(' · ');
-  const actions=isHistory?`<button class="btn sm" data-open="${esc(h.id)}">编辑记录</button>`:`<button class="btn sm" data-open="${esc(h.id)}">编辑房源</button><button class="btn sm primary" data-action="visitMarkSeen" data-id="${esc(h.id)}">${bhIcon('check',13)} 标记看过</button>`;
+  const actions=isHistory?`<button class="btn sm" data-open="${esc(h.id)}">编辑记录</button>`:`<button class="btn sm" data-open="${esc(h.id)}">编辑房源</button><button class="btn sm primary" data-action="visitMarkSeen" data-id="${esc(h.id)}"><svg class="bh-icon-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4.2 4.2L19 6.5"/></svg> 标记看过</button>`;
   return `<article class="visit-v2-row">${thumb}<div class="visit-v2-info"><div class="visit-v2-title">${esc(h.title||h.community||h.id)}</div><div class="muted">${subtitle}</div><div class="visit-v2-price"><b>${h.price==null?'待核价':esc(h.price)+' 万'}</b><span>${h.area?esc(h.area)+'㎡':''}</span>${source?`<span class="source-tag">${esc(source.channel)}</span>`:''}</div>${isHistory?`<div class="muted">${photos} 张现场照片 · ${videos} 段视频</div>`:''}</div>${isHistory?`<div class="visit-v2-history-meta"><strong>${new Date(meta.time).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})}</strong><small>${esc(meta.kind)}</small></div>`:''}<div class="visit-v2-actions">${actions}</div></article>`;
  };
  let section;
