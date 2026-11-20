@@ -27,16 +27,18 @@ function render(state){
   $('#listingLink').href=/^https:\/\//.test(record.url||'')?record.url:'#';
  }else $('#listing').hidden=true;
  $('#auth').hidden=!!state.authed;
- $('#queueCount').textContent=(state.queued||0)+' 条待同步';
+ $('#queueCount').textContent=(state.queued||0)+' 条房源、'+(state.mediaQueued||0)+' 张图片待同步';
  $('#lastSynced').textContent=state.lastSyncedAt?'上次成功：'+new Date(state.lastSyncedAt).toLocaleString('zh-CN'):'尚未同步';
- $('#retry').disabled=!state.queued;
- $('#retry').style.opacity=state.queued?1:.5;
+ $('#retry').disabled=!(state.queued||state.mediaQueued);
+ $('#retry').style.opacity=(state.queued||state.mediaQueued)?1:.5;
 }
 async function refresh(){
  try{const state=await chrome.runtime.sendMessage({type:'STATUS'});render(state||{});}
  catch(error){$('#statusMessage').textContent=error.message||String(error);}
 }
 async function init(){
+ const config=await chrome.storage.local.get('imageCount');
+ $('#imageCount').value=Number(config.imageCount)===8?'8':'1';
  await refresh();
  try{const result=await chrome.runtime.sendMessage({type:'CAPTURE_ACTIVE'});if(!result?.ok&&result?.error)$('#statusMessage').textContent=result.error;}
  catch(error){$('#statusMessage').textContent=error.message||String(error);}
@@ -54,9 +56,18 @@ $('#login').addEventListener('click',async()=>{
  }catch(error){$('#authMessage').textContent=error.message||String(error);}
  finally{$('#login').disabled=false;}
 });
+$('#imageCount').addEventListener('change',async e=>{
+ await chrome.runtime.sendMessage({type:'SET_IMAGE_COUNT',value:Number(e.target.value)});
+});
+$('#recapture').addEventListener('click',async()=>{
+ $('#statusMessage').textContent='正在按当前主图/多图设置重新采集…';
+ try{await chrome.runtime.sendMessage({type:'CAPTURE_ACTIVE'});}catch(error){$('#statusMessage').textContent=error.message||String(error);}
+ await refresh();
+});
 $('#retry').addEventListener('click',async()=>{
  $('#statusMessage').textContent='正在重试本机待同步队列…';
  await chrome.runtime.sendMessage({type:'WAKE_SYNC'});
+ await chrome.runtime.sendMessage({type:'RETRY_IMAGES'});
  await refresh();
 });
 chrome.storage.onChanged.addListener((_changes,area)=>{if(area==='local')refresh()});
