@@ -22,6 +22,17 @@
  <div class="listing-meta" id="listingMeta"></div>
  <a id="listingLink" href="#" target="_blank" rel="noopener">打开原始房源 ↗</a>
 </section>
+<section class="listing">
+ <label for="imageCount">网站图片采集方式</label>
+ <div class="auth-row">
+   <select id="imageCount" style="flex:1;min-width:0">
+     <option value="1">主图：保存1张</option>
+     <option value="8">相册：最多保存8张</option>
+   </select>
+   <button id="recapture" class="secondary">按此设置重新采集</button>
+ </div>
+ <p class="hint">只有成功存入私人 Google Drive 的照片才算归档。下载受网站限制时，会保留房源图片地址并提示失败。</p>
+</section>
 <section class="auth" id="auth" hidden>
  <label for="pin">首次使用或登录过期时，输入四位 PIN</label>
  <div class="auth-row"><input id="pin" type="password" inputmode="numeric" maxlength="4" placeholder="四位 PIN" autocomplete="off"><button id="login">连接并同步</button></div>
@@ -31,7 +42,7 @@
  <div><strong id="queueCount">0 条待同步</strong><small id="lastSynced">尚未同步</small></div>
  <button class="secondary" id="retry">重新同步</button>
 </footer>
-<div class="hint">点击扩展图标即自动采集当前房源。采集记录先保存在本机，云端确认成功后才从队列移除。</div>
+<div class="hint">点击扩展图标会自动采集当前房源及主图。选择多图后点击“重新采集”。图片失败不会删除已保存的房源文本。</div>
 <script src="popup.js"></script>
 </body>
 </html>
