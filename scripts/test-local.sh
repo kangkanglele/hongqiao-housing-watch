@@ -38,6 +38,9 @@ if command -v node >/dev/null 2>&1; then
   echo "==> Draft Drive media and listing-image tests (offline)"
   node tests/test_media_draft.cjs
 
+  echo "==> Mobile browser private media outbox compatibility"
+  node tests/test_media_queue_compat.cjs
+
   echo "==> Visit V2 status and capture-time timeline tests (offline)"
   node tests/test_visit_v2.cjs
 
