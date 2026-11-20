@@ -62,8 +62,9 @@ function mergeRecord(state,input){
    const oldPrice=num(found.price);if(price&&oldPrice!==price){found.events=found.events||[];found.events.unshift({id:'CAP-'+Date.now().toString(36),date:stamp,kind:'price',title:'插件观测到报价变化',desc:`${oldPrice??'未知'}万 → ${price}万；来自用户当时浏览的官网页面`,prevPrice:oldPrice,newPrice:price,sourceUrl:url});found.price=price;}
    for(const [k,v] of [['area',area],['floor',floor],['total',total],['rooms',str(input.rooms,50)],['floorBand',str(input.floorBand,60)],['orient',str(input.orientation,30)],['decoration',str(input.decoration,50)]])if((found[k]===null||found[k]===undefined||found[k]===''||found[k]==='待核实')&&v)found[k]=v;
    if((!found.elevator||found.elevator==='未知')&&['有','无'].includes(input.elevator))found.elevator=input.elevator;
-   if(images.length){found.sourceImages=[...new Set([...(found.sourceImages||[]),...images])].slice(0,25);}
-   found.lastSeen=now;out={status:oldPrice===price?'unchanged':'updated',houseId:found.id};
+   const newSourceImages=images.filter(u=>!(found.sourceImages||[]).includes(u));
+   if(newSourceImages.length){found.sourceImages=[...new Set([...(found.sourceImages||[]),...images])].slice(0,25);}
+   found.lastSeen=now;out={status:oldPrice===price&&!newSourceImages.length?'unchanged':'updated',houseId:found.id};
  }else if(validCommunity){
    const nums=all.map(h=>Number(/TJ-HQ-(\d+)/.exec(h.id||'')?.[1]||0));const next='TJ-HQ-'+String(Math.max(0,...nums)+1).padStart(4,'0');
    const h={id:next,origin:'Chrome人工采集',community,title:str(input.title,180)||community+' · 待补',area,price,rooms:str(input.rooms,50)||'待核实',floor,total,floorBand:str(input.floorBand,60),elevator:['有','无'].includes(input.elevator)?input.elevator:'未知',env:(state.scopes||[]).find(s=>s.name===community)?.env||'待评',noise:'未知',legal:'待核实',decoration:str(input.decoration,50)||'待核实',orient:str(input.orientation,30)||'待核实',defects:[],drawbacks:[],suitability:'待判断',stage:'观察中',top:!!(floor&&total&&floor===total),duplex:false,firstSeen:now,lastSeen:now,note:'Chrome 插件采集：用户主动打开官网页面；字段待现场核验。',sources:[src],events:[{id:'CAP-'+Date.now().toString(36),date:stamp,kind:'manual',title:'首次采集',desc:'Chrome 插件一键同步官方房源详情页'}]};
