@@ -61,7 +61,6 @@ function doPost(e) {
     else if (action === 'mediaStart') result = mediaStart_(body);
     else if (action === 'mediaPart') result = mediaPart_(body);
     else if (action === 'mediaFinish') result = mediaFinish_(body);
-    else if (action === 'mediaRead') result = mediaRead_(body);
     else throw new Error('不支持的 POST 操作。');
   } catch (err) {
     result = { ok: false, error: String(err && err.message || err) };
@@ -876,12 +875,4 @@ function mediaFinish_(body){
   if(!session.file||session.next!==session.size)throw Error('上传未完成，不能写入房源档案');
   return {ok:true,file:session.file};
 }
-function mediaRead_(body){
-  const fileId=String(body.driveFileId||'');
-  if(!/^[A-Za-z0-9_-]{10,120}$/.test(fileId))throw Error('文件编号格式不正确');
-  const file=DriveApp.getFileById(fileId);
-  if(!file.getMimeType().startsWith('image/'))throw Error('只支持图片预览，视频请在云盘中查看');
-  if(file.getSize()>700000)throw Error('原图较大，请在 Google Drive 查看');
-  const blob=file.getBlob();
-  return {ok:true,mimeType:file.getMimeType(),base64:Utilities.base64Encode(blob.getBytes())};
-}
+
