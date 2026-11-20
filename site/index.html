@@ -950,7 +950,7 @@ function pendingCandidatesForOverview(){
 }
 function showPendingCandidates(){
  const pending=pendingCandidatesForOverview();
- const rows=pending.map(x=>`<div class="quarantine-item"><div><strong>${esc(x.community&&x.community!=='待核实'?x.community:x.platform+'房源 '+x.platformListingId)}</strong><div class="muted">${esc(x.platform)} · ${x.price?esc(x.price)+'万 · ':''}${x.area?esc(x.area)+'㎡':''}</div><a href="${esc(urlSafe(x.originalUrl||x.url))}" target="_blank" rel="noopener noreferrer">官方原始链接 ${bhIcon('external',12)}</a></div><button class="btn sm" data-action="promoteCandidate" data-id="${esc(x.candidateId)}">补全建档</button></div>`).join('');
+ const rows=pending.map(x=>`<div class="quarantine-item"><div><strong>${esc(x.community&&x.community!=='待核实'?x.community:x.platform+'房源 '+x.platformListingId)}</strong><div class="muted">${esc(x.platform)} · ${x.price?esc(x.price)+'万 · ':''}${x.area?esc(x.area)+'㎡':''}</div><a href="${esc(urlSafe(x.originalUrl||x.url))}" target="_blank" rel="noopener noreferrer">官方原始链接 ${bhIcon('external',12)}</a></div>${cloudConfig.token?`<button class="btn sm" data-action="promoteCandidate" data-id="${esc(x.candidateId)}">补全建档</button>`:`<button class="btn sm" data-ui="goSettings">解锁后建档</button>`}</div>`).join('');
  modal('待补全官方链接 · '+pending.length+' 条',
  `<p class="muted">这些是待核验的独立房源链接，不计入总房源数量；确认小区与房屋信息后再补全建档。</p><div class="hq-pending-modal-list">${rows||'<div class="empty">暂无待补全的官方房源链接</div>'}</div>`);
 }
