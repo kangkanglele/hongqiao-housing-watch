@@ -520,3 +520,11 @@ input[type="checkbox"],input[type="radio"]{accent-color:#111111!important}
 .bh-snail-drawer-mark img{width:44px;height:44px;object-fit:contain}
 .bh-drawer-brand .bh-custom-wordmark{font-size:19px!important}
 @media(max-width:390px){.bh-snail-mark{width:32px;height:31px}.bh-brand-lockup{gap:4px}.bh-topbar .bh-custom-wordmark{font-size:18px!important}}
+
+/* Complete image-based brand: no rebuilt mascot or live font wordmark. */
+.bh-brand-lockup{display:inline-flex;align-items:center;min-width:0}
+.bh-full-logo{display:block;width:180px;height:auto;max-height:54px;object-fit:contain;object-position:left center}
+.bh-drawer-full-logo{display:flex;align-items:center;min-width:0;max-width:100%}
+.bh-drawer-full-logo img{display:block;width:208px;height:auto;max-height:65px;object-fit:contain;object-position:left center}
+.bh-drawer-brand:has(.bh-drawer-full-logo){align-items:center}
+@media(max-width:390px){.bh-full-logo{width:155px}}
