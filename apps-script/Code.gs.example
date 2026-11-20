@@ -803,17 +803,22 @@ function mediaSession_(id) {
 }
 function mediaSessionPut_(id,obj){mediaCache_().put('media:'+id,JSON.stringify(obj),MEDIA_CACHE_TTL_);}
 function mediaFolder_(key){
-  const props=PropertiesService.getScriptProperties();
-  let rootId=props.getProperty('MEDIA_ROOT_FOLDER_ID');
-  let root;
-  if(rootId){try{root=DriveApp.getFolderById(rootId);root.getName();}catch(_){root=null;}}
-  if(!root){
-    const folder=DriveApp.createFolder('红桥房源观察站媒体库');
-    props.setProperty('MEDIA_ROOT_FOLDER_ID',folder.getId());root=folder;
-  }
-  const safe=String(key||'unassigned').replace(/[^a-zA-Z0-9:_-]/g,'_').slice(0,90)||'unassigned';
-  const matches=root.getFoldersByName(safe);
-  return matches.hasNext()?matches.next():root.createFolder(safe);
+  // Two concurrent file uploads for the same listing must reuse one Drive folder.
+  const lock=LockService.getScriptLock();
+  lock.waitLock(10000);
+  try{
+    const props=PropertiesService.getScriptProperties();
+    let rootId=props.getProperty('MEDIA_ROOT_FOLDER_ID');
+    let root;
+    if(rootId){try{root=DriveApp.getFolderById(rootId);root.getName();}catch(_){root=null;}}
+    if(!root){
+      const folder=DriveApp.createFolder('红桥房源观察站媒体库');
+      props.setProperty('MEDIA_ROOT_FOLDER_ID',folder.getId());root=folder;
+    }
+    const safe=String(key||'unassigned').replace(/[^a-zA-Z0-9:_-]/g,'_').slice(0,90)||'unassigned';
+    const matches=root.getFoldersByName(safe);
+    return matches.hasNext()?matches.next():root.createFolder(safe);
+  }finally{lock.releaseLock();}
 }
 function mediaStart_(body){
   const mime=String(body.mimeType||'').toLowerCase();
