@@ -20,6 +20,7 @@ const rootFolder=makeFolder('root');
 const context={
  console,Logger:{log:()=>{}},
  PropertiesService:{getScriptProperties:()=>({getProperty:k=>props.get(k)||null,setProperty:(k,v)=>props.set(k,String(v))})},
+ LockService:{getScriptLock:()=>({waitLock:()=>{},releaseLock:()=>{}})},
  CacheService:{getScriptCache:()=>({get:k=>cache.get(k)||null,put:(k,v)=>cache.set(k,String(v))})},
  DriveApp:{createFolder:n=>{const f=makeFolder(n);rootFolder.createFolder(n);return f},getFolderById:id=>folders.get(id)||rootFolder},
  ScriptApp:{getOAuthToken:()=>'test-oauth-token'},
