@@ -229,8 +229,13 @@ body{font-size:calc(14px * var(--hq-text-scale))}
 
 
 /* Persistent multi-file media upload dock */
-#hqUploadDock{position:fixed;z-index:65;right:14px;bottom:calc(22px + env(safe-area-inset-bottom));width:min(390px,calc(100vw - 28px));font-size:13px;color:#253d34}
+#hqUploadDock{position:fixed;z-index:25;top:67px;right:14px;bottom:auto;width:min(390px,calc(100vw - 28px));font-size:13px;color:#253d34}
 #hqUploadDock[hidden]{display:none}
+.hq-upload-mini{background:rgba(255,255,255,.97);border:1px solid #dce7e1;border-radius:12px;box-shadow:0 8px 26px #17372b1c;padding:8px 11px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.hq-upload-mini button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:0;border:0;background:transparent;color:#36594c;font-size:12px;font-weight:680;text-align:left}
+.hq-upload-mini button span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hq-upload-mini button strong{flex:0 0 auto;color:#176c57;font-variant-numeric:tabular-nums}
+.hq-upload-mini .hq-upload-bar{height:5px;margin-top:7px}
 .hq-upload-panel{background:#fff;border:1px solid #dce7e1;border-radius:16px;box-shadow:0 12px 36px #17372b25;overflow:hidden}
 .hq-upload-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid #edf1ee}
 .hq-upload-head strong{font-size:14px}.hq-upload-head small{display:block;color:#819188;font-size:11px;margin-top:3px}
@@ -249,7 +254,7 @@ body{font-size:calc(14px * var(--hq-text-scale))}
 .hq-upload-error{color:#b34b43!important;overflow-wrap:anywhere}
 .hq-upload-actions{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-top:1px solid #edf1ee}
 .hq-upload-chip{box-shadow:0 8px 24px #17372b25;background:#fff}
-@media(max-width:700px){#hqUploadDock{right:10px;bottom:calc(16px + env(safe-area-inset-bottom));width:calc(100vw - 20px)}.hq-upload-list{max-height:28vh}}
+@media(max-width:700px){#hqUploadDock{top:66px;right:10px;bottom:auto;width:calc(100vw - 20px)}.hq-upload-list{max-height:28vh}}
 
 </style><link rel="stylesheet" href="/buyhouse-v08.css"></head><body>
 
@@ -1074,7 +1079,7 @@ function refreshHouseMedia(h){
  if(el&&detail===h.id)el.innerHTML=houseMediaMarkup(h);
 }
 const mediaTasks=new Map();
-let mediaRunning=0,mediaDockCollapsed=false;
+let mediaRunning=0,mediaDockCollapsed=true;
 const MEDIA_CONCURRENCY=2;
 function mediaBytes(value){
  const n=Math.max(0,Number(value)||0);
@@ -1106,7 +1111,9 @@ function renderMediaDock(){
  const loaded=tasks.reduce((n,t)=>n+Math.min(Number(t.loaded)||0,Number(t.total)||0),0);
  const pct=total?Math.min(100,Math.round(loaded/total*100)):0;
  if(mediaDockCollapsed){
-  dock.innerHTML='<button class="hq-upload-chip" type="button" data-media-task-action="open">⇧ 上传任务 · '+active+' 上传中 · '+queued+' 排队 · '+failed+' 失败</button>';
+  const pendingFile=tasks.filter(t=>t.status==='needs-file').length;
+  const label=active?'上传中 '+active+' 个 · '+queued+' 个排队':failed?'有 '+failed+' 个文件失败':pendingFile?'等待重新选择 '+pendingFile+' 个原文件':queued?'等待上传 '+queued+' 个文件':done?'上传完成 '+done+' 个文件':'媒体上传任务';
+  dock.innerHTML='<div class="hq-upload-mini"><button type="button" data-media-task-action="open"><span>⇧ '+label+'</span><strong>'+pct+'%</strong></button><div class="hq-upload-bar"><i style="width:'+pct+'%"></i></div></div>';
   return;
  }
  const rows=tasks.slice(-8).map(t=>{
