@@ -510,3 +510,13 @@ input[type="checkbox"],input[type="radio"]{accent-color:#111111!important}
  .bh-browse-toolbar .bh-search-toggle{width:100px!important;flex-basis:100px!important}
  .bh-browse-toolbar .bh-select-wrap select{max-width:112px}
 }
+
+/* Snail brand lockup — compact flat mark, angular slanted wordmark. */
+.bh-brand-lockup{display:inline-flex;align-items:center;gap:7px;min-width:0;white-space:nowrap}
+.bh-snail-mark{display:block;width:37px;height:34px;object-fit:contain;flex:0 0 auto}
+.bh-custom-wordmark{font-family:"STSong","Songti SC","Noto Serif CJK SC","SimSun",serif!important;font-weight:900!important;font-style:italic!important;letter-spacing:-.06em!important;transform:skewX(-5deg);display:inline-block;white-space:nowrap;color:#111E36!important}
+.bh-topbar .bh-custom-wordmark{font-size:21px!important;line-height:1.1!important}
+.bh-snail-drawer-mark{background:#F3F5F9!important;display:flex!important;align-items:center!important;justify-content:center!important}
+.bh-snail-drawer-mark img{width:44px;height:44px;object-fit:contain}
+.bh-drawer-brand .bh-custom-wordmark{font-size:19px!important}
+@media(max-width:390px){.bh-snail-mark{width:32px;height:31px}.bh-brand-lockup{gap:4px}.bh-topbar .bh-custom-wordmark{font-size:18px!important}}
