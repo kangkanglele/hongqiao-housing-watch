@@ -827,6 +827,7 @@ function metricIcon(type){
  const icons={
  house:'<path fill="#f7f7e7" d="M7 11h18v19H7z"/><path fill="#478c62" d="m4 12 12-9 12 9-2 3-10-7-10 7z"/><path fill="#99c79f" d="M11 15h4v5h-4zM19 15h4v5h-4zM11 23h4v5h-4z"/><path fill="#397b59" d="M19 23h4v7h-4z"/><circle fill="#79ab77" cx="5" cy="28" r="4"/><circle fill="#79ab77" cx="28" cy="28" r="4"/>',
  shield:'<path fill="#f6f6e5" stroke="#43895f" stroke-width="3" stroke-linejoin="round" d="M16 3 28 8v9c0 7-4 11-12 16C8 28 4 24 4 17V8z"/><path fill="none" stroke="#559e69" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" d="m10 17 4 4 8-9"/>',
+ calendar:'<rect x="5" y="8" width="22" height="23" rx="4" fill="#f4f8e9" stroke="#468960" stroke-width="2.4"/><path d="M5 15h22M11 4v8M21 4v8" stroke="#468960" stroke-width="2.4" stroke-linecap="round"/><path d="m11 23 3 3 7-7" stroke="#63a477" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
  bookmark:'<path fill="#64a378" stroke="#39865d" stroke-width="2.6" stroke-linejoin="round" d="M7 4h18v27l-9-6-9 6z"/><path fill="#ffecb3" d="m16 10 2.1 4.3 4.8.7-3.5 3.4.8 4.8L16 21l-4.2 2.2.8-4.8L9.1 15l4.8-.7z"/>',
  archive:'<rect fill="#f8f2dd" stroke="#47885d" stroke-width="2.2" x="5" y="11" width="22" height="19" rx="4"/><rect fill="#91c69d" stroke="#3b8256" stroke-width="2.5" x="3" y="5" width="26" height="9" rx="4"/><path d="M12 21h8" stroke="#458a62" stroke-width="3.1" stroke-linecap="round"/>'
  };
@@ -864,7 +865,8 @@ function render(){
 function renderHouses(){
  const houses=state.houses.filter(h=>!h.deletedAt);
  const qualified=houses.filter(h=>!issue(h).length);
- const focus=qualified.filter(h=>['重点关注','准备看房','已看房'].includes(h.stage));
+ const focus=houses.filter(h=>h.stage==='重点关注');
+ const toVisit=houses.filter(h=>visitStateOf(h)==='看房');
  const archived=state.houses.filter(h=>h.deletedAt).length;
  const communities=Array.from(new Set(houses.map(h=>h.community).filter(Boolean))).sort();
  const pending=(state.listingCandidates||[]).filter(x=>inspectListingUrl(x.originalUrl||x.url,x.platform).ok);
@@ -872,13 +874,11 @@ function renderHouses(){
  return `
  <section class="bh-overview-head"><h1>房源概览</h1><span class="bh-live-label">实时数据库</span></section>
  <section class="bh-metrics" aria-label="房源概览统计">
-  <div class="bh-metric"><div class="bh-metric-top"><span class="bh-metric-label">可追溯房源</span>${metricIcon('house')}</div><div class="bh-metric-value">${houses.length}<small>套</small></div></div>
-  <div class="bh-metric"><div class="bh-metric-top"><span class="bh-metric-label">未触发硬伤</span>${metricIcon('shield')}</div><div class="bh-metric-value">${qualified.length}<small>套</small></div></div>
-  <div class="bh-metric"><div class="bh-metric-top"><span class="bh-metric-label">重点 / 待看</span>${metricIcon('bookmark')}</div><div class="bh-metric-value">${focus.length}<small>套</small></div></div>
-  <div class="bh-metric"><div class="bh-metric-top"><span class="bh-metric-label">已隐藏档案</span>${metricIcon('archive')}</div><div class="bh-metric-value">${archived}<small>套</small></div></div>
+  <div class="bh-metric"><div class="bh-metric-top"><span class="bh-metric-label">总房源</span>${metricIcon('house')}</div><div class="bh-metric-value">${houses.length}<small>套</small></div></div>
+  <div class="bh-metric"><div class="bh-metric-top"><span class="bh-metric-label">待看房源</span>${metricIcon('calendar')}</div><div class="bh-metric-value">${toVisit.length}<small>套</small></div></div>
+  <div class="bh-metric"><div class="bh-metric-top"><span class="bh-metric-label">重点关注</span>${metricIcon('bookmark')}</div><div class="bh-metric-value">${focus.length}<small>套</small></div></div>
  </section>
- <div class="bh-sync-line"><div class="bh-sync-label">${bhIcon('refresh',15)}<span id="syncInlineStatus">${esc(cloudStatusText||'连接中…')}</span></div><button type="button" data-action="cloudPull" aria-label="刷新云端数据" title="刷新云端数据">${bhIcon('refresh',17)}</button></div>
- <section class="bh-list-head"><div class="bh-list-title"><h2>候选房源</h2><span id="listingCount">${visibleHouses().length} 套</span></div>
+ <section class="bh-list-head"><div class="bh-list-title"><h2>房源列表</h2><span id="listingCount">${visibleHouses().length} 套</span></div>
   <div class="bh-browse-toolbar">
    <div class="bh-select-wrap"><select id="kind" aria-label="筛选小区"><option value="all">全部小区</option>${communities.map(x=>`<option value="${esc(x)}" ${kind===x?'selected':''}>${esc(x)}</option>`).join('')}</select>${bhIcon('down',13)}</div>
    <button type="button" class="bh-tool-btn ${searchOpen?'active':''}" data-ui="searchToggle" aria-label="搜索房源" title="搜索房源" aria-expanded="${searchOpen}">${bhIcon('search',19)}</button>
@@ -886,7 +886,7 @@ function renderHouses(){
   </div>
  </section>
  <div class="bh-search-panel" ${searchOpen?'':'hidden'}>${bhIcon('search',17)}<input id="search" type="search" aria-label="搜索房源" placeholder="搜索小区、户型、编号或官方链接…" value="${esc(search)}"><button type="button" data-ui="searchClose" aria-label="关闭搜索">×</button></div>
- <details class="bh-filter-accordion" ${filter==='all'?'':'open'}><summary>${filter==='all'?'更多筛选':'正在筛选：'+esc(state.pageConfig.filterLabels[filter]||filter)} ${bhIcon('down',13)}</summary><div class="filters" id="filters">${[['all','非硬伤候选'],['focus','重点 / 待看'],['visited','已带看'],['mine','我觉得合适'],['uncertain','待核验'],['withphoto','有照片'],['excluded','硬伤排除'],['budget','价格区间']].map(([id,label])=>`<button class="chip ${filter===id?'active':''}" data-filter="${id}">${esc(state.pageConfig.filterLabels[id]||label)}</button>`).join('')}</div></details>
+ <div class="bh-filter-accordion" aria-label="房源筛选"><div class="filters" id="filters">${[['all','非硬伤候选'],['focus','重点关注'],['visited','已看房源'],['mine','我觉得合适'],['uncertain','待核验'],['withphoto','有照片'],['excluded','硬伤排除'],['budget','价格区间']].map(([id,label])=>`<button class="chip ${filter===id?'active':''}" data-filter="${id}">${esc(id==='focus'?'重点关注':id==='visited'?'已看房源':state.pageConfig.filterLabels[id]||label)}</button>`).join('')}</div></div>
  ${pending.length?`<details class="bh-pending-details"><summary>待补全官方房源链接 · ${pending.length} 条（不计入正式房源）</summary>${pending.map(x=>`<div class="quarantine-item"><div><strong>${esc(x.community&&x.community!=='待核实'?x.community:x.platform+'房源 '+x.platformListingId)}</strong><div class="muted">${esc(x.platform)} · ${x.price?esc(x.price)+'万 · ':''}${x.area?esc(x.area)+'㎡':''}</div><a href="${esc(urlSafe(x.originalUrl||x.url))}" target="_blank" rel="noopener noreferrer">官方原始链接 ↗</a></div><button class="btn sm" data-action="promoteCandidate" data-id="${esc(x.candidateId)}">补全建档</button></div>`).join('')}</details>`:''}
  <div id="results">${renderItems()}</div>`;
 }
@@ -895,9 +895,9 @@ function visibleHouses(){
   return state.houses.filter(h=>{
     if(h.deletedAt)return false;
     const hard=issue(h).length>0;
-    const pass=filter==='excluded'?hard:filter==='visited'?visitsForHouse(h).length>0:!hard&&(
+    const pass=filter==='excluded'?hard:filter==='visited'?visitStateOf(h)==='看过':!hard&&(
       filter==='all'||
-      filter==='focus'&&['重点关注','准备看房','已看房'].includes(h.stage)||
+      filter==='focus'&&h.stage==='重点关注'||
       filter==='mine'&&h.suitability==='合适'||
       filter==='uncertain'&&unknown(h)||
       filter==='withphoto'&&!!firstImage(h)||
