@@ -149,9 +149,9 @@ with sync_playwright() as pw:
     page.locator('#nav [data-tab="houses"]').click()
     # Desktop navigation drawer must open from the physical left edge.
     page.locator('#navToggle').click()
-    page.wait_for_function("document.body.classList.contains('bh-drawer-open') && document.querySelector('#navDrawer').dataset.open === 'true' && document.querySelector('#navDrawer').getBoundingClientRect().left >= -1", timeout=2500)
-    drawer = page.locator('#navDrawer').evaluate("""el => ({left:el.getBoundingClientRect().left,right:getComputedStyle(el).right,position:getComputedStyle(el).position,transform:getComputedStyle(el).transform})""")
-    assert drawer['left'] <= 1 and drawer['right'] == 'auto' and drawer['position'] == 'fixed' and drawer['transform'] in ('none','matrix(1, 0, 0, 1, 0, 0)'), f'desktop drawer must be fixed to the left edge: {drawer}'
+    page.wait_for_function("document.body.classList.contains('bh-drawer-open') && document.querySelector('#navDrawer').dataset.open === 'true' && Math.abs(new DOMMatrix(getComputedStyle(document.querySelector('#navDrawer')).transform).m41) < 1", timeout=2500)
+    drawer = page.locator('#navDrawer').evaluate("""el => ({left:el.getBoundingClientRect().left,position:getComputedStyle(el).position,transform:getComputedStyle(el).transform,translateX:new DOMMatrix(getComputedStyle(el).transform).m41})""")
+    assert drawer['left'] <= 1 and drawer['position'] == 'fixed' and abs(drawer['translateX']) < 1, f'desktop drawer must be fixed to the left edge and fully open: {drawer}'
     page.locator('#navBackdrop').click()
     page.locator('[data-view="table"]').click()
     assert page.locator('.bh-listings.compact').count() == 1
