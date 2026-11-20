@@ -97,7 +97,7 @@ function setup({idbWorks=true,localWorks=true}={}){
  assert.ok(h5.includes('data-media-task-action="retryAll"'),'failed files must have a retry-all action');
  assert.ok(h5.includes('总体进度'),'the global upload dock must show overall progress');
  assert.ok(h5.includes('await uploadPendingMedia(task.item,progress=>'),'queue worker must upload the original File independently of the drawer');
- assert.ok(h5.includes("请重新选择"),'media UI must tell user when original File needs reselecting');
- assert.ok(h5.includes("不能自动恢复尚未上传的原文件"),'the UI must not promise persistence of File/Blob');
+ assert.ok(h5.includes('重新选择同一文件'),'media UI must tell user when original File needs reselecting');
+ assert.ok(h5.includes('刷新或关闭网页后，可重新选择原文件从已确认分块继续'),'the UI must accurately explain resume after page reload');
  console.log('PASS mobile media outbox: metadata-only resumable checkpoints, no Blob/File IndexedDB writes, fallbacks, multi-upload dock and retry actions');
 })().catch(error=>{console.error(error);process.exitCode=1});
