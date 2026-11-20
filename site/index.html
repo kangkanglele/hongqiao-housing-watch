@@ -229,14 +229,14 @@ body{font-size:calc(14px * var(--hq-text-scale))}
 
 
 /* Persistent multi-file media upload dock */
-#hqUploadDock{position:fixed;z-index:25;top:67px;right:14px;bottom:auto;width:min(390px,calc(100vw - 28px));font-size:13px;color:#253d34}
-#hqUploadDock[hidden]{display:none}
-.hq-upload-mini{background:rgba(255,255,255,.97);border:1px solid #dce7e1;border-radius:12px;box-shadow:0 8px 26px #17372b1c;padding:8px 11px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+#hqUploadDock{position:relative;z-index:52;width:100%;max-width:540px;min-width:0;font-size:13px;color:#253d34}
+#hqUploadDock[hidden],#topbarUploadSlot[hidden]{display:none!important}
+.hq-upload-mini{background:rgba(255,255,255,.97);border:1px solid #dce7e1;border-radius:12px;box-shadow:0 5px 18px #17372b12;padding:7px 12px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
 .hq-upload-mini button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:0;border:0;background:transparent;color:#36594c;font-size:12px;font-weight:680;text-align:left}
 .hq-upload-mini button span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hq-upload-mini button strong{flex:0 0 auto;color:#176c57;font-variant-numeric:tabular-nums}
-.hq-upload-mini .hq-upload-bar{height:5px;margin-top:7px}
-.hq-upload-panel{background:#fff;border:1px solid #dce7e1;border-radius:16px;box-shadow:0 12px 36px #17372b25;overflow:hidden}
+.hq-upload-mini .hq-upload-bar{height:5px;margin-top:6px}
+.hq-upload-panel{position:absolute;top:calc(100% + 8px);right:0;width:min(390px,calc(100vw - 28px));z-index:55;background:#fff;border:1px solid #dce7e1;border-radius:16px;box-shadow:0 12px 36px #17372b25;overflow:hidden}
 .hq-upload-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid #edf1ee}
 .hq-upload-head strong{font-size:14px}.hq-upload-head small{display:block;color:#819188;font-size:11px;margin-top:3px}
 .hq-upload-head button,.hq-upload-actions button,.hq-upload-chip{border:1px solid #dbe5df;background:#fff;color:#36594c;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:650}
@@ -254,13 +254,13 @@ body{font-size:calc(14px * var(--hq-text-scale))}
 .hq-upload-error{color:#b34b43!important;overflow-wrap:anywhere}
 .hq-upload-actions{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-top:1px solid #edf1ee}
 .hq-upload-chip{box-shadow:0 8px 24px #17372b25;background:#fff}
-@media(max-width:700px){#hqUploadDock{top:66px;right:10px;bottom:auto;width:calc(100vw - 20px)}.hq-upload-list{max-height:28vh}}
+@media(max-width:700px){#hqUploadDock{max-width:100%}.hq-upload-mini{padding:6px 8px}.hq-upload-mini button{font-size:10px;gap:5px}.hq-upload-list{max-height:28vh}.hq-upload-panel{right:0;width:min(390px,calc(100vw - 20px))}}
 
-</style><link rel="stylesheet" href="/buyhouse-v08.css?v=20261120-left-drawer-upload-auth"></head><body>
+</style><link rel="stylesheet" href="/buyhouse-v08.css?v=20261120-header-upload-fab"></head><body>
 
 <div class="topbar-shell"><header class="bh-topbar">
  <div class="bh-topbar-left"><button type="button" class="bh-icon-btn bh-menu-btn" id="navToggle" data-ui="drawerOpen" aria-expanded="false" aria-controls="navDrawer" aria-label="打开导航菜单">☰</button><strong class="bh-logo">买房助手</strong></div>
- <div class="bh-topbar-right"><div class="bh-mini-status"><span class="bh-status-dot"></span><span id="cloudCompactStatus">云端连接中</span></div><button class="bh-icon-btn" type="button" data-ui="help" aria-label="页面说明">?</button></div>
+ <div class="bh-topbar-right" id="topbarUploadSlot" hidden aria-live="polite"></div>
 </header></div>
 <div class="app">
  <button type="button" class="bh-backdrop" id="navBackdrop" data-ui="drawerClose" aria-label="关闭导航菜单" tabindex="-1"></button>
@@ -909,8 +909,8 @@ function renderHouses(){
  </section>
  <section class="bh-list-head"><div class="bh-list-title"><h2>房源列表</h2><span id="listingCount">${visibleHouses().length} 套</span></div>
   <div class="bh-browse-toolbar">
+   <button type="button" class="bh-tool-btn bh-search-toggle ${searchOpen?'active':''}" data-ui="searchToggle" aria-label="搜索房源" title="搜索房源" aria-expanded="${searchOpen}">${bhIcon('search',19)}</button>
    <div class="bh-select-wrap"><select id="kind" aria-label="筛选小区"><option value="all">全部小区</option>${communities.map(x=>`<option value="${esc(x)}" ${kind===x?'selected':''}>${esc(x)}</option>`).join('')}</select>${bhIcon('down',13)}</div>
-   <button type="button" class="bh-tool-btn ${searchOpen?'active':''}" data-ui="searchToggle" aria-label="搜索房源" title="搜索房源" aria-expanded="${searchOpen}">${bhIcon('search',19)}</button>
    <div class="bh-view-switch" aria-label="切换房源视图"><button type="button" class="bh-tool-btn ${view==='cards'?'active':''}" data-view="cards" aria-label="卡片视图" aria-pressed="${view==='cards'}">${bhIcon('grid',17)}</button><button type="button" class="bh-tool-btn ${view==='table'?'active':''}" data-view="table" aria-label="列表视图" aria-pressed="${view==='table'}">${bhIcon('list',17)}</button></div>
   </div>
  </section>
@@ -1099,12 +1099,16 @@ function mediaTaskLabel(task){
  return ({queued:'排队中',uploading:'上传中',failed:'失败',done:'已完成','needs-file':'等待重新选择原文件','needs-login':'等待 PIN 解锁'})[task.status]||task.status;
 }
 function ensureMediaDock(){
+ const slot=document.getElementById('topbarUploadSlot');
  let dock=document.getElementById('hqUploadDock');
- if(!dock){dock=document.createElement('div');dock.id='hqUploadDock';document.body.appendChild(dock);}
+ if(!dock){dock=document.createElement('div');dock.id='hqUploadDock';}
+ const parent=slot||document.body;
+ if(dock.parentElement!==parent)parent.appendChild(dock);
  return dock;
 }
 function renderMediaDock(){
- const dock=ensureMediaDock(),tasks=[...mediaTasks.values()];
+ const dock=ensureMediaDock(),slot=document.getElementById('topbarUploadSlot'),tasks=[...mediaTasks.values()];
+ if(slot)slot.hidden=!tasks.length;
  if(!tasks.length){dock.hidden=true;return;}
  dock.hidden=false;
  const active=tasks.filter(t=>t.status==='uploading').length;
