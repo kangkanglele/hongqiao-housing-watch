@@ -55,7 +55,7 @@ async function login(pin){
 
 const imageQueueKey=(item)=>String(item.listingKey||'')+'|'+String(item.imageUrl||'');
 async function enqueueListingMedia(record,houseId){
- if(!houseId||!/^TJ-HQ-\\d+$/.test(houseId))return;
+ if(!houseId||!/^TJ-HQ-\d+$/.test(houseId))return;
  const state=await getState(),count=Number(state.imageCount)===8?8:1;
  const urls=Array.isArray(record.images)?record.images.slice(0,count):[];
  const pending=Array.isArray(state.mediaQueue)?state.mediaQueue:[],
