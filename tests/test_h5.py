@@ -140,12 +140,18 @@ with sync_playwright() as pw:
     assert page.locator('.bh-listing').count() == 1, 'default list excludes hard defects and deleted records'
     assert page.locator('.photo-placeholder .photo-symbol .bh-metric-icon').count() >= 1, 'listing placeholder reuses overview house icon'
     assert '水木天成翠杨园' in page.locator('.bh-listing-name').inner_text()
-    # Desktop navigation drawer must open from the left edge.
+    # Read-only preview must explain why upload controls are unavailable and offer a safe route to PIN unlock.
+    page.locator('.bh-listing-main').first.click()
+    assert page.locator('.hq-media-locked').is_visible(), 'locked preview must explain upload is disabled until PIN unlock'
+    page.locator('[data-ui="goSettings"]').click()
+    assert page.locator('#adminPin').count() == 1, 'locked media prompt must navigate to PIN unlock'
     page.locator('#navToggle').click()
-    page.wait_for_function("document.body.classList.contains('bh-drawer-open') && document.querySelector('#navDrawer').getBoundingClientRect().left >= -1", timeout=2500)
-    drawer_left = page.locator('#navDrawer').evaluate('(el)=>el.getBoundingClientRect().left')
-    drawer_transform = page.locator('#navDrawer').evaluate('(el)=>getComputedStyle(el).transform')
-    assert drawer_left <= 1 and drawer_transform in ('none','matrix(1, 0, 0, 1, 0, 0)'), f'desktop drawer must open on the left: left={drawer_left}, transform={drawer_transform}'
+    page.locator('#nav [data-tab="houses"]').click()
+    # Desktop navigation drawer must open from the physical left edge.
+    page.locator('#navToggle').click()
+    page.wait_for_function("document.body.classList.contains('bh-drawer-open') && document.querySelector('#navDrawer').dataset.open === 'true' && document.querySelector('#navDrawer').getBoundingClientRect().left >= -1", timeout=2500)
+    drawer = page.locator('#navDrawer').evaluate("""el => ({left:el.getBoundingClientRect().left,right:getComputedStyle(el).right,position:getComputedStyle(el).position,transform:getComputedStyle(el).transform})""")
+    assert drawer['left'] <= 1 and drawer['right'] == 'auto' and drawer['position'] == 'fixed' and drawer['transform'] in ('none','matrix(1, 0, 0, 1, 0, 0)'), f'desktop drawer must be fixed to the left edge: {drawer}'
     page.locator('#navBackdrop').click()
     page.locator('[data-view="table"]').click()
     assert page.locator('.bh-listings.compact').count() == 1
