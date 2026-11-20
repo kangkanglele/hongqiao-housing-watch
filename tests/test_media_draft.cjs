@@ -35,12 +35,14 @@ for(const p of ['site/media-client.js','extension/media-upload.js','extension/ba
  new vm.Script(read(p),{filename:p});
 }
 const generated=[];
+let h5FirstPartFailure=true;
 const context={
  Blob,Uint8Array,Buffer,Math,Date,Promise,URL,setTimeout,clearTimeout,
  btoa:s=>Buffer.from(s,'binary').toString('base64'),
  window:{},fetch:async(_url,options)=>{
    const data=JSON.parse(options.body);
    generated.push(data);
+   if(data.action==='mediaPart'&&h5FirstPartFailure){h5FirstPartFailure=false;throw Error('simulated lost response after first chunk');}
    let result={ok:true};
    if(data.action==='mediaStart')result={ok:true,uploadId:'test-media-upload',chunkSize:512*1024};
    if(data.action==='mediaPart')result={ok:true,next:data.offset+Buffer.from(data.base64,'base64').length};
@@ -62,20 +64,22 @@ run('site/media-client.js',context);
  file.name='livingroom.jpg';
  const saved=await context.window.HQMedia.upload('fake-session',file,'house:TJ-HQ-0001');
  assert.equal(saved.driveFileId,'draft-file-id-123456');
- assert.equal(generated.filter(x=>x.action==='mediaPart').length,2);
+ assert.equal(generated.filter(x=>x.action==='mediaPart').length,3,'H5 should retry a transient lost response and then upload the remaining chunk');
  assert.ok(generated.every(x=>x.action!=='mediaPart'||x.base64.length<800000));
 
  // Chrome listing-photo archiver: verify a single source image larger than the old 8 MiB cap is chunked.
  const extensionParts=[];
+ let extensionFirstPartFailure=true;
  const largeImage=new Blob([Buffer.alloc(8*1024*1024+1,7)],{type:'image/jpeg'});
  const extensionContext={
-  self:{},URL,Blob,Uint8Array,Buffer,Promise,Math,String,Number,Error,
+  self:{},URL,Blob,Uint8Array,Buffer,Promise,Math,String,Number,Error,setTimeout,clearTimeout,
   btoa:s=>Buffer.from(s,'binary').toString('base64'),
   fetch:async(url,options={})=>{
    if(String(url).startsWith('https://image1.ljcdn.com/')){
     return {ok:true,status:200,headers:{get:()=> 'image/jpeg'},blob:async()=>largeImage};
    }
    const payload=JSON.parse(options.body);extensionParts.push(payload);
+   if(payload.action==='mediaPart'&&extensionFirstPartFailure){extensionFirstPartFailure=false;throw Error('simulated lost extension response');}
    let result={ok:true};
    if(payload.action==='mediaStart')result={ok:true,uploadId:'extension-large-image',chunkSize:512*1024};
    if(payload.action==='mediaPart')result={ok:true,next:payload.offset+Buffer.from(payload.base64,'base64').length};
@@ -90,8 +94,8 @@ run('site/media-client.js',context);
  );
  assert.equal(archived.driveFileId,'large-image-drive-id');
  assert.equal(archived.size,8*1024*1024+1);
- assert.equal(extensionParts.filter(x=>x.action==='mediaPart').length,17,'large listing image should be uploaded in 512 KiB chunks');
+ assert.equal(extensionParts.filter(x=>x.action==='mediaPart').length,18,'large listing image should retry one transient failure and still upload 17 chunks');
  assert.ok(!read('extension/media-upload.js').includes('8MB'));
 
- console.log('Media draft offline checks: PASS');
+ console.log('Media draft offline checks: PASS (H5 and Chrome retry transient failures)');
 })().catch(e=>{console.error(e);process.exitCode=1});
