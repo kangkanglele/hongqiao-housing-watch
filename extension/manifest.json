@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "红桥房源采集助手",
   "short_name": "红桥采集",
-  "version": "0.7",
+  "version": "0.8",
   "description": "采集房源数据与主图，可选保存相册到私人 Google Drive；先本地排队。",
   "minimum_chrome_version": "110",
   "permissions": [
