@@ -115,7 +115,7 @@ async function attachMedia(data){
      (sourceUrl&&x.sourceUrl===sourceUrl)))return {status:'unchanged',houseId,version:latest.version};
   const media={driveFileId,mimeType,name:str(item.name,160),size:Number(item.size)||0,
     source:str(item.source,60)||'手动上传',sourceUrl,
-    previewData:/^data:image\\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(String(item.previewData||''))&&String(item.previewData).length<=7000?String(item.previewData):'',
+    previewData:/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(String(item.previewData||''))&&String(item.previewData).length<=7000?String(item.previewData):'',
     createdAt:new Date().toISOString(),
     driveUrl:'https://drive.google.com/file/d/'+encodeURIComponent(driveFileId)+'/view'};
   house.media.push(media);
