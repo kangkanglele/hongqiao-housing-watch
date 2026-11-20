@@ -227,6 +227,30 @@ body{font-size:calc(14px * var(--hq-text-scale))}
 .visit-state-choices input:focus-visible+span{outline:2px solid #58ae83;outline-offset:5px}
 @media(max-width:700px){.visit-v2-row{gap:10px;padding:12px;flex-wrap:wrap}.visit-v2-thumb{width:88px;height:80px}.visit-v2-actions{width:100%;justify-content:flex-end}.visit-v2-history-meta{order:2;margin-left:auto}.visit-v2-row .visit-v2-info{min-width:calc(100% - 104px)}.visit-v2-heading h3{font-size:18px}}
 
+
+/* Persistent multi-file media upload dock */
+#hqUploadDock{position:fixed;z-index:65;right:14px;bottom:calc(22px + env(safe-area-inset-bottom));width:min(390px,calc(100vw - 28px));font-size:13px;color:#253d34}
+#hqUploadDock[hidden]{display:none}
+.hq-upload-panel{background:#fff;border:1px solid #dce7e1;border-radius:16px;box-shadow:0 12px 36px #17372b25;overflow:hidden}
+.hq-upload-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid #edf1ee}
+.hq-upload-head strong{font-size:14px}.hq-upload-head small{display:block;color:#819188;font-size:11px;margin-top:3px}
+.hq-upload-head button,.hq-upload-actions button,.hq-upload-chip{border:1px solid #dbe5df;background:#fff;color:#36594c;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:650}
+.hq-upload-summary{padding:10px 14px 8px}
+.hq-upload-summary-line,.hq-upload-task-top,.hq-upload-task-meta{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.hq-upload-bar{height:7px;background:#edf2ef;border-radius:20px;overflow:hidden;margin-top:7px}
+.hq-upload-bar i{display:block;height:100%;background:#27866d;border-radius:20px;transition:width .2s}
+.hq-upload-list{max-height:min(34vh,260px);overflow:auto;padding:0 10px 8px}
+.hq-upload-task{padding:9px 5px;border-top:1px solid #f0f3f1}
+.hq-upload-task-top span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:650}
+.hq-upload-task-top span:last-child{white-space:nowrap;color:#71847a;font-size:11px}
+.hq-upload-task-meta{font-size:10px;color:#87958e;margin-top:5px;flex-wrap:wrap}
+.hq-upload-task .hq-upload-bar{height:5px;margin-top:6px}
+.hq-upload-task button{margin-top:6px;border:0;background:#edf5f1;color:#176c57;border-radius:7px;padding:5px 9px;font-size:11px;font-weight:650}
+.hq-upload-error{color:#b34b43!important;overflow-wrap:anywhere}
+.hq-upload-actions{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-top:1px solid #edf1ee}
+.hq-upload-chip{box-shadow:0 8px 24px #17372b25;background:#fff}
+@media(max-width:700px){#hqUploadDock{right:10px;bottom:calc(16px + env(safe-area-inset-bottom));width:calc(100vw - 20px)}.hq-upload-list{max-height:28vh}}
+
 </style><link rel="stylesheet" href="/buyhouse-v08.css"></head><body>
 
 <div class="topbar-shell"><header class="bh-topbar">
@@ -1040,8 +1064,8 @@ function houseMediaMarkup(h){
   ${canEdit?`<div class="hq-media-controls">
     <label>上传现场照片或视频（支持多选，原文件保存在私人 Google Drive）</label>
     <input id="houseMediaFiles" data-media-house="${esc(h.id)}" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" multiple>
-    <button class="btn sm" data-media-retry="1">重试媒体归档 / 关联</button>
-    <p id="hqMediaProgress" class="muted">文件会直接上传到私人 Google Drive，不先复制到浏览器数据库。关闭网页后不能自动恢复尚未上传的原文件；失败时请重新选择同一文件。上传仍受云盘空间、网络和服务时限限制。</p>
+    <button class="btn sm" data-media-task-action="open">查看上传任务</button>
+    <p class="muted">支持多选，最多 2 个文件同时上传。任务独立运行，切换房源或关闭详情不会中断；刷新或关闭网页后，可重新选择原文件从已确认分块继续。</p>
   </div>`:''}
   ${sourceImages.length?`<p class="muted">网站来源还识别到 ${sourceImages.length} 张图片地址；只有成功写入 Drive 的文件才计入归档。</p>`:''}`;
 }
@@ -1049,81 +1073,172 @@ function refreshHouseMedia(h){
  const el=document.getElementById('houseMedia');
  if(el&&detail===h.id)el.innerHTML=houseMediaMarkup(h);
 }
-async function uploadPendingMedia(item){
+const mediaTasks=new Map();
+let mediaRunning=0,mediaDockCollapsed=false;
+const MEDIA_CONCURRENCY=2;
+function mediaBytes(value){
+ const n=Math.max(0,Number(value)||0);
+ if(n<1024)return n+' B';
+ if(n<1024*1024)return (n/1024).toFixed(0)+' KB';
+ return (n/1024/1024).toFixed(1)+' MB';
+}
+function mediaSpeed(value){
+ const n=Math.max(0,Number(value)||0);
+ return n>=1024*1024?(n/1024/1024).toFixed(1)+' MB/s':n>=1024?(n/1024).toFixed(0)+' KB/s':'—';
+}
+function mediaTaskLabel(task){
+ return ({queued:'排队中',uploading:'上传中',failed:'失败',done:'已完成','needs-file':'等待重新选择原文件','needs-login':'等待 PIN 解锁'})[task.status]||task.status;
+}
+function ensureMediaDock(){
+ let dock=document.getElementById('hqUploadDock');
+ if(!dock){dock=document.createElement('div');dock.id='hqUploadDock';document.body.appendChild(dock);}
+ return dock;
+}
+function renderMediaDock(){
+ const dock=ensureMediaDock(),tasks=[...mediaTasks.values()];
+ if(!tasks.length){dock.hidden=true;return;}
+ dock.hidden=false;
+ const active=tasks.filter(t=>t.status==='uploading').length;
+ const queued=tasks.filter(t=>t.status==='queued').length;
+ const failed=tasks.filter(t=>t.status==='failed').length;
+ const done=tasks.filter(t=>t.status==='done').length;
+ const total=tasks.reduce((n,t)=>n+(Number(t.total)||0),0);
+ const loaded=tasks.reduce((n,t)=>n+Math.min(Number(t.loaded)||0,Number(t.total)||0),0);
+ const pct=total?Math.min(100,Math.round(loaded/total*100)):0;
+ if(mediaDockCollapsed){
+  dock.innerHTML='<button class="hq-upload-chip" type="button" data-media-task-action="open">⇧ 上传任务 · '+active+' 上传中 · '+queued+' 排队 · '+failed+' 失败</button>';
+  return;
+ }
+ const rows=tasks.slice(-8).map(t=>{
+  const percent=t.total?Math.max(0,Math.min(100,Math.round((Number(t.loaded)||0)/t.total*100))):0;
+  const meta=mediaBytes(t.loaded)+' / '+mediaBytes(t.total)+' · '+mediaSpeed(t.speed);
+  const error=t.error?'<div class="hq-upload-task-meta hq-upload-error">'+esc(t.error)+'</div>':'';
+  const retry=t.status==='failed'&&t.item.file?'<button type="button" data-media-task-action="retry" data-media-task-id="'+esc(t.id)+'">重试此文件</button>':'';
+  const reselect=t.status==='needs-file'?'<div class="hq-upload-task-meta">请在对应房源档案中重新选择同一文件，即可续传</div>':'';
+  const login=t.status==='needs-login'?'<div class="hq-upload-task-meta">请先输入 PIN 解锁</div>':'';
+  return '<div class="hq-upload-task"><div class="hq-upload-task-top"><span>'+esc(t.name)+'</span><span>'+mediaTaskLabel(t)+'</span></div><div class="hq-upload-bar"><i style="width:'+percent+'%"></i></div><div class="hq-upload-task-meta"><span>'+meta+'</span><span>'+percent+'%</span></div>'+error+retry+reselect+login+'</div>';
+ }).join('');
+ dock.innerHTML='<div class="hq-upload-panel"><div class="hq-upload-head"><div><strong>媒体上传任务</strong><small>'+active+' 个上传中 · '+queued+' 个排队 · '+failed+' 个失败 · '+done+' 个完成</small></div><button type="button" data-media-task-action="collapse">收起</button></div><div class="hq-upload-summary"><div class="hq-upload-summary-line"><span>总体进度</span><strong>'+pct+'%</strong></div><div class="hq-upload-bar"><i style="width:'+pct+'%"></i></div></div><div class="hq-upload-list">'+rows+'</div><div class="hq-upload-actions"><button type="button" data-media-task-action="retryAll" '+(failed?'':'disabled')+'>重试全部失败</button><button type="button" data-media-task-action="clearDone" '+(done?'':'disabled')+'>清除已完成</button></div></div>';
+}
+function addMediaTask(item,status){
+ let task=mediaTasks.get(item.id);
+ if(task){task.item=item;task.name=item.name||item.file?.name||task.name;task.total=Number(item.size||item.file?.size)||task.total;task.loaded=Math.max(task.loaded||0,Number(item.offset)||0);task.status=status||task.status;}
+ else{
+  task={id:item.id,item,name:item.name||item.file?.name||'媒体文件',total:Number(item.size||item.file?.size)||0,
+   loaded:Number(item.offset)||0,speed:0,status:status||'queued',error:'',lastAt:0,lastLoaded:0};
+  if(item.uploadedFile){task.loaded=task.total;task.status=status||'queued';}
+  mediaTasks.set(item.id,task);
+ }
+ renderMediaDock();return task;
+}
+async function uploadPendingMedia(item,onProgress){
  const house=state.houses.find(h=>h.id===item.houseId);
- if(!house)throw Error('原房源不存在；如果文件已上传，请保留 Drive 文件链接并检查房源档案');
- const msg=document.getElementById('hqMediaProgress');
+ if(!house)throw Error('原房源不存在；上传完成的文件仍保留在待关联任务中');
  let file=item.uploadedFile;
  if(!file){
-   if(!item.file||typeof item.file.slice!=='function')
-     throw Error('待传清单仅保存文件名等信息，没有原始文件。请重新选择「'+(item.name||'该文件')+'」继续上传');
-   if(msg)msg.textContent='正在上传原文件 '+item.file.name+'，请保持页面打开…';
-   file=await window.HQMedia.upload(cloudConfig.token,item.file,item.listingKey,pct=>{
-     if(msg)msg.textContent='正在上传 '+item.file.name+' · '+pct+'%';
-   });
-   const stored=await window.HQMedia.enqueue({...item,uploadedFile:file});
-   if(!stored.persisted&&msg)msg.textContent='文件已上传到 Drive；浏览器无法持久保存关联任务，请保持页面打开…';
+  if(!item.file||typeof item.file.slice!=='function')throw Error('需要重新选择原文件后才能续传');
+  file=await window.HQMedia.upload(cloudConfig.token,item.file,item.listingKey,progress=>{
+   onProgress?.(progress);
+  },{
+   uploadId:item.uploadId||'',offset:Number(item.offset)||0,chunkSize:Number(item.chunkSize)||0,
+   onSession:async session=>{
+    item.uploadId=session.uploadId;item.offset=session.offset;item.chunkSize=session.chunkSize;
+    item.status='uploading';await window.HQMedia.enqueue(item);
+   },
+   onCheckpoint:async checkpoint=>{
+    item.uploadId=checkpoint.uploadId;item.offset=checkpoint.offset;item.chunkSize=checkpoint.chunkSize;
+    await window.HQMedia.enqueue(item);
+   }
+  });
+  item.uploadedFile=file;item.offset=Number(item.size||item.file.size);item.status='uploaded';
+  await window.HQMedia.enqueue({...item,uploadedFile:file});
  }
- const previewData=item.previewData||'';
  house.media=Array.isArray(house.media)?house.media:[];
  if(!house.media.some(x=>x.driveFileId===file.driveFileId)){
-   house.media.push({...file,previewData,source:'现场上传',shotAt:item.shotAt||null,shotSource:item.shotSource||'',createdAt:new Date().toISOString()});
-   if(!house.photoData&&previewData)house.photoData=previewData;
+  house.media.push({...file,previewData:item.previewData||'',source:'现场上传',shotAt:item.shotAt||null,shotSource:item.shotSource||'',createdAt:new Date().toISOString()});
+  if(!house.photoData&&item.previewData)house.photoData=item.previewData;
  }
- if(!save())throw Error('Drive 文件已上传，但浏览器未保存房源关联。请不要重复上传；重试媒体归档/关联，Drive 链接：'+file.driveUrl);
+ if(!save())throw Error('Drive 文件已上传，但房源关联未保存；请点击重试关联，不要重新上传');
  await window.HQMedia.remove(item.id);
- if(msg)msg.textContent='已保存到私人 Google Drive，房源媒体索引等待云端快照同步。';
  refreshHouseMedia(house);
 }
-document.addEventListener('change',async ev=>{
- const input=ev.target.closest('#houseMediaFiles');
- if(!input)return;
- const house=state.houses.find(h=>h.id===input.dataset.mediaHouse);
- if(!house||!cloudConfig.token){toast('请先用 PIN 登录');return}
- const files=Array.from(input.files||[]);
- for(const file of files){
-   try{
-     window.HQMedia.validate(file);
-     const listingKey='house:'+house.id;
-     // After a reload only metadata is available. Re-selecting the same file resumes
-     // the pending task without storing File/Blob in IndexedDB (unsupported by some iOS browsers).
-     const old=(await window.HQMedia.pending()).find(x=>x.houseId===house.id&&
-       x.name===file.name&&Number(x.size)===file.size&&
-       Number(x.lastModified||0)===Number(file.lastModified||0));
-     const item={...(old||{}),id:old?.id||('hqm'+Date.now().toString(36)+Math.random().toString(36).slice(2)),
-       houseId:house.id,listingKey,file,name:file.name,size:file.size,mimeType:file.type,
-       lastModified:file.lastModified||0,
-       previewData:old?.previewData||await window.HQMedia.preview(file),
-       ...(old?.shotAt?{shotAt:old.shotAt,shotSource:old.shotSource}:(await window.HQMedia.extractCapturedAt(file)||{})),
-       at:old?.at||new Date().toISOString()};
-     const queued=await window.HQMedia.enqueue(item);
-     const msg=document.getElementById('hqMediaProgress');
-     if(!queued.persisted&&msg)msg.textContent='当前浏览器无法永久保存待传清单，正在直接上传；请勿关闭页面。';
-     await uploadPendingMedia(item);
-   }catch(error){
-     const msg=document.getElementById('hqMediaProgress');
-     if(msg)msg.textContent='上传/关联未完成：'+error.message+'。如原文件尚未上传，请重新选择同一文件。';
-     toast('媒体上传/关联未完成：'+error.message);
-   }
- }
- input.value='';
-});
-document.addEventListener('click',async ev=>{
- if(!ev.target.closest('[data-media-retry]'))return;
- if(!cloudConfig.token){toast('请先用 PIN 登录');return}
+async function runMediaTask(task){
+ if(!cloudConfig.token){task.status='needs-login';renderMediaDock();return;}
+ task.status='uploading';task.error='';task.lastAt=Date.now();task.lastLoaded=task.loaded;
+ renderMediaDock();
  try{
-   const items=(await window.HQMedia.pending()).filter(item=>item.houseId===detail);
-   let done=0,needsReselect=0;
-   for(const item of items){
-     if(!item.uploadedFile&&!item.file){needsReselect++;continue;}
-     try{await uploadPendingMedia(item);done++;}
-     catch(error){toast('媒体关联重试失败：'+error.message);}
-   }
-   const msg=document.getElementById('hqMediaProgress');
-   if(msg)msg.textContent='已恢复 '+done+' 个归档任务。'+(needsReselect?'另有 '+needsReselect+' 个未上传的文件，请点击「选取文件」重新选择原文件。':'');
-   if(!items.length)toast('当前房源没有待处理的媒体记录');
- }catch(error){toast('读取待传记录失败：'+error.message)}
+  await uploadPendingMedia(task.item,progress=>{
+   const now=Date.now(),loaded=Number(progress.loaded)||0,elapsed=Math.max(1,now-(task.lastAt||now));
+   const instant=Math.max(0,loaded-(task.lastLoaded||0))*1000/elapsed;
+   task.speed=task.speed?task.speed*.55+instant*.45:instant;
+   task.loaded=loaded;task.total=Number(progress.total)||task.total;task.lastAt=now;task.lastLoaded=loaded;
+   renderMediaDock();
+  });
+  task.status='done';task.loaded=task.total;task.speed=0;task.error='';
+ }catch(error){
+  task.status=task.item.file||task.item.uploadedFile?'failed':'needs-file';
+  task.error=String(error?.message||error);
+ }
+ renderMediaDock();
+}
+function pumpMediaQueue(){
+ while(mediaRunning<MEDIA_CONCURRENCY){
+  const task=[...mediaTasks.values()].find(t=>t.status==='queued');
+  if(!task)break;
+  mediaRunning++;
+  runMediaTask(task).finally(()=>{mediaRunning--;pumpMediaQueue();});
+ }
+}
+function retryMediaTask(id){
+ const task=mediaTasks.get(id);if(!task)return;
+ if(!task.item.file&&!task.item.uploadedFile){task.status='needs-file';renderMediaDock();toast('请在房源档案中重新选择原文件');return;}
+ if(!cloudConfig.token){task.status='needs-login';renderMediaDock();toast('请先用 PIN 解锁云端');return;}
+ task.status='queued';task.error='';renderMediaDock();pumpMediaQueue();
+}
+async function restoreMediaTasks(){
+ try{
+  const items=await window.HQMedia.pending();
+  for(const item of items){
+   const status=item.uploadedFile?(cloudConfig.token?'queued':'needs-login'):'needs-file';
+   addMediaTask(item,status);
+  }
+  pumpMediaQueue();
+ }catch(error){toast('读取媒体上传任务失败：'+error.message);}
+}
+document.addEventListener('change',async ev=>{
+ const input=ev.target.closest('#houseMediaFiles');if(!input)return;
+ const house=state.houses.find(h=>h.id===input.dataset.mediaHouse);
+ if(!house||!cloudConfig.token){toast('请先用 PIN 登录');return;}
+ const files=Array.from(input.files||[]);if(!files.length)return;
+ const pending=await window.HQMedia.pending();
+ for(const file of files){
+  try{
+   window.HQMedia.validate(file);
+   const old=pending.find(x=>x.houseId===house.id&&x.name===file.name&&Number(x.size)===file.size&&Number(x.lastModified||0)===Number(file.lastModified||0));
+   const item={...(old||{}),id:old?.id||('hqm'+Date.now().toString(36)+Math.random().toString(36).slice(2)),
+    houseId:house.id,listingKey:'house:'+house.id,file,name:file.name,size:file.size,mimeType:file.type,
+    lastModified:file.lastModified||0,previewData:old?.previewData||await window.HQMedia.preview(file),
+    ...(old?.shotAt?{shotAt:old.shotAt,shotSource:old.shotSource}:(await window.HQMedia.extractCapturedAt(file)||{})),
+    at:old?.at||new Date().toISOString(),uploadId:old?.uploadId||'',offset:Number(old?.offset)||0,
+    chunkSize:Number(old?.chunkSize)||0,status:'queued'};
+   await window.HQMedia.enqueue(item);
+   const task=addMediaTask(item,'queued');task.item=item;task.name=file.name;task.total=file.size;
+   task.loaded=Number(item.offset)||0;task.error='';
+  }catch(error){toast('文件 '+file.name+' 未加入上传队列：'+error.message);}
+ }
+ input.value='';renderMediaDock();pumpMediaQueue();
 });
+document.addEventListener('click',ev=>{
+ const mediaButton=ev.target.closest('[data-media-task-action]');
+ if(!mediaButton)return;
+ const action=mediaButton.dataset.mediaTaskAction;
+ if(action==='open'){mediaDockCollapsed=false;renderMediaDock();return;}
+ if(action==='collapse'){mediaDockCollapsed=true;renderMediaDock();return;}
+ if(action==='retry'){retryMediaTask(mediaButton.dataset.mediaTaskId);return;}
+ if(action==='retryAll'){for(const task of mediaTasks.values())if(task.status==='failed')retryMediaTask(task.id);return;}
+ if(action==='clearDone'){for(const [id,task] of mediaTasks)if(task.status==='done')mediaTasks.delete(id);renderMediaDock();}
+});
+
 
 function openDetail(id){const h=state.houses.find(x=>x.id===id);if(!h)return;detail=id;const hard=issue(h);document.getElementById('overlay').innerHTML=`<div class="shade detail-shade" data-close="1"><div class="drawer detail-sheet" role="dialog" aria-modal="true" aria-label="房源详情"><div class="drawer-body"><div class="modal-header"><span class="eyebrow">房源档案 · ${esc(h.id)}</span><button class="icon-btn" data-close="1" aria-label="关闭">×</button></div><div class="source-row" style="margin-bottom:10px"><button class="btn sm primary" data-action="shareHouse" data-id="${esc(h.id)}">↗ 分享 / 复制房源链接</button><span class="muted">链接即房源身份</span></div><div class="badges" style="justify-content:flex-start;margin-bottom:12px">${origin(h)}${scene(h)}${visitStateBadge(h)}${visitBadgeForHouse(h)}<span class="badge neutral">${esc(h.stage)}</span></div>${photoMarkup(h,'detail')}<div id="houseMedia">${houseMediaMarkup(h)}</div><div class="detail-title">${esc(h.community)}<br>${esc(h.title)}</div><div class="detail-sub">档案编号 ${esc(h.id)} · 首次记录 ${esc(h.firstSeen)} · 末次观察 ${esc(h.lastSeen)}</div><div class="detail-price">${fmtMoney(h)}<small> 万</small><span style="font-size:13px;font-weight:400;color:#8d98a2;margin-left:12px">${unit(h)}</span></div><div class="fact-grid"><div class="fact"><small>面积 / 户型</small><strong>${fmt(h.area)}㎡ / ${esc(h.rooms)}</strong></div><div class="fact"><small>楼层</small><strong>${esc(h.floor||'未知')} / ${esc(h.total||'未知')} 层</strong></div><div class="fact"><small>环境等级</small><strong>${esc(envFor(h))}</strong></div><div class="fact"><small>电梯</small><strong>${esc(h.elevator)}</strong></div><div class="fact"><small>噪声</small><strong>${esc(h.noise)}</strong></div><div class="fact"><small>装修</small><strong>${esc(h.decoration)}</strong></div></div><div class="minihead">自动筛选结论</div>${issueTags(h)}<div class="help">${hard.length?`<b style="color:#b65047">一票否决：${hard.map(esc).join('、')}</b>`:unknown(h)?'<b>待核验：</b>存在环境、噪声、楼层/电梯、产权或一楼特殊风险信息缺失，不能直接认定无硬伤。':'<b style="color:#188066">初筛通过：</b>根据已填字段暂未触发已定义硬伤。仍应现场和产权核验。'}</div><div class="minihead">各平台来源 <button class="btn sm" data-action="editSource" data-id="${esc(h.id)}">＋ 关联 / 修改</button></div>${h.sources.length?h.sources.map((s,i)=>`<div class="source-box"><div class="row"><strong>${esc(s.channel)}</strong><span class="badge neutral">${esc(s.relation||'未核验')}</span></div><div class="muted" style="margin:5px 0">平台ID：${esc(s.platformId||'未知')} · ${esc(s.urlType||'未注明')}</div><div class="row">${urlSafe(s.originalUrl||s.url)?`<a href="${esc(urlSafe(s.originalUrl||s.url))}" target="_blank" rel="noopener noreferrer">直接打开原始房源 ↗</a>`:'<span class="nourl">暂无链接</span>'}<span><button class="btn text sm" data-action="editSource" data-id="${esc(h.id)}" data-index="${i}">修改</button><button class="btn text sm" data-action="splitSource" data-id="${esc(h.id)}" data-index="${i}">拆分</button><button class="btn text sm danger" data-action="detachSource" data-id="${esc(h.id)}" data-index="${i}">解绑</button></span></div></div>`).join(''):'<div class="help">尚未关联来源，点击上方按钮添加官方单套房源详情链接。</div>'}<div class="minihead">历史带看记录 <button class="btn sm" data-tab="visits">查看行程 →</button></div>${visitsForHouse(h).map(v=>`<div class="visit-feedback"><b>${esc(v.session.date)} · ${esc(v.session.broker||'现场看房')}</b><br>${esc(v.entry.decision||'待判断')} · ${esc(v.entry.impression||'暂无备注')}${v.entry.photoData?`<div><img src="${esc(v.entry.photoData)}" alt="现场照片" class="visit-photo"></div>`:''}</div>`).join('')||'<p class="muted">尚无实际带看记录。中介发来的链接应先加入「看房行程」。</p>'}<div class="minihead">你的判断与看房记录 <button class="btn sm soft" data-action="saveHouse" data-id="${esc(h.id)}">保存修改</button></div><div class="form-grid"><div class="form-item"><label>是否合适</label><select id="editSuit">${selectOptions(['待判断','合适','不合适'],h.suitability)}</select></div><div class="form-item"><label>行动状态</label><select id="editStage">${selectOptions(['观察中','重点关注','准备看房','已看房','放弃'],h.stage)}</select></div><div class="form-item"><label>小区环境（继承目录）</label><div class="environment-readonly">${esc(envFor(h))}级 · 在「监控小区」里统一修改</div></div><div class="form-item"><label>噪音</label><select id="editNoise">${selectOptions(['未知','安静','一般可接受','严重'],h.noise)}</select></div><div class="form-item"><label>真实楼层</label><input id="editFloor" type="number" min="0" max="99" value="${esc(h.floor||'')}"></div><div class="form-item"><label>电梯</label><select id="editElevator">${selectOptions(['未知','有','无'],h.elevator)}</select></div><div class="form-item"><label>目前报价（万）</label><input id="editPrice" type="number" min="0.1" step="0.1" value="${esc(h.price??'')}"></div><div class="form-item"><label>产权/入学核查</label><select id="editLegal">${selectOptions(['待核实','普通住宅待核学位','已核实符合','产权/入学不符'],h.legal||'待核实')}</select></div></div>
 <div class="visit-v2-state-editor"><label>看房属性</label>${visitStateChoices('editVisitStatus',visitStateOf(h))}</div><div class="defects-block"><h4>⛔ 一票否决硬伤（可多选）</h4><p class="subnote">任一项勾选后自动归入「硬伤排除」，不会从数据库删除，可随时改回。</p>${defectMarkup('editHard',HARD_DEFECTS,h.defects||[])}</div>
@@ -1365,7 +1480,7 @@ function importCapturedRecord(record){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('bh-drawer-open'))closeBhDrawer()});
 // V3.5: 浏览器扩展独立直传 Netlify Functions；已移除旧的 H5 消息中转。
 applyPageConfig();render();
-const hqCloudInitPromise=initCloud().finally(()=>{cloudStartupDone=true});
+const hqCloudInitPromise=initCloud().finally(()=>{cloudStartupDone=true;void restoreMediaTasks();});
 // 新设备首次打开时自动展示 PIN 登录界面，避免看到全是0的空白初始化页。
 if(!cloudConfig.token){tab='houses';render();}
 
