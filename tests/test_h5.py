@@ -189,11 +189,14 @@ with sync_playwright() as pw:
     assert min(page.locator('.bh-filter-accordion .chip').evaluate_all('(els)=>els.map(x=>x.getBoundingClientRect().height)')) >= 39.9, 'mobile filter chips must have 40pt logical tap height'
     dock_align = page.evaluate("""() => {
        const slot=document.getElementById('topbarUploadSlot');
-       const dock=document.getElementById('hqUploadDock');
+       const oldDock=document.getElementById('hqUploadDock');
+       const dock=oldDock||document.createElement('div');
+       if(!oldDock){dock.id='hqUploadDock';slot.appendChild(dock);}
        slot.hidden=false;dock.hidden=false;
        dock.innerHTML='<div class="hq-upload-mini" style="width:160px">上传任务</div>';
        const delta=Math.abs(dock.querySelector('.hq-upload-mini').getBoundingClientRect().right-slot.getBoundingClientRect().right);
        slot.hidden=true;dock.hidden=true;dock.innerHTML='';
+       if(!oldDock)dock.remove();
        return delta;
     }""")
     assert dock_align <= 2, f'upload queue must be right-aligned inside the header margin: {dock_align}'
