@@ -163,23 +163,84 @@ async function extractCapturedAt(file){
  }catch(_){}
  return null;
 }
-// Files survive a reload in IndexedDB while awaiting upload. Do not persist video
-// base64 in localStorage, Chrome extension settings, or a JSON snapshot.
-const DB='hq-private-media-queue',STORE='media';
+// iOS/WeChat private browsers can fail to structured-clone File/Blob into IndexedDB.
+// Persist only small *metadata*; upload the original File directly while the picker still
+// holds it in memory. Pending metadata is not a copy of the original media file.
+const DB='hq-private-media-queue',STORE='media',FALLBACK='hq-private-media-queue-metadata-v2';
+const memoryPending=new Map();
+function safeRecord(item){
+ const allow=['id','houseId','listingKey','name','size','mimeType','lastModified','previewData','shotAt','shotSource','at','uploadedFile'];
+ const record={};
+ for(const key of allow)if(item&&Object.prototype.hasOwnProperty.call(item,key))record[key]=item[key];
+ if(!record.id||!record.houseId)throw Error('待上传记录不完整');
+ // Legacy callers may pass a File, Blob, or nested object. Never place those in a store.
+ if(record.uploadedFile){
+   const file=record.uploadedFile;
+   record.uploadedFile={driveFileId:String(file.driveFileId||''),driveUrl:String(file.driveUrl||''),
+     name:String(file.name||''),mimeType:String(file.mimeType||''),size:Number(file.size)||0,
+     listingKey:String(file.listingKey||'')};
+   if(!record.uploadedFile.driveFileId)delete record.uploadedFile;
+ }
+ if(record.previewData&&String(record.previewData).length>7000)delete record.previewData;
+ record.name=String(record.name||item.file?.name||'');
+ record.size=Number(record.size||item.file?.size)||0;
+ record.mimeType=String(record.mimeType||item.file?.type||'');
+ record.lastModified=Number(record.lastModified||item.file?.lastModified)||0;
+ return record;
+}
 function database(){return new Promise((resolve,reject)=>{
- const req=indexedDB.open(DB,1);
+ let req;
+ try{req=indexedDB.open(DB,1);}catch(e){reject(e);return}
  req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(STORE))req.result.createObjectStore(STORE,{keyPath:'id'})};
- req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+ req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||Error('IndexedDB 无法打开'));
 });}
 async function transact(mode,fn){const db=await database();try{
  return await new Promise((resolve,reject)=>{
- const tx=db.transaction(STORE,mode),request=fn(tx.objectStore(STORE));
- request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);
- tx.onerror=()=>reject(tx.error);
+ let tx,request;
+ try{tx=db.transaction(STORE,mode);request=fn(tx.objectStore(STORE));}
+ catch(e){reject(e);return}
+ request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error||Error('浏览器无法保存待上传记录'));
+ tx.onabort=()=>reject(tx.error||Error('IndexedDB 事务中断'));
+ tx.onerror=()=>reject(tx.error||Error('IndexedDB 事务失败'));
  });
 }finally{db.close()}}
-const enqueue=record=>transact('readwrite',store=>store.put(record));
-const remove=id=>transact('readwrite',store=>store.delete(id));
-const pending=()=>transact('readonly',store=>store.getAll());
+function fallbackRecords(){
+ try{const data=JSON.parse(localStorage.getItem(FALLBACK)||'[]');return Array.isArray(data)?data:[];}catch(_){return []}
+}
+function saveFallback(record){
+ memoryPending.set(record.id,record);
+ try{
+   const records=fallbackRecords().filter(x=>x.id!==record.id);
+   records.push(record);
+   localStorage.setItem(FALLBACK,JSON.stringify(records));
+   return {persisted:true,store:'localStorage'};
+ }catch(_){return {persisted:false,store:'memory'};}
+}
+async function enqueue(item){
+ const record=safeRecord(item);
+ memoryPending.set(record.id,record);
+ try{
+   await transact('readwrite',store=>store.put(record));
+   try{
+     const older=fallbackRecords().filter(x=>x.id!==record.id);
+     localStorage.setItem(FALLBACK,JSON.stringify(older));
+   }catch(_){}
+   return {persisted:true,store:'indexedDB'};
+ }catch(_){
+   return saveFallback(record);
+ }
+}
+async function remove(id){
+ memoryPending.delete(id);
+ try{await transact('readwrite',store=>store.delete(id));}catch(_){}
+ try{localStorage.setItem(FALLBACK,JSON.stringify(fallbackRecords().filter(x=>x.id!==id)));}catch(_){}
+}
+async function pending(){
+ let fromIDB=[];
+ try{fromIDB=await transact('readonly',store=>store.getAll())||[];}catch(_){}
+ const merged=new Map();
+ for(const record of [...fallbackRecords(),...fromIDB,...memoryPending.values()])if(record?.id)merged.set(record.id,record);
+ return [...merged.values()];
+}
 root.HQMedia={post,upload,preview,validate,extractCapturedAt,enqueue,remove,pending,CHUNK};
 })(window);
