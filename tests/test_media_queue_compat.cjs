@@ -98,6 +98,12 @@ function setup({idbWorks=true,localWorks=true}={}){
  assert.ok(h5.includes('总体进度'),'the global upload dock must show overall progress');
  assert.ok(h5.includes('#hqUploadDock{position:fixed;z-index:25;top:67px;'),'upload progress must dock at the top below the sticky header');
  assert.ok(h5.includes('let mediaRunning=0,mediaDockCollapsed=true;'),'the top upload dock must start in compact progress-only mode');
+ assert.ok(h5.includes('hq-media-locked'),'read-only preview must explain why upload controls are unavailable');
+ assert.ok(h5.includes('data-ui="goSettings"'),'locked upload prompt must navigate to PIN unlock');
+ assert.ok(h5.includes('/buyhouse-v08.css?v=20261120-left-drawer-upload-auth'),'drawer CSS must be cache-busted in preview');
+ const css=fs.readFileSync(path.join(__dirname,'../site/buyhouse-v08.css'),'utf8');
+ assert.ok(css.includes('#navDrawer[data-open="true"]'),'drawer open state must explicitly anchor the panel to the left');
+ assert.ok(css.includes('inset:0 auto 0 0!important'),'drawer must be anchored to left rather than right');
  assert.ok(h5.includes('await uploadPendingMedia(task.item,progress=>'),'queue worker must upload the original File independently of the drawer');
  assert.ok(h5.includes('重新选择同一文件'),'media UI must tell user when original File needs reselecting');
  assert.ok(h5.includes('刷新或关闭网页后，可重新选择原文件从已确认分块继续'),'the UI must accurately explain resume after page reload');
