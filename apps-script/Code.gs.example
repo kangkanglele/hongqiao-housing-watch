@@ -786,7 +786,7 @@ function productionHealthCheck() {
   return report;
 }
 
-/* MEDIA DRAFT: private Google Drive files. Deploy only when release is approved.
+/* MEDIA API: private Google Drive files.
  * Media bytes NEVER go into the Sheets snapshot. Upload session URLs and OAuth
  * tokens remain in Apps Script CacheService and never reach the browser.
  * No application-defined per-file cap; Google Drive quota and platform limits still apply. Upload parts must be sequential, 256 KiB multiples.
