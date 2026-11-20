@@ -135,7 +135,7 @@ function scanMovieCreationTime(buffer){
     const epoch=2082844800;
     let secs=0;
     if(ver===0&&at+head+8<=to)secs=dv.getUint32(at+head+4,false);
-    else if(ver===1&&at+head+12<=to)secs=dv.getUint32(at+head+8,false)*4294967296+dv.getUint32(at+head+12,false);
+    else if(ver===1&&at+head+12<=to)secs=dv.getUint32(at+head+4,false)*4294967296+dv.getUint32(at+head+8,false);
     const millis=(secs-epoch)*1000;
     if(millis>=limits.min&&millis<=limits.max)return {shotAt:new Date(millis).toISOString(),shotSource:'视频容器创建时间（需核验是否为拍摄时间）'};
    }
