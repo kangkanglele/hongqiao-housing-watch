@@ -195,7 +195,7 @@ body.bh-drawer-open{overflow:hidden}
  .visit-v2-tabs{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
  .table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
  img,video,canvas{max-width:100%}
- a,button,span,p,small,strong{overflow-wrap:anywhere}
+ .bh-listing-name,.bh-listing-meta,.visit-v2-title,.visit-meta,.detail-title,.detail-sub,.muted,.source-box,.config-note,.hq-upload-error{overflow-wrap:anywhere}
 }
 @supports not (overflow:clip){
  @media(max-width:760px){html,body{overflow-x:hidden!important}}
