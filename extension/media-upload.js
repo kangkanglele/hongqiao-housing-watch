@@ -2,7 +2,7 @@
 'use strict';
 self.HQMediaExtension=(()=>{
  const API='https://hongqiao-housing-watch.netlify.app/.netlify/functions/hq-api';
- const CHUNK=512*1024,MAX=8*1024*1024;
+ const CHUNK=512*1024;
  const validUrl=value=>{
   let url;try{url=new URL(value)}catch(_){throw Error('图片地址无效')}
   const host=url.hostname.toLowerCase();
@@ -42,7 +42,7 @@ self.HQMediaExtension=(()=>{
   const mime=(resp.headers.get('content-type')||'').split(';')[0].toLowerCase().replace('image/jpg','image/jpeg');
   if(!['image/jpeg','image/png','image/webp'].includes(mime))throw Error('网站当前图片格式不支持 '+mime);
   const blob=await resp.blob();
-  if(blob.size<=0||blob.size>MAX)throw Error('官网图片超过8MB，已保留原始图片地址');
+  if(!Number.isSafeInteger(blob.size)||blob.size<=0)throw Error('官网图片文件大小无效');
   const name='listing-'+String(item.platformId||'').replace(/[^0-9]/g,'')+'-'+String(item.index+1)+'.'+(mime==='image/png'?'png':mime==='image/webp'?'webp':'jpg');
   const previewData=await preview(blob);
   const start=await post(session,'mediaStart',{name,mimeType:mime,size:blob.size,listingKey:item.listingKey});
