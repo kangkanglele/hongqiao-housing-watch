@@ -18,7 +18,7 @@ function makeSession(){const payload=b64(JSON.stringify({purpose:'hq-sync',exp:D
 function validSession(raw){if(!env('HQ_SESSION_SECRET')||!raw)return false;const [payload,mac,...extra]=String(raw).split('.');if(!payload||!mac||extra.length||!equal(mac,signature(payload)))return false;try{const x=JSON.parse(unb64(payload));return x.purpose==='hq-sync'&&Number(x.exp)>Date.now()&&Number(x.exp)<Date.now()+AUTH_TTL_MS+60000}catch{return false}}
 const headerSession = req => (req.headers.get('authorization')||'').replace(/^Bearer\s+/i,'');
 function safeHost(url){const u=new URL(url);const h=u.hostname.toLowerCase();return {u,h}}
-function identity(record){const {u,h}=safeHost(record.url);if(u.protocol!=='https:')throw Error('只接受 https 官方房源网址');const channel=h==='ke.com'||h.endsWith('.ke.com')?'贝壳':h==='5i5j.com'||h.endsWith('.5i5j.com')?'我爱我家':null;if(!channel)throw Error('仅支持贝壳与我爱我家官方域名');const m=u.pathname.match(/^\/(?:tj\/)?ershoufang\/(\d{8,})(?:\.html)?\/?$/i);if(!m)throw Error('需要官方单套详情页，不能是小区/列表网址');u.search='';u.hash='';return {channel,id:m[1],key:(channel==='贝壳'?'ke:':'5i5j:')+m[1],canonical:u.toString()}}
+function identity(record){const {u,h}=safeHost(record.url);if(u.protocol!=='https:')throw Error('只接受 https 官方房源网址');const channel=h==='ke.com'||h.endsWith('.ke.com')?'贝壳':h==='lianjia.com'||h.endsWith('.lianjia.com')?'链家':h==='5i5j.com'||h.endsWith('.5i5j.com')?'我爱我家':null;if(!channel)throw Error('仅支持贝壳、链家与我爱我家官方域名');const m=u.pathname.match(/^\/(?:tj\/)?ershoufang\/(\d{8,})(?:\.html)?\/?$/i);if(!m)throw Error('需要官方单套详情页，不能是小区/列表网址');u.search='';u.hash='';return {channel,id:m[1],key:(channel==='我爱我家'?'5i5j:':'ke:')+m[1],canonical:u.toString()}}
 const num=x => Number.isFinite(Number(x))&&Number(x)>0&&Number(x)<100000?Number(x):null;
 const str=(s,n=200)=>norm(s).slice(0,n);
 const today=()=>new Date().toISOString().slice(0,10);
@@ -53,6 +53,7 @@ function mergeRecord(state,input){
  const url=str(input.url,1000), now=today(), stamp=new Date().toISOString();
  const all=(state.houses||[]);state.houses=all;state.listingCandidates=state.listingCandidates||[];state.linkLedger=state.linkLedger||[];
  const found=all.find(h=>(h.sources||[]).some(s=>{try{return identity({url:s.url||s.originalUrl}).key===id.key}catch{return false}}));
+ const images=Array.isArray(input.images)?input.images.filter(x=>typeof x==='string'&&/^https:\/\//i.test(x)).slice(0,12).map(x=>x.slice(0,1000)):[];
  const src={channel:id.channel,platformId:id.id,url:id.canonical,rawUrl:url,originalUrl:url,urlType:'官方单套详情',relation:'Chrome用户主动打开的页面（DOM提取）',checked:now};
  let out;
  if(found){
@@ -61,16 +62,18 @@ function mergeRecord(state,input){
    const oldPrice=num(found.price);if(price&&oldPrice!==price){found.events=found.events||[];found.events.unshift({id:'CAP-'+Date.now().toString(36),date:stamp,kind:'price',title:'插件观测到报价变化',desc:`${oldPrice??'未知'}万 → ${price}万；来自用户当时浏览的官网页面`,prevPrice:oldPrice,newPrice:price,sourceUrl:url});found.price=price;}
    for(const [k,v] of [['area',area],['floor',floor],['total',total],['rooms',str(input.rooms,50)],['floorBand',str(input.floorBand,60)],['orient',str(input.orientation,30)],['decoration',str(input.decoration,50)]])if((found[k]===null||found[k]===undefined||found[k]===''||found[k]==='待核实')&&v)found[k]=v;
    if((!found.elevator||found.elevator==='未知')&&['有','无'].includes(input.elevator))found.elevator=input.elevator;
+   if(images.length){found.sourceImages=[...new Set([...(found.sourceImages||[]),...images])].slice(0,25);}
    found.lastSeen=now;out={status:oldPrice===price?'unchanged':'updated',houseId:found.id};
  }else if(validCommunity){
    const nums=all.map(h=>Number(/TJ-HQ-(\d+)/.exec(h.id||'')?.[1]||0));const next='TJ-HQ-'+String(Math.max(0,...nums)+1).padStart(4,'0');
    const h={id:next,origin:'Chrome人工采集',community,title:str(input.title,180)||community+' · 待补',area,price,rooms:str(input.rooms,50)||'待核实',floor,total,floorBand:str(input.floorBand,60),elevator:['有','无'].includes(input.elevator)?input.elevator:'未知',env:(state.scopes||[]).find(s=>s.name===community)?.env||'待评',noise:'未知',legal:'待核实',decoration:str(input.decoration,50)||'待核实',orient:str(input.orientation,30)||'待核实',defects:[],drawbacks:[],suitability:'待判断',stage:'观察中',top:!!(floor&&total&&floor===total),duplex:false,firstSeen:now,lastSeen:now,note:'Chrome 插件采集：用户主动打开官网页面；字段待现场核验。',sources:[src],events:[{id:'CAP-'+Date.now().toString(36),date:stamp,kind:'manual',title:'首次采集',desc:'Chrome 插件一键同步官方房源详情页'}]};
+   h.sourceImages=images;
    if(h.top)h.defects.push('top');if(h.defects.length){h.suitability='不合适';h.stage='硬伤排除';h.excludedReason='顶层';}
    all.push(h);out={status:'created',houseId:next};
  }else{
    const candidate=state.listingCandidates.find(c=>c.listingKey===id.key||c.platformListingId===id.id&&c.platform===id.channel);
-   if(candidate){candidate.lastSeen=now;candidate.title=str(input.title,180)||candidate.title;candidate.area=area||candidate.area;candidate.price=price||candidate.price;out={status:'pending_updated',candidateId:candidate.candidateId}}
-   else{const c={candidateId:'PENDING-'+(id.channel==='贝壳'?'KE-':'5I5J-')+id.id,platform:id.channel,platformListingId:id.id,listingKey:id.key,originalUrl:url,canonicalUrl:id.canonical,community:community||'待匹配小区',title:str(input.title,180)||id.channel+' · '+id.id,area,price,rooms:str(input.rooms,50),floorBand:str(input.floorBand,60),orient:str(input.orientation,30),elevator:str(input.elevator,10)||'未知',firstSeen:now,lastSeen:now,recordStatus:'官方详情已采集·小区待确认',sourceCheck:'用户当前浏览器页面 DOM',providedBy:'Chrome 插件',urlVerifiedStructure:true,detailsVerifiedByPlatform:false};state.listingCandidates.push(c);out={status:'pending_community',candidateId:c.candidateId};}
+   if(candidate){candidate.sourceImages=[...new Set([...(candidate.sourceImages||[]),...images])].slice(0,25);candidate.lastSeen=now;candidate.title=str(input.title,180)||candidate.title;candidate.area=area||candidate.area;candidate.price=price||candidate.price;out={status:'pending_updated',candidateId:candidate.candidateId}}
+   else{const c={candidateId:'PENDING-'+(id.channel==='我爱我家'?'5I5J-':'KE-')+id.id,platform:id.channel,platformListingId:id.id,listingKey:id.key,originalUrl:url,canonicalUrl:id.canonical,community:community||'待匹配小区',title:str(input.title,180)||id.channel+' · '+id.id,area,price,rooms:str(input.rooms,50),floorBand:str(input.floorBand,60),orient:str(input.orientation,30),elevator:str(input.elevator,10)||'未知',firstSeen:now,lastSeen:now,recordStatus:'官方详情已采集·小区待确认',sourceCheck:'用户当前浏览器页面 DOM',providedBy:'Chrome 插件',urlVerifiedStructure:true,detailsVerifiedByPlatform:false,sourceImages:images};state.listingCandidates.push(c);out={status:'pending_community',candidateId:c.candidateId};}
  }
  const old=state.linkLedger.find(x=>x.key===id.key);if(old){old.lastSeen=now;old.originalUrl=url;old.status=out.status==='already_hidden'?'archived':'active'}else state.linkLedger.push({key:id.key,houseId:out.houseId||out.candidateId,channel:id.channel,platformId:id.id,originalUrl:url,canonicalUrl:id.canonical,status:out.status==='pending_community'?'pending_verification':'active',firstSeen:now,lastSeen:now,note:'Chrome 插件直接同步'});
  if(out.status==='created'||out.status==='pending_community')state.listingCandidates=state.listingCandidates.filter(c=>!(c.listingKey===id.key&&out.status==='created'));
@@ -91,6 +94,34 @@ async function ingest(record){
   catch(e){if(!e.conflict&&!/版本已变化|版本冲突/.test(e.message))throw e;if(attempt===2)throw Error('云端有并发写入冲突，已留在本地重试队列');await new Promise(r=>setTimeout(r,350*(attempt+1)))}
  }
 }
+
+/* Media records are references only; actual bytes are privately owned by Drive.
+ * Never accept a client-provided URL as a Drive file identity.
+ * Existing houses are never deleted; photo/gallery updates are additive.
+ */
+async function attachMedia(data){
+ const houseId=str(data.houseId,90);
+ const item=data.media||{};
+ const driveFileId=str(item.driveFileId,140),mimeType=str(item.mimeType,60),sourceUrl=str(item.sourceUrl,1000);
+ if(!/^TJ-HQ-\d+$/.test(houseId)||!/^[A-Za-z0-9_-]{10,120}$/.test(driveFileId)||
+   !/^(image\/(jpeg|png|webp)|video\/(mp4|quicktime|webm))$/.test(mimeType))throw Error('媒体记录字段无效');
+ for(let attempt=0;attempt<3;attempt++){
+  const latest=await google('load');
+  if(!latest.state?.houses)throw Error('云端数据不存在，拒绝覆盖');
+  const house=latest.state.houses.find(h=>h.id===houseId);
+  if(!house||house.deletedAt)throw Error('房源不存在或已归档，媒体尚未关联，请检查');
+  house.media=Array.isArray(house.media)?house.media:[];
+  if(house.media.some(x=>x.driveFileId===driveFileId||
+     (sourceUrl&&x.sourceUrl===sourceUrl)))return {status:'unchanged',houseId,version:latest.version};
+  const media={driveFileId,mimeType,name:str(item.name,160),size:Number(item.size)||0,
+    source:str(item.source,60)||'手动上传',sourceUrl,createdAt:new Date().toISOString(),
+    driveUrl:'https://drive.google.com/file/d/'+encodeURIComponent(driveFileId)+'/view'};
+  house.media.push(media);
+  try{const out=await commitWholeState(latest.state,Number(latest.version||0));return {status:'added',houseId,version:out.version,media}}
+  catch(e){if(!e.conflict&&!/版本已变化|版本冲突/.test(e.message))throw e;if(attempt===2)throw e;}
+ }
+}
+
 export default async function handler(request){
  const origin=request.headers.get('origin')||'';if(!validOrigin(origin))return response({ok:false,error:'未允许的调用来源'},403,'https://hongqiao-housing-watch.netlify.app');
  if(request.method==='OPTIONS'){const h=response({},200,origin).headers;return new Response(null,{status:204,headers:h})}
@@ -117,6 +148,14 @@ export default async function handler(request){
   }
   // H5 edits use the same atomic Apps Script snapshotCommit API as the Chrome extension.
   // This replaces hundreds of 380-character GET chunks with one authenticated POST.
+  if(action==='mediaAttach'){
+   const result=await attachMedia(data);return response({ok:true,...result},200,origin);
+  }
+  if(['mediaStart','mediaPart','mediaFinish','mediaRead'].includes(action)){
+   // Only an authenticated Netlify session can proxy file operations.
+   const params={...data};delete params.action;delete params.token;delete params.session;delete params.pin;
+   const result=await googlePost(action,params);return response(result,200,origin);
+  }
   if(action==='snapshotCommit'){
    const expectedVersion=Number(data.expectedVersion),state=data.state;
    if(!Number.isInteger(expectedVersion)||expectedVersion<0||!state||typeof state!=='object'||Array.isArray(state)||!Array.isArray(state.houses)||!Array.isArray(state.scopes)){
