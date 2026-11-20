@@ -875,7 +875,8 @@ function mediaPart_(body){
     const serverEnd=Number(match[1]);
     if(!Number.isSafeInteger(serverEnd)||serverEnd<offset-1||serverEnd>end)throw Error('Drive 返回的上传进度无效');
     session.next=serverEnd+1;
-    if(session.next>offset)session.lastPart={offset:offset,digest:digest,next:session.next};
+    if(session.next<=offset)throw Error('Drive 尚未确认当前分块，请重试');
+    session.lastPart={offset:offset,digest:digest,next:session.next};
     mediaSessionPut_(id,session);
     return {ok:true,finished:false,next:session.next};
   }
