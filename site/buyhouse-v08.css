@@ -239,9 +239,11 @@ body.bh-drawer-open{overflow:hidden}
 .bh-topbar{background:transparent!important}
 .bh-topbar-right#topbarUploadSlot{
  flex:1 1 auto;
+ height:100%;
  max-width:min(540px,58vw);
  min-width:0;
  justify-content:flex-end;
+ align-items:center;
 }
 .bh-browse-toolbar .bh-search-toggle{
  width:112px!important;
