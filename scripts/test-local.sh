@@ -47,6 +47,9 @@ if command -v node >/dev/null 2>&1; then
   echo "==> Apps Script / Google Sheets snapshot simulation"
   node tests/test_apps_script_snapshot.cjs
 
+  echo "==> Apps Script Google Drive media resumable-upload simulation"
+  node tests/test_apps_script_media.cjs
+
   echo "==> Node-based local mock server regression"
   node tests/test_mock_preview.mjs
 else
