@@ -915,8 +915,6 @@ const BH_PATHS={
 function bhIcon(name,size=19){
  return '<svg class="bh-icon-svg" viewBox="0 0 24 24" width="'+size+'" height="'+size+'" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(BH_PATHS[name]||BH_PATHS.info)+'</svg>';
 }
- return '<svg class="bh-icon-svg" viewBox="0 0 24 24" width="'+size+'" height="'+size+'" fill="currentColor" aria-hidden="true">'+(BH_PATHS[name]||BH_PATHS.info)+'</svg>';
-}
 function metricIcon(type){
  return '<span class="bh-metric-icon" aria-hidden="true">'+bhIcon(type,31)+'</span>';
 }
