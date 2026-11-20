@@ -933,8 +933,8 @@ function houseMediaMarkup(h){
  const card=x=>{
    const id=String(x.driveFileId||'');
    const url=/^[A-Za-z0-9_-]{10,120}$/.test(id)?'https://drive.google.com/file/d/'+encodeURIComponent(id)+'/view':'';
-   const thumb=/^data:image\\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(String(x.previewData||''))?
-       x.previewData:/^https:\\/\\//.test(String(x.sourceUrl||''))?x.sourceUrl:'';
+   const thumb=/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(String(x.previewData||''))?
+       x.previewData:/^https:\/\//.test(String(x.sourceUrl||''))?x.sourceUrl:'';
    return `<div class="hq-media-item">${String(x.mimeType).startsWith('image/')&&thumb?
        `<img loading="lazy" referrerpolicy="no-referrer" src="${esc(thumb)}" alt="${esc(x.name||'房源图片')}">`:
        `<span class="hq-media-icon">${String(x.mimeType).startsWith('video/')?'▶':'▧'}</span>`}
@@ -943,7 +943,7 @@ function houseMediaMarkup(h){
       ${url?`<a href="${url}" target="_blank" rel="noopener noreferrer">在我的 Drive 中查看 ↗</a>`:''}
    </div>`;
  };
- const sourceImages=(h.sourceImages||[]).filter(x=>/^https:\\/\\//i.test(String(x))).slice(0,12);
+ const sourceImages=(h.sourceImages||[]).filter(x=>/^https:\/\//i.test(String(x))).slice(0,12);
  return `<div class="minihead">房源影像档案 <span class="muted">${photos.length}张图片 · ${videos.length}段视频</span></div>
   <div class="hq-media-grid">${media.map(card).join('')||'<p class="muted">暂无已归档的图片和视频；原始网站链接可能随下架失效。</p>'}</div>
   ${canEdit?`<div class="hq-media-controls">
