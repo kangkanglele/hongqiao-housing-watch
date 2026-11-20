@@ -77,7 +77,6 @@ function extractListingFromCurrentPage(){
    if(!mediaCandidates.includes(value))mediaCandidates.push(value);
  };
  const og=document.querySelector('meta[property="og:image"]')?.getAttribute('content');
- if(og)takeImage(og);
  const galleryContainers=[
    '.overview','.housePic','.house-pic','.housePhoto','.house-photo',
    '.house-img','.imglist','.house-view','.image-wrap','.photo-view',
@@ -100,6 +99,8 @@ function extractListingFromCurrentPage(){
    const set=img.getAttribute('srcset');
    if(set)takeImage(set.split(',').pop()?.trim().split(/\s+/)[0]);
  }
+ // The social sharing image is a fallback only; the visible listing gallery is preferred.
+ if(!mediaCandidates.length&&og)takeImage(og);
  // A thumbnail belongs to the listing only when it is inside the current detail gallery.
  const images=mediaCandidates.slice(0,12);
  // 明确不把“高楼层/7层”误读成实际第7层。
