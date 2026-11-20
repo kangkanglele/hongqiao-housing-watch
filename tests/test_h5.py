@@ -137,7 +137,7 @@ with sync_playwright() as pw:
     assert page.locator('.bh-pending-details').count() == 0, 'old pending-link strip should be removed'
     page.locator('[data-ui="pendingLinks"]').click()
     assert page.locator('.hq-pending-modal-list .quarantine-item').count() == 1
-    assert page.locator('.hq-pending-modal-list [data-action="promoteCandidate"]').count() == 1, 'candidate action must be preserved in the overview modal'
+    assert page.locator('.hq-pending-modal-list [data-ui="goSettings"]').count() == 1, 'locked candidate action must offer PIN unlock instead of a blocked edit'
     assert page.locator('.hq-pending-modal-list a[href*="11111111111"]').count() == 1
     page.locator('#overlay button[data-close]').click()
     assert page.locator('.bh-filter-accordion .filters').is_visible(), 'filters visible by default'
