@@ -50,7 +50,11 @@ self.HQMediaExtension=(()=>{
   while(offset<blob.size){
    const length=Math.min(CHUNK,blob.size-offset);
    const data=await base64(blob.slice(offset,offset+length));
-   const part=await post(session,'mediaPart',{uploadId:start.uploadId,offset,base64:data});
+   let part,attempt=0;
+   while(true){
+    try{part=await post(session,'mediaPart',{uploadId:start.uploadId,offset,base64:data});break;}
+    catch(error){if(++attempt>=3)throw error;await new Promise(resolve=>setTimeout(resolve,attempt*750));}
+   }
    if(!Number.isSafeInteger(part.next)||part.next<=offset)throw Error('图片上传未被 Drive 确认');
    offset=part.next;
    onProgress?.(Math.round(offset/blob.size*100));
