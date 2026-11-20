@@ -3,11 +3,11 @@
  */
 (function(root){
 'use strict';
-const API='/.netlify/functions/hq-api',CHUNK=512*1024,MAX=120*1024*1024;
+const API='/.netlify/functions/hq-api',CHUNK=512*1024,MAX=Number.MAX_SAFE_INTEGER;
 const types=new Set(['image/jpeg','image/png','image/webp','video/mp4','video/quicktime','video/webm']);
 function validate(file){
  if(!file||!types.has(file.type))throw Error('请使用 JPG、PNG、WebP、MP4、MOV 或 WebM');
- if(!file.size||file.size>MAX)throw Error('单个文件不能超过120MB');
+ if(!Number.isSafeInteger(file.size)||file.size<=0)throw Error('文件大小无效');
 }
 async function post(token,action,payload={}){
  if(!token)throw Error('请先输入 PIN 解锁云端');
