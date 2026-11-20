@@ -576,7 +576,7 @@ async function connectCloud(){
   setCloudStatus('已解锁，正在读取云端…');document.activeElement?.blur();render();
   if(localPending){setCloudStatus('发现本地待同步修改，正在自动合并…');const ok=await cloudPush(true);if(!ok)throw Error('本地修改已保留，云端稍后自动重试');}
   else await cloudPull(true);
-  tab='houses';render();toast('云端已解锁，数据已自动同步');
+  tab='houses';render();for(const task of mediaTasks.values())if(task.status==='needs-login')task.status=task.item.uploadedFile||task.item.file?'queued':'needs-file';renderMediaDock();pumpMediaQueue();toast('云端已解锁，数据已自动同步');
  }catch(e){setCloudStatus('解锁失败：'+e.message);toast('解锁失败：'+e.message)}
 }
 function lockCloud(){cloudConfig.token='';localStorage.removeItem('HQ_V35_SESSION');setCloudStatus('已锁定');render();toast('数据管理已锁定')}
