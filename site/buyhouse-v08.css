@@ -171,3 +171,32 @@ body.bh-drawer-open{overflow:hidden}
 .photo-placeholder .photo-symbol .bh-metric-icon{display:inline-flex;align-items:center;justify-content:center}
 .photo-placeholder .photo-symbol .bh-metric-icon svg{width:42px;height:46px}
 .property-photo.thumb .photo-placeholder .photo-symbol .bh-metric-icon svg{width:22px;height:24px}
+
+
+/* 2026-11-20 layout polish: overlays cover the header, no page-level horizontal pan,
+   upload progress stays below the top bar, and desktop navigation opens from the left. */
+.topbar-shell{z-index:20!important}
+@media(min-width:761px){
+ .app-drawer{position:fixed!important;top:0!important;bottom:0!important;left:0!important;right:auto!important;width:min(320px,calc(100vw - 32px))!important;transform:translate3d(-104%,0,0)!important}
+ body.bh-drawer-open .app-drawer{transform:translate3d(0,0,0)!important}
+}
+@media(max-width:760px){
+ html,body{max-width:100%;overflow-x:clip!important}
+ .app,.app .content,.app .main-inner,#root{max-width:100%;min-width:0}
+ .app .content{width:100%;box-sizing:border-box}
+ .app .main-inner,#root{width:100%;box-sizing:border-box}
+ #root>*{max-width:100%;min-width:0}
+ .bh-overview-head,.bh-list-head{min-width:0;max-width:100%;flex-wrap:wrap}
+ .bh-list-title{min-width:0;max-width:100%;flex:1 1 100%}
+ .bh-browse-toolbar{width:100%;max-width:100%;min-width:0;flex-wrap:wrap;justify-content:flex-end}
+ .bh-metrics,.bh-filter-accordion,.bh-filter-accordion .filters{max-width:100%;min-width:0}
+ .bh-listing,.bh-listing-main,.bh-listing-info{min-width:0;max-width:100%}
+ .box,.market-stat-grid,.config-form,.visit-v2,.visit-v2-row,.hq-media-controls{min-width:0;max-width:100%}
+ .visit-v2-tabs{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+ .table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+ img,video,canvas{max-width:100%}
+ a,button,span,p,small,strong{overflow-wrap:anywhere}
+}
+@supports not (overflow:clip){
+ @media(max-width:760px){html,body{overflow-x:hidden!important}}
+}
