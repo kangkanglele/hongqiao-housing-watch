@@ -840,13 +840,25 @@ function mediaPart_(body){
   const id=String(body.uploadId||''),session=mediaSession_(id);
   if(session.file)return {ok:true,finished:true,next:session.size,file:session.file};
   const offset=Number(body.offset||0);
-  if(!Number.isSafeInteger(offset)||offset!==session.next)throw Error('上传块顺序不正确，请按进度重试');
+  if(!Number.isSafeInteger(offset)||offset<0)throw Error('上传块偏移量无效');
   const value=String(body.base64||'');
   if(value.length>MEDIA_PART_BYTES_*2)throw Error('上传块过大');
   let bytes;
   try{bytes=Utilities.base64Decode(value);}catch(_){throw Error('图片/视频分块编码损坏');}
   if(bytes.length<=0||bytes.length>MEDIA_PART_BYTES_||offset+bytes.length>session.size)throw Error('上传块大小不正确');
   if(offset+bytes.length<session.size&&bytes.length%262144!==0)throw Error('中间上传块必须为256KB整数倍');
+  const digest=sha256Hex_(value);
+
+  // Drive may have accepted the previous request even if the response
+  // was lost. Accept only an exact replay of the last acknowledged chunk.
+  if(offset!==session.next){
+    const last=session.lastPart;
+    if(offset<session.next&&last&&offset===Number(last.offset)&&digest===String(last.digest)&&session.next===Number(last.next)){
+      return {ok:true,finished:false,next:session.next,duplicate:true};
+    }
+    throw Error('上传块顺序不正确，请按进度重试');
+  }
+
   const end=offset+bytes.length-1;
   const answer=UrlFetchApp.fetch(session.url,{
     method:'put',headers:{
@@ -856,15 +868,22 @@ function mediaPart_(body){
   });
   const code=answer.getResponseCode();
   if(code===308){
-    const range=answer.getAllHeaders().Range||answer.getAllHeaders().range;
-    const serverEnd=range?Number(String(range).split('-').pop()):end;
-    session.next=serverEnd+1;mediaSessionPut_(id,session);
+    const responseHeaders=answer.getAllHeaders();
+    const range=responseHeaders.Range||responseHeaders.range;
+    const match=String(range||'').match(/^bytes=0-(\\d+)$/);
+    if(!match)throw Error('Drive 未返回已接收字节范围，无法确认分块进度');
+    const serverEnd=Number(match[1]);
+    if(!Number.isSafeInteger(serverEnd)||serverEnd<offset-1||serverEnd>end)throw Error('Drive 返回的上传进度无效');
+    session.next=serverEnd+1;
+    if(session.next>offset)session.lastPart={offset:offset,digest:digest,next:session.next};
+    mediaSessionPut_(id,session);
     return {ok:true,finished:false,next:session.next};
   }
   if(code!==200&&code!==201)throw Error('Drive 上传块失败：HTTP '+code+' '+answer.getContentText().slice(0,150));
   let file;try{file=JSON.parse(answer.getContentText());}catch(_){throw Error('Drive 未返回文件信息');}
   if(!file.id)throw Error('Drive 未返回文件编号');
   session.next=session.size;
+  session.lastPart={offset:offset,digest:digest,next:session.next};
   session.file={driveFileId:String(file.id),name:session.name,mimeType:session.mime,size:session.size,driveUrl:'https://drive.google.com/file/d/'+encodeURIComponent(file.id)+'/view',listingKey:session.listingKey};
   mediaSessionPut_(id,session);
   return {ok:true,finished:true,next:session.next,file:session.file};
