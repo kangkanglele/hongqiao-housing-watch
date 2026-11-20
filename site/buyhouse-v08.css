@@ -448,3 +448,65 @@ input[type="checkbox"],input[type="radio"]{accent-color:#111111!important}
 .defect-pill:has(input:checked){background:#111111!important;border-color:#111111!important;color:#FFFFFF!important}
 .link-policy{background:#F2F2F2!important;border-color:#E6E6E6!important;color:#555555!important}
 .help b[style*="color"]{color:#333333!important}
+
+
+/* 2026-11-20 mobile layout refinements (preview only). */
+
+/* The fourth overview tile is a real action; keep the same KPI typography. */
+.bh-metrics .bh-metric-action{
+ appearance:none;-webkit-appearance:none;
+ text-align:left;font:inherit;color:inherit;cursor:pointer;
+ display:flex;flex-direction:column;justify-content:space-between;
+}
+.bh-metrics .bh-metric-action:hover{background:#FAFAFA!important}
+.bh-metrics .bh-metric-action:focus-visible{outline:2px solid #111!important;outline-offset:-3px}
+.hq-pending-modal-list{max-height:55dvh;overflow-y:auto;margin-top:14px}
+.hq-pending-modal-list .quarantine-item:first-child{border-top:0}
+.hq-pending-modal-list .quarantine-item{gap:12px}
+.hq-pending-modal-list a{color:#333;text-decoration:underline;text-underline-offset:2px}
+
+/* Keep upload progress flush to the page's right-hand header margin. */
+#topbarUploadSlot.bh-topbar-right{justify-content:flex-end!important}
+#hqUploadDock{justify-content:flex-end!important}
+#hqUploadDock .hq-upload-mini{
+ flex:0 1 auto;min-width:0;max-width:100%;box-sizing:border-box;
+}
+#hqUploadDock .hq-upload-mini button{min-width:0}
+#hqUploadDock .hq-upload-mini button span{flex:1 1 auto;min-width:0}
+#hqUploadDock .hq-upload-panel{right:0!important}
+
+/* All horizontal status chips use at least a 40pt/iOS logical-pixel tap height. */
+.bh-filter-accordion .filters .chip{
+ min-height:40px!important;box-sizing:border-box;
+ padding:0 14px!important;font-size:13px!important;line-height:1.25!important;
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+}
+
+/* Repositionable floating action, drag only on the action itself. */
+#fabNew{
+ touch-action:none;-ms-touch-action:none;
+ user-select:none;-webkit-user-select:none;
+ cursor:grab;
+}
+#fabNew.is-dragging{cursor:grabbing!important;opacity:.9;box-shadow:0 10px 28px rgba(0,0,0,.23)!important}
+
+@media(max-width:760px){
+ /* Toolbar begins at exactly the same left inset as the listing cards. */
+ .bh-list-head{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:11px!important}
+ .bh-list-head .bh-list-title{flex:0 0 auto!important;width:100%}
+ .bh-list-head .bh-browse-toolbar{
+  display:flex!important;justify-content:flex-start!important;
+  align-items:center!important;gap:8px!important;
+  width:100%!important;max-width:100%;margin:0!important;
+ }
+ .bh-list-head .bh-view-switch{margin-left:auto!important}
+ .bh-browse-toolbar .bh-search-toggle{width:112px!important;flex:0 0 112px!important}
+ .bh-browse-toolbar .bh-select-wrap{min-width:0;flex:0 1 auto}
+ .bh-browse-toolbar .bh-select-wrap select{max-width:150px}
+ .bh-filter-accordion .filters{padding-top:4px;padding-bottom:10px}
+ .bh-metrics .bh-metric-action{min-width:145px}
+}
+@media(max-width:350px){
+ .bh-browse-toolbar .bh-search-toggle{width:100px!important;flex-basis:100px!important}
+ .bh-browse-toolbar .bh-select-wrap select{max-width:112px}
+}
