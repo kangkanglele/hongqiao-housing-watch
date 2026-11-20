@@ -11,7 +11,8 @@ const b64 = x => Buffer.from(x).toString('base64url');
 const unb64 = x => Buffer.from(x,'base64url').toString();
 const env = k => (globalThis.Netlify?.env?.get?.(k) ?? process.env[k] ?? '');
 const response = (body,status=200,origin='') => new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','access-control-allow-origin':origin||'https://hongqiao-housing-watch.netlify.app','vary':'Origin','access-control-allow-headers':'Content-Type, Authorization','access-control-allow-methods':'POST, OPTIONS','x-content-type-options':'nosniff'}});
-const validOrigin = o => !o || o === 'https://hongqiao-housing-watch.netlify.app' || o.startsWith('chrome-extension://') || (env('HQ_ALLOW_LOCAL')==='true' && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o));
+const isNetlifyPreviewOrigin = o => /^https:\/\/(?:deploy-preview-\d+|[a-f0-9]{24})--hongqiao-housing-watch\.netlify\.app$/.test(o);
+const validOrigin = o => !o || o === 'https://hongqiao-housing-watch.netlify.app' || isNetlifyPreviewOrigin(o) || o.startsWith('chrome-extension://') || (env('HQ_ALLOW_LOCAL')==='true' && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o));
 function equal(a,b){const x=Buffer.from(String(a)),y=Buffer.from(String(b));return x.length===y.length&&timingSafeEqual(x,y)}
 function signature(payload){return createHmac('sha256',env('HQ_SESSION_SECRET')).update(payload).digest('base64url')}
 function makeSession(){const payload=b64(JSON.stringify({purpose:'hq-sync',exp:Date.now()+AUTH_TTL_MS}));return payload+'.'+signature(payload)}
