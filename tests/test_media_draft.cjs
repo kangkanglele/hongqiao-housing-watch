@@ -42,9 +42,11 @@ const context={
  window:{},fetch:async(_url,options)=>{
    const data=JSON.parse(options.body);
    generated.push(data);
+   if(data.action==='mediaPart'&&data.uploadId==='expired-session')
+    return {ok:false,status:400,json:async()=>({ok:false,error:'上传会话已过期，请重新选择文件'})};
    if(data.action==='mediaPart'&&h5FirstPartFailure){h5FirstPartFailure=false;throw Error('simulated lost response after first chunk');}
    let result={ok:true};
-   if(data.action==='mediaStart')result={ok:true,uploadId:'test-media-upload',chunkSize:512*1024};
+   if(data.action==='mediaStart')result={ok:true,uploadId:'test-media-upload',chunkSize:2*1024*1024};
    if(data.action==='mediaPart')result={ok:true,next:data.offset+Buffer.from(data.base64,'base64').length};
    if(data.action==='mediaFinish')result={ok:true,file:{
     driveFileId:'draft-file-id-123456',name:'livingroom.jpg',mimeType:'image/jpeg',size:600000
@@ -64,8 +66,27 @@ run('site/media-client.js',context);
  file.name='livingroom.jpg';
  const saved=await context.window.HQMedia.upload('fake-session',file,'house:TJ-HQ-0001');
  assert.equal(saved.driveFileId,'draft-file-id-123456');
- assert.equal(generated.filter(x=>x.action==='mediaPart').length,3,'H5 should retry a transient lost response and then upload the remaining chunk');
- assert.ok(generated.every(x=>x.action!=='mediaPart'||x.base64.length<800000));
+ assert.equal(generated.filter(x=>x.action==='mediaPart').length,2,'H5 should retry a transient lost response without restarting the file');
+ assert.ok(generated.every(x=>x.action!=='mediaPart'||x.base64.length<3000000));
+ // Reopening the page and selecting the same file resumes the persisted Drive session.
+ const resumeFile=new Blob([Buffer.alloc(23,5)],{type:'video/mp4'});resumeFile.name='resume.mov';
+ const beforeResume=generated.length,checkpoints=[];
+ const resumed=await context.window.HQMedia.upload('fake-session',resumeFile,'house:TJ-HQ-0001',()=>{},{
+  uploadId:'existing-resumable-session',offset:0,chunkSize:2*1024*1024,
+  onSession:session=>checkpoints.push({kind:'session',...session}),
+  onCheckpoint:checkpoint=>checkpoints.push({kind:'checkpoint',...checkpoint})
+ });
+ assert.equal(resumed.driveFileId,'draft-file-id-123456');
+ const resumeCalls=generated.slice(beforeResume);
+ assert.equal(resumeCalls.filter(x=>x.action==='mediaStart').length,0,'resuming must reuse the existing upload session');
+ assert.equal(resumeCalls.find(x=>x.action==='mediaPart').uploadId,'existing-resumable-session');
+ assert.equal(checkpoints.at(-1).offset,23,'each acknowledged chunk must checkpoint its byte offset');
+ // Expired sessions are transparently restarted from byte zero.
+ const expiredCalls=generated.length;
+ await context.window.HQMedia.upload('fake-session',resumeFile,'house:TJ-HQ-0001',()=>{},{
+  uploadId:'expired-session',offset:0,chunkSize:2*1024*1024
+ });
+ assert.ok(generated.slice(expiredCalls).some(x=>x.action==='mediaStart'),'expired session should create a fresh Drive session');
 
  // Chrome listing-photo archiver: verify a single source image larger than the old 8 MiB cap is chunked.
  const extensionParts=[];
