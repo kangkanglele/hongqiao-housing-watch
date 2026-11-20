@@ -53,6 +53,21 @@ assert.equal(unknown.body.status,'pending_community');assert.equal(state.houses.
 const thirdParty=await call('capture',{record:{...item,url:'https://anjuke.com/tj/ershoufang/101126703003.html'}},session);assert.equal(thirdParty.status,502);assert.equal(state.houses.length,1);
 const opts=await handler(new Request(root,{method:'OPTIONS',headers:{origin:'chrome-extension://abcdefgh'}}));assert.equal(opts.status,204);
 assert.equal(snapshotPostCalls,3,'each successful mutation must be one Apps Script POST');
+// V2: a new capture defaults to 未看; an explicit edit moves it into the timeless pending list.
+assert.equal(state.houses[0].visitStatus,'未看');
+const visitPending=await call('capture',{record:{...item,price:54,visitStatus:'看房',visitStatusExplicit:true}},session);
+assert.equal(visitPending.body.status,'updated');
+assert.equal(state.houses[0].visitStatus,'看房');
+const beforeNoOp=snapshotPostCalls;
+const recapture=await call('capture',{record:{...item,price:54,visitStatus:'未看',visitStatusExplicit:false}},session);
+assert.equal(recapture.body.status,'unchanged','recapture without touching visit selector must preserve earlier intent');
+assert.equal(state.houses[0].visitStatus,'看房');
+assert.equal(snapshotPostCalls,beforeNoOp);
+const visitSeen=await call('capture',{record:{...item,price:54,visitStatus:'看过',visitStatusExplicit:true}},session);
+assert.equal(visitSeen.body.status,'updated');
+assert.equal(state.houses[0].visitStatus,'看过');
+assert.ok(Number.isFinite(Date.parse(state.houses[0].visitSeenAt)),'marking seen should keep a timestamp');
+
 // H5 now uses the exact same one-request Apps Script POST as the extension.
 const snapshotInvalid=await call('snapshotCommit',{expectedVersion:version,state:{houses:'invalid',scopes:[]} },session);
 assert.equal(snapshotInvalid.status,400,'H5 snapshots must include valid houses and scopes');
