@@ -140,6 +140,12 @@ with sync_playwright() as pw:
     assert page.locator('.bh-listing').count() == 1, 'default list excludes hard defects and deleted records'
     assert page.locator('.photo-placeholder .photo-symbol .bh-metric-icon').count() >= 1, 'listing placeholder reuses overview house icon'
     assert '水木天成翠杨园' in page.locator('.bh-listing-name').inner_text()
+    # Desktop navigation drawer must open from the left edge.
+    page.locator('#navToggle').click()
+    drawer_left = page.locator('#navDrawer').evaluate('(el)=>el.getBoundingClientRect().left')
+    drawer_transform = page.locator('#navDrawer').evaluate('(el)=>getComputedStyle(el).transform')
+    assert drawer_left <= 1 and drawer_transform in ('none','matrix(1, 0, 0, 1, 0, 0)'), f'desktop drawer must open on the left: left={drawer_left}, transform={drawer_transform}'
+    page.locator('#navBackdrop').click()
     page.locator('[data-view="table"]').click()
     assert page.locator('.bh-listings.compact').count() == 1
     page.locator('[data-view="cards"]').click()
@@ -153,6 +159,21 @@ with sync_playwright() as pw:
     assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), '390px layout must not scroll horizontally'
     page.set_viewport_size({'width':320,'height':740})
     assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), '320px layout must not scroll horizontally'
+    # Opening a property modal must shade the sticky top bar too.
+    page.locator('.bh-listing-main').first.click()
+    assert page.locator('#overlay .detail-shade').count() == 1
+    layers = page.evaluate("""() => ({
+      header:Number(getComputedStyle(document.querySelector('.topbar-shell')).zIndex),
+      shade:Number(getComputedStyle(document.querySelector('#overlay .shade')).zIndex)
+    })""")
+    assert layers['header'] < layers['shade'], f'modal shade must cover top navigation: {layers}'
+    assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), '320px detail modal must not create page-level horizontal scrolling'
+    page.locator('.detail-sheet [aria-label="关闭"]').click()
+    # The mobile navigation drawer remains anchored at the left edge.
+    page.locator('#navToggle').click()
+    mobile_drawer_left = page.locator('#navDrawer').evaluate('(el)=>el.getBoundingClientRect().left')
+    assert mobile_drawer_left <= 1, f'mobile navigation drawer must open from the left: {mobile_drawer_left}'
+    page.locator('#navBackdrop').click()
 
     assert page.locator('#adminPin').count() == 0
     page.locator('#navToggle').click()
