@@ -149,8 +149,8 @@ with sync_playwright() as pw:
     assert toolbar_order == 'search,community,view', f'search, community and view controls must follow requested order: {toolbar_order}'
     search_width = page.locator('.bh-search-toggle').evaluate('(el)=>el.getBoundingClientRect().width')
     assert search_width >= 108, f'search target should be widened: {search_width}'
-    fab_style = page.locator('#fabNew').evaluate("""el => ({position:getComputedStyle(el).position,top:getComputedStyle(el).top,bottom:getComputedStyle(el).bottom})""")
-    assert fab_style['position'] == 'fixed' and fab_style['bottom'] == 'auto' and float(fab_style['top'].replace('px','')) < 100, f'new listing button should float at upper right: {fab_style}'
+    fab_style = page.locator('#fabNew').evaluate("""el => ({position:getComputedStyle(el).position,top:getComputedStyle(el).top,right:getComputedStyle(el).right,bottom:getComputedStyle(el).bottom})""")
+    assert fab_style['position'] == 'fixed' and float(fab_style['top'].replace('px','')) < 100 and 0 < float(fab_style['right'].replace('px','')) < 60, f'new listing button should float at upper right: {fab_style}'
     # Read-only preview must explain why upload controls are unavailable and offer a safe route to PIN unlock.
     page.locator('.bh-listing-main').first.click()
     assert page.locator('.hq-media-locked').is_visible(), 'locked preview must explain upload is disabled until PIN unlock'
