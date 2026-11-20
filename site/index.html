@@ -920,7 +920,7 @@ function renderNav(){
  document.getElementById('nav').innerHTML=navs.map(([id,icon,label])=>'<button type="button" class="'+(tab===id?'active':'')+'" data-tab="'+id+'" aria-label="'+esc(label)+'" '+(tab===id?'aria-current="page"':'')+'><span class="ico">'+bhIcon(icon,20)+'</span>'+esc(label)+'</button>').join('');
  const fab=document.getElementById('fabNew');if(fab){fab.hidden=tab!=='houses';fab.innerHTML=bhIcon('plus',27)}
  const toggle=document.getElementById('navToggle');if(toggle)toggle.innerHTML=bhIcon('menu',21);
- const brand=document.getElementById('drawerBrandGlyph');if(brand)brand.innerHTML=bhIcon('app',23);
+ const brand=document.getElementById('drawerBrandGlyph');if(brand)brand.innerHTML='<img src="/snail-logo.svg" alt="" width="44" height="44">';
  const close=document.querySelector('.bh-drawer-head [data-ui="drawerClose"]');if(close)close.innerHTML=bhIcon('close',15);
 }
 
