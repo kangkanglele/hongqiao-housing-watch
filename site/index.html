@@ -1558,6 +1558,77 @@ function importCapturedRecord(record){
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('bh-drawer-open'))closeBhDrawer()});
 // V3.5: 浏览器扩展独立直传 Netlify Functions；已移除旧的 H5 消息中转。
+
+/* Draggable add-listing action: pointer/touch, click-safe and device-local position. */
+const FAB_POSITION_KEY='HQ_FAB_POSITION_V1';
+function initDraggableFab(){
+ const fab=document.getElementById('fabNew');if(!fab)return;
+ let pointer=null,moved=false,lastDragAt=0;
+ const limit=(v,min,max)=>Math.min(Math.max(v,min),max);
+ const bounds=()=>{
+  const vv=window.visualViewport;
+  const width=Math.min(window.innerWidth,(vv?.width||window.innerWidth)+(vv?.offsetLeft||0));
+  const height=Math.min(window.innerHeight,(vv?.height||window.innerHeight)+(vv?.offsetTop||0));
+  const minX=12,maxX=Math.max(minX,width-(fab.offsetWidth||54)-12);
+  const minY=70,maxY=Math.max(minY,height-(fab.offsetHeight||54)-78);
+  return {minX,maxX,minY,maxY};
+ };
+ const put=(x,y)=>{
+  const b=bounds();
+  fab.style.setProperty('left',Math.round(limit(x,b.minX,b.maxX))+'px','important');
+  fab.style.setProperty('top',Math.round(limit(y,b.minY,b.maxY))+'px','important');
+  fab.style.setProperty('right','auto','important');
+  fab.style.setProperty('bottom','auto','important');
+ };
+ const store=()=>{
+  const b=bounds(),r=fab.getBoundingClientRect();
+  const position={
+   x:(r.left-b.minX)/Math.max(1,b.maxX-b.minX),
+   y:(r.top-b.minY)/Math.max(1,b.maxY-b.minY)
+  };
+  try{localStorage.setItem(FAB_POSITION_KEY,JSON.stringify(position));}catch(_){}
+ };
+ const restore=()=>{
+  let p=null;try{p=JSON.parse(localStorage.getItem(FAB_POSITION_KEY)||'null');}catch(_){}
+  if(p&&Number.isFinite(p.x)&&Number.isFinite(p.y)){
+   const b=bounds();
+   put(b.minX+limit(p.x,0,1)*(b.maxX-b.minX),
+       b.minY+limit(p.y,0,1)*(b.maxY-b.minY));
+  }
+ };
+ fab.addEventListener('pointerdown',e=>{
+  if(e.button!==0||!e.isPrimary)return;
+  const r=fab.getBoundingClientRect();
+  pointer={id:e.pointerId,x:e.clientX,y:e.clientY,left:r.left,top:r.top};
+  moved=false;
+  try{fab.setPointerCapture(e.pointerId);}catch(_){}
+ });
+ fab.addEventListener('pointermove',e=>{
+  if(!pointer||e.pointerId!==pointer.id)return;
+  const dx=e.clientX-pointer.x,dy=e.clientY-pointer.y;
+  if(!moved&&Math.hypot(dx,dy)<6)return;
+  moved=true;fab.classList.add('is-dragging');
+  put(pointer.left+dx,pointer.top+dy);
+  if(e.cancelable)e.preventDefault();
+ });
+ const finish=e=>{
+  if(!pointer||e.pointerId!==pointer.id)return;
+  if(moved){store();lastDragAt=Date.now();}
+  pointer=null;moved=false;fab.classList.remove('is-dragging');
+  try{if(fab.hasPointerCapture(e.pointerId))fab.releasePointerCapture(e.pointerId);}catch(_){}
+ };
+ fab.addEventListener('pointerup',finish);
+ fab.addEventListener('pointercancel',finish);
+ // A release after dragging must never trigger "new listing".
+ fab.addEventListener('click',e=>{
+  if(Date.now()-lastDragAt<500){e.preventDefault();e.stopImmediatePropagation();}
+ },true);
+ window.addEventListener('resize',restore);
+ window.visualViewport?.addEventListener('resize',restore);
+ restore();
+}
+
+initDraggableFab();
 applyPageConfig();render();
 const hqCloudInitPromise=initCloud().finally(()=>{cloudStartupDone=true;void restoreMediaTasks();});
 // 新设备首次打开时自动展示 PIN 登录界面，避免看到全是0的空白初始化页。
