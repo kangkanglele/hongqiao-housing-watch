@@ -52,7 +52,8 @@ const start=context.mediaStart_,part=context.mediaPart_,finish=context.mediaFini
  assert.equal(result.file.driveFileId,'drive-file-2');
  assert.equal(result.file.size,size);
  assert.equal(driveRequests.filter(x=>x.method==='put').length,2);
- assert.equal(driveRequests[1].headers['Content-Range'],'bytes 524288-524288/524289');
+ assert.equal(driveRequests[2].headers['Content-Range'],'bytes 0-524287/524289');
+ assert.equal(driveRequests[3].headers['Content-Range'],'bytes 524288-524288/524289');
  assert.ok(!code.includes('MEDIA_LIMIT_BYTES_')&&!code.includes('120MB'),'Apps Script must not contain an app-level file size cap');
  console.log('PASS Apps Script Drive media: accepts >120 MiB metadata, creates private resumable session, 512 KiB chunking and finalization');
 })().catch(e=>{console.error(e);process.exitCode=1});
