@@ -140,6 +140,17 @@ with sync_playwright() as pw:
     assert page.locator('.bh-listing').count() == 1, 'default list excludes hard defects and deleted records'
     assert page.locator('.photo-placeholder .photo-symbol .bh-metric-icon').count() >= 1, 'listing placeholder reuses overview house icon'
     assert '水木天成翠杨园' in page.locator('.bh-listing-name').inner_text()
+    # Header: no white slab or redundant cloud/help block; upload slot is reserved at the right.
+    header_style = page.locator('.topbar-shell').evaluate("""el => ({background:getComputedStyle(el).backgroundColor,border:getComputedStyle(el).borderBottomWidth})""")
+    assert header_style['background'] == 'rgb(245, 247, 246)' and header_style['border'] == '0px', f'header should blend into page background: {header_style}'
+    assert page.locator('.bh-mini-status').count() == 0 and page.locator('[data-ui="help"]').count() == 0, 'remove compact cloud status and help block from header'
+    assert page.locator('#topbarUploadSlot[hidden]').count() == 1, 'empty upload slot must stay hidden'
+    toolbar_order = page.locator('.bh-browse-toolbar').evaluate("""el => [...el.children].map(x=>x.classList.contains('bh-search-toggle')?'search':x.classList.contains('bh-select-wrap')?'community':'view').join(',')""")
+    assert toolbar_order == 'search,community,view', f'search, community and view controls must follow requested order: {toolbar_order}'
+    search_width = page.locator('.bh-search-toggle').evaluate('(el)=>el.getBoundingClientRect().width')
+    assert search_width >= 108, f'search target should be widened: {search_width}'
+    fab_style = page.locator('#fabNew').evaluate("""el => ({position:getComputedStyle(el).position,top:getComputedStyle(el).top,bottom:getComputedStyle(el).bottom})""")
+    assert fab_style['position'] == 'fixed' and fab_style['bottom'] == 'auto' and float(fab_style['top'].replace('px','')) < 100, f'new listing button should float at upper right: {fab_style}'
     # Read-only preview must explain why upload controls are unavailable and offer a safe route to PIN unlock.
     page.locator('.bh-listing-main').first.click()
     assert page.locator('.hq-media-locked').is_visible(), 'locked preview must explain upload is disabled until PIN unlock'
