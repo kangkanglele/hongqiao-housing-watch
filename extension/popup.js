@@ -8,7 +8,7 @@ const labels={
  auth_required:['等待 PIN 授权','记录已安全保存在本机，连接后自动上传','🔐'],
  offline:['网络暂不可用','数据没有丢失，网络恢复后会自动重试','↻'],
  error:['本次操作未完成','记录仍保留在本机队列，可查看错误并重试','!'],
- idle:['准备就绪','打开贝壳、链家或我爱我家单套详情页，点击扩展图标即可采集','⌂']
+ idle:['准备就绪','选择看房属性后，点击“采集并加入房源”','⌂']
 };
 function render(state){
  const phase=state.phase||'idle',meta=labels[phase]||labels.idle;
@@ -36,12 +36,11 @@ async function refresh(){
  try{const state=await chrome.runtime.sendMessage({type:'STATUS'});render(state||{});}
  catch(error){$('#statusMessage').textContent=error.message||String(error);}
 }
+let visitStatusExplicit=false;
 async function init(){
  const config=await chrome.storage.local.get('imageCount');
  $('#imageCount').value=Number(config.imageCount)===8?'8':'1';
- await refresh();
- try{const result=await chrome.runtime.sendMessage({type:'CAPTURE_ACTIVE'});if(!result?.ok&&result?.error)$('#statusMessage').textContent=result.error;}
- catch(error){$('#statusMessage').textContent=error.message||String(error);}
+ $('#visitStatus').value='未看';
  await refresh();
 }
 $('#login').addEventListener('click',async()=>{
@@ -59,9 +58,16 @@ $('#login').addEventListener('click',async()=>{
 $('#imageCount').addEventListener('change',async e=>{
  await chrome.runtime.sendMessage({type:'SET_IMAGE_COUNT',value:Number(e.target.value)});
 });
+$('#visitStatus').addEventListener('change',()=>{visitStatusExplicit=true;});
 $('#recapture').addEventListener('click',async()=>{
- $('#statusMessage').textContent='正在按当前主图/多图设置重新采集…';
- try{await chrome.runtime.sendMessage({type:'CAPTURE_ACTIVE'});}catch(error){$('#statusMessage').textContent=error.message||String(error);}
+ const button=$('#recapture');button.disabled=true;
+ $('#statusMessage').textContent='正在采集房源数据与看房属性…';
+ try{
+  const result=await chrome.runtime.sendMessage({type:'CAPTURE_ACTIVE',visitStatus:$('#visitStatus').value,visitStatusExplicit});
+  if(!result?.ok)throw Error(result?.error||'采集失败');
+  visitStatusExplicit=false;
+ }catch(error){$('#statusMessage').textContent=error.message||String(error);}
+ finally{button.disabled=false;}
  await refresh();
 });
 $('#retry').addEventListener('click',async()=>{
