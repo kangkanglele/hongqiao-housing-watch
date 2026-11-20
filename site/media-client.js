@@ -3,7 +3,7 @@
  */
 (function(root){
 'use strict';
-const API='/.netlify/functions/hq-api',CHUNK=512*1024;
+const API='/.netlify/functions/hq-api',CHUNK=2*1024*1024;
 const types=new Set(['image/jpeg','image/png','image/webp','video/mp4','video/quicktime','video/webm']);
 function validate(file){
  if(!file||!types.has(file.type))throw Error('请使用 JPG、PNG、WebP、MP4、MOV 或 WebM');
@@ -22,23 +22,50 @@ async function encodePart(blob){
  for(let i=0;i<bytes.length;i+=16384)raw+=String.fromCharCode(...bytes.subarray(i,i+16384));
  return btoa(raw);
 }
-async function upload(token,file,listingKey,onProgress){
+async function upload(token,file,listingKey,onProgress,options={}){
  validate(file);
- const session=await post(token,'mediaStart',{name:file.name,mimeType:file.type,size:file.size,listingKey});
- let offset=0;
+ const start=()=>post(token,'mediaStart',{name:file.name,mimeType:file.type,size:file.size,listingKey});
+ let uploadId=String(options.uploadId||'');
+ let offset=Math.max(0,Number(options.offset)||0);
+ let chunkSize=Math.max(262144,Number(options.chunkSize)||CHUNK);
+ let restarted=false;
+ if(!uploadId||offset>file.size){
+   const session=await start();uploadId=session.uploadId;
+   chunkSize=Number(session.chunkSize)||chunkSize;offset=0;
+   await options.onSession?.({uploadId,offset,chunkSize,restarted:false});
+ }else{
+   await options.onSession?.({uploadId,offset,chunkSize,resumed:true});
+ }
  while(offset<file.size){
-   const length=Math.min(CHUNK,file.size-offset);
+   const length=Math.min(chunkSize,file.size-offset);
    const base64=await encodePart(file.slice(offset,offset+length));
-   let part,attempt=0;
+   let part,attempt=0,resetSession=false;
    while(true){
-     try{part=await post(token,'mediaPart',{uploadId:session.uploadId,offset,base64});break;}
-     catch(error){if(++attempt>=3)throw error;await new Promise(ok=>setTimeout(ok,attempt*750));}
+     try{part=await post(token,'mediaPart',{uploadId,offset,base64});break;}
+     catch(error){
+       if(!restarted&&/上传会话已过期|上传会话无效/.test(error.message||'')){
+         const session=await start();uploadId=session.uploadId;
+         chunkSize=Number(session.chunkSize)||chunkSize;offset=0;restarted=true;
+         await options.onSession?.({uploadId,offset,chunkSize,restarted:true});
+         resetSession=true;break;
+       }
+       if(++attempt>=3)throw error;
+       await new Promise(ok=>setTimeout(ok,attempt*750));
+     }
    }
+   if(resetSession)continue;
    if(!Number.isSafeInteger(part.next)||part.next<=offset)throw Error('云端未确认当前分块');
    offset=part.next;
-   onProgress?.(Math.min(100,Math.round(offset/file.size*100)));
+   const progress={percent:Math.min(100,Math.round(offset/file.size*100)),loaded:offset,total:file.size,offset,uploadId};
+   onProgress?.(progress);
+   await options.onCheckpoint?.({uploadId,offset,chunkSize,total:file.size});
  }
- const finished=await post(token,'mediaFinish',{uploadId:session.uploadId});
+ let finished,finishError;
+ for(let attempt=0;attempt<3;attempt++){
+   try{finished=await post(token,'mediaFinish',{uploadId});finishError=null;break;}
+   catch(error){finishError=error;if(attempt<2)await new Promise(ok=>setTimeout(ok,(attempt+1)*750));}
+ }
+ if(finishError)throw finishError;
  if(!finished.file?.driveFileId)throw Error('上传完成但未拿到 Drive 文件 ID');
  return finished.file;
 }
@@ -171,7 +198,7 @@ async function extractCapturedAt(file){
 const DB='hq-private-media-queue',STORE='media',FALLBACK='hq-private-media-queue-metadata-v2';
 const memoryPending=new Map();
 function safeRecord(item){
- const allow=['id','houseId','listingKey','name','size','mimeType','lastModified','previewData','shotAt','shotSource','at','uploadedFile'];
+ const allow=['id','houseId','listingKey','name','size','mimeType','lastModified','previewData','shotAt','shotSource','at','uploadedFile','uploadId','offset','chunkSize','status'];
  const record={};
  for(const key of allow)if(item&&Object.prototype.hasOwnProperty.call(item,key))record[key]=item[key];
  if(!record.id||!record.houseId)throw Error('待上传记录不完整');
