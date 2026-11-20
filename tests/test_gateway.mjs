@@ -75,6 +75,30 @@ const visitSeen=await call('capture',{record:{...item,price:54,visitStatus:'看�
 assert.equal(visitSeen.body.status,'updated');
 assert.equal(state.houses[0].visitStatus,'看过');
 assert.ok(Number.isFinite(Date.parse(state.houses[0].visitSeenAt)),'marking seen should keep a timestamp');
+assert.ok(Number.isFinite(Date.parse(state.houses[0].visitSeenAt)),'marking seen should keep a timestamp');
+
+// Drive media: an uploaded image/video is attached to the matching cloud house.
+// A retry with the same Drive file ID must not create duplicate media or snapshots.
+const beforeMediaAttach=snapshotPostCalls;
+const imageMedia={driveFileId:'drive-image-test-123456',mimeType:'image/jpeg',name:'livingroom.jpg',size:12345,source:'网站照片',sourceUrl:'https://image1.ljcdn.com/real-estate/room.jpg',previewData:'data:image/jpeg;base64,AA=='};
+const imageAttach=await call('mediaAttach',{houseId:state.houses[0].id,media:imageMedia},session);
+assert.equal(imageAttach.status,200);
+assert.equal(imageAttach.body.status,'added');
+assert.equal(state.houses[0].media.length,1);
+assert.equal(state.houses[0].media[0].driveFileId,imageMedia.driveFileId);
+assert.equal(snapshotPostCalls,beforeMediaAttach+1,'first media association must save one atomic snapshot');
+const duplicateImage=await call('mediaAttach',{houseId:state.houses[0].id,media:imageMedia},session);
+assert.equal(duplicateImage.status,200);
+assert.equal(duplicateImage.body.status,'unchanged');
+assert.equal(state.houses[0].media.length,1,'retry must not duplicate the image');
+assert.equal(snapshotPostCalls,beforeMediaAttach+1,'duplicate media association must not create another snapshot');
+const videoAttach=await call('mediaAttach',{houseId:state.houses[0].id,media:{driveFileId:'drive-video-test-123456',mimeType:'video/mp4',name:'onsite.mp4',size:987654,source:'现场上传'}},session);
+assert.equal(videoAttach.status,200);
+assert.equal(videoAttach.body.status,'added');
+assert.equal(state.houses[0].media.length,2);
+assert.equal(state.houses[0].media[1].mimeType,'video/mp4');
+assert.equal(snapshotPostCalls,beforeMediaAttach+2,'video association must also save one atomic snapshot');
+
 
 // H5 now uses the exact same one-request Apps Script POST as the extension.
 const snapshotInvalid=await call('snapshotCommit',{expectedVersion:version,state:{houses:'invalid',scopes:[]} },session);
