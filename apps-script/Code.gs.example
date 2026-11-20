@@ -789,10 +789,9 @@ function productionHealthCheck() {
 /* MEDIA DRAFT: private Google Drive files. Deploy only when release is approved.
  * Media bytes NEVER go into the Sheets snapshot. Upload session URLs and OAuth
  * tokens remain in Apps Script CacheService and never reach the browser.
- * Up to 120 MiB per file; upload parts must be sequential, 256 KiB multiples.
+ * No application-defined per-file cap; Google Drive quota and platform limits still apply. Upload parts must be sequential, 256 KiB multiples.
  * Google Apps Script deployment must have Drive and external_request scopes.
  */
-const MEDIA_LIMIT_BYTES_ = 120 * 1024 * 1024;
 const MEDIA_PART_BYTES_ = 512 * 1024;
 const MEDIA_CACHE_TTL_ = 21600;
 function mediaCache_(){return CacheService.getScriptCache();}
@@ -820,7 +819,7 @@ function mediaStart_(body){
   const mime=String(body.mimeType||'').toLowerCase();
   if(!/^(image\/(jpeg|png|webp)|video\/(mp4|quicktime|webm))$/.test(mime))throw Error('仅支持 JPG/PNG/WebP、MP4/MOV/WebM');
   const size=Number(body.size);
-  if(!Number.isSafeInteger(size)||size<=0||size>MEDIA_LIMIT_BYTES_)throw Error('文件大小须在 120MB 以内');
+  if(!Number.isSafeInteger(size)||size<=0)throw Error('文件大小无效');
   const name=String(body.name||'media').replace(/[\\/\x00-\x1f]/g,'_').slice(0,150);
   const listingKey=String(body.listingKey||'unassigned').slice(0,90);
   const folder=mediaFolder_(listingKey);
