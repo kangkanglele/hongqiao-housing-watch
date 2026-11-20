@@ -192,6 +192,41 @@ body{font-size:calc(14px * var(--hq-text-scale))}
 .hq-media-controls{padding:13px;border:1px dashed #a8cabe;border-radius:12px;margin:12px 0}
 .hq-media-controls input{margin:7px 0 10px}
 
+
+/* V2 看房模块：无当日行程和统计面板，待看无日期；历史为房源时间轴。 */
+.visit-v2{max-width:1060px;margin:auto}
+.visit-v2-tabs{display:flex;gap:6px;border-bottom:1px solid #dfe9e3;margin-bottom:23px}
+.visit-v2-tabs button{border:0;background:transparent;padding:13px 17px;font-size:14px;color:#81958b;font-weight:650;cursor:pointer;border-bottom:3px solid transparent}
+.visit-v2-tabs button.active{color:#167a63;border-bottom-color:#167a63}
+.visit-v2-tabs small{font-size:11px;margin-left:6px}
+.visit-v2-heading{margin:15px 0 22px}
+.visit-v2-heading h3{font-size:20px;margin:0 0 9px;color:#253d34}
+.visit-v2-heading p{font-size:13px;color:#879a8e;line-height:1.6;margin:0}
+.visit-v2-rows{display:flex;flex-direction:column;gap:12px}
+.visit-v2-row{display:flex;gap:17px;align-items:center;min-width:0;background:#fff;border:1px solid #e7ede9;padding:16px;border-radius:16px;box-shadow:0 2px 17px rgba(29,68,45,.025)}
+.visit-v2-thumb{width:115px;height:92px;object-fit:cover;flex:none;border-radius:9px;background:#ebf1eb}
+.visit-v2-thumb.no-photo{display:flex;align-items:center;justify-content:center;font-size:40px;color:#acc7b7}
+.visit-v2-info{min-width:0;flex:1;line-height:1.65}
+.visit-v2-title{font-size:15px;font-weight:750;color:#294139;white-space:normal;overflow-wrap:anywhere}
+.visit-v2-price{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap;margin-top:4px;font-size:12px;color:#77877f}
+.visit-v2-price b{font-size:21px;color:#cb6a32;font-weight:750}
+.visit-v2-price .source-tag{padding:2px 7px;border-radius:6px;background:#f1f5f2;color:#548373}
+.visit-v2-actions{display:flex;gap:7px;flex:none;flex-wrap:wrap;justify-content:flex-end}
+.visit-v2-date{font-size:14px;font-weight:700;color:#4f7865;border-left:3px solid #369375;padding-left:14px;margin:0 0 13px}
+.visit-v2-date small{font-size:12px;font-weight:400;color:#a0ada4;margin-left:8px}
+.visit-v2-day{padding-bottom:25px}
+.visit-v2-history-meta{text-align:center;white-space:nowrap;flex:none}
+.visit-v2-history-meta strong{display:block;font-size:17px;color:#395d4b}
+.visit-v2-history-meta small{font-size:10px;color:#91a097}
+.visit-v2-state-editor{margin:17px 0;padding:15px 16px;border:1px solid #dce8df;background:#f9fcf9;border-radius:12px}
+.visit-v2-state-editor>label{font-weight:700;color:#3e5d50}
+.visit-state-choices{display:flex;align-items:stretch;gap:7px;flex-wrap:wrap}
+.visit-state-choices label{position:relative;display:flex;align-items:center;justify-content:center;min-width:73px;min-height:35px;border:1px solid #dfe8e2;border-radius:9px;padding:3px 12px;color:#6e8478;cursor:pointer;font-size:13px;font-weight:600;background:white}
+.visit-state-choices label:has(input:checked){background:#e9f7ee;border-color:#83c4a4;color:#197258}
+.visit-state-choices input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.visit-state-choices input:focus-visible+span{outline:2px solid #58ae83;outline-offset:5px}
+@media(max-width:700px){.visit-v2-row{gap:10px;padding:12px;flex-wrap:wrap}.visit-v2-thumb{width:88px;height:80px}.visit-v2-actions{width:100%;justify-content:flex-end}.visit-v2-history-meta{order:2;margin-left:auto}.visit-v2-row .visit-v2-info{min-width:calc(100% - 104px)}.visit-v2-heading h3{font-size:18px}}
+
 </style><link rel="stylesheet" href="/buyhouse-v08.css"></head><body>
 
 <div class="topbar-shell"><header class="bh-topbar">
@@ -533,8 +568,8 @@ async function initCloud(){
   await cloudPull(true);
  }
 let tab='houses', filter=state.pageConfig.defaultFilter, search='', searchOpen=false, kind='all', view=state.pageConfig.defaultView, detail=null;
-const navs=[['houses','house','房源概览'],['visits','calendar','看房行程'],['changes','chart','市场记录'],['benchmark','bars','成交基准'],['scopes','building','监控小区'],['settings','settings','数据管理']];
-const titles={houses:['房源概览','实体房屋 × 跨平台关联 × 用户反馈'],visits:['看房行程','一次带看多套房，现场记录感受、图片和硬伤，结束后永久保留历史。'],changes:['市场记录','小区扫描快照与单套房源事件分开记录。'],benchmark:['成交基准','正常房基准与有缺陷房折价分开研究。'],scopes:['监控小区','周六实勘后逐个评级、调整筛选规则。'],config:['页面配置','动态修改样式、布局和筛选规则，无须重新发布。'],settings:['数据管理','资料核验 · 云端同步 · 备份。']};
+const navs=[['houses','house','房源概览'],['visits','calendar','看房模块'],['changes','chart','市场记录'],['benchmark','bars','成交基准'],['scopes','building','监控小区'],['settings','settings','数据管理']];
+const titles={houses:['房源概览','实体房屋 × 跨平台关联 × 用户反馈'],visits:['看房模块','待看房源不计日期；历史按实际拍摄时间归档。'],changes:['市场记录','小区扫描快照与单套房源事件分开记录。'],benchmark:['成交基准','正常房基准与有缺陷房折价分开研究。'],scopes:['监控小区','周六实勘后逐个评级、调整筛选规则。'],config:['页面配置','动态修改样式、布局和筛选规则，无须重新发布。'],settings:['数据管理','资料核验 · 云端同步 · 备份。']};
 const HARD_DEFECTS=[
  ['duplex','跃层／复式结构'],['top','顶层'],['severeNoise','卧室持续明显噪音'],
  ['legal','产权或入学条件不符'],['structure','漏水／结构安全问题'],['groundDamp','一楼严重返潮／潮湿'],
@@ -579,7 +614,41 @@ function scene(h){if(issue(h).length)return '<span class="badge bad">硬伤排�
 function origin(h){return `<span class="badge ${h.origin==='模拟数据'?'blue':'neutral'}">${esc(h.origin)}</span>`}
 function srcPill(s){const raw=urlSafe(s.originalUrl||s.url);return raw?`<a class="source-tag ready" href="${esc(raw)}" target="_blank" rel="noopener noreferrer" title="直接打开原始房源网页">${esc(s.channel)} · 打开详情 ↗</a>`:`<span class="source-tag bad-source">${esc(s.channel)} · 无链接</span>`}
 // 带看记录属于云端主快照，行程与具体房源各自保留稳定 ID；不因日期变化删除资料。
-let visitView='active',pendingVisitPhoto,visitPhotoBusy=false;
+let visitView='pending',pendingVisitPhoto,visitPhotoBusy=false;
+function visitStateOf(h){
+ if(['未看','看房','看过'].includes(h?.visitStatus))return h.visitStatus;
+ if(h&&visitsForHouse(h).length)return '看过';
+ return '未看';
+}
+function visitStateChoices(name,status){
+ return `<div class="visit-state-choices" role="radiogroup" aria-label="看房属性">${['未看','看房','看过'].map(x=>`<label class="${x===status?'selected':''}"><input type="radio" name="${esc(name)}" value="${x}" ${x===status?'checked':''}><span>${x}</span></label>`).join('')}</div><small class="muted">「看房」一直保留在待看列表，不按日期筛选；「看过」进入历史时间轴。</small>`;
+}
+function visitApplyStatus(h,status,markedAt){
+ if(!h||!['未看','看房','看过'].includes(status))return false;
+ const previous=visitStateOf(h);
+ const when=markedAt&&Number.isFinite(Date.parse(markedAt))?new Date(markedAt).toISOString():new Date().toISOString();
+ if(previous===status&&h.visitStatus===status)return false;
+ h.visitStatus=status;
+ h.visitStatusChangedAt=when;
+ if(status==='看过'&&(previous!=='看过'||!h.visitSeenAt))h.visitSeenAt=when;
+ h.visitStatusHistory=Array.isArray(h.visitStatusHistory)?h.visitStatusHistory:[];
+ h.visitStatusHistory.push({id:'visit-'+Date.now().toString(36)+Math.random().toString(36).slice(2,8),from:previous,to:status,changedAt:when});
+ return true;
+}
+function visitHistoryMeta(h){
+ // Only real onsite captures qualify; listing-site photos have no evidentiary shooting time.
+ const medias=(Array.isArray(h.media)?h.media:[]).filter(m=>!/(网站照片|网站图片|平台图片|网页采集)/.test(String(m.source||'')));
+ const dates=medias.map(m=>m.shotAt||m.takenAt||m.captureTime||m.originalCapturedAt).map(v=>Date.parse(v)).filter(t=>Number.isFinite(t)&&t>=946684800000&&t<=Date.now()+86400000).sort((a,b)=>a-b);
+ if(dates.length)return {time:new Date(dates[0]).toISOString(),kind:'素材拍摄时间'};
+ const legacy=visitsForHouse(h).map(v=>Date.parse(v.entry.visitedAt)).filter(Number.isFinite).sort((a,b)=>a-b);
+ const fallback=Date.parse(h.visitSeenAt)||(legacy.length?legacy[0]:NaN);
+ return {time:new Date(Number.isFinite(fallback)?fallback:Date.now()).toISOString(),kind: Number.isFinite(fallback)?'标记看过时间':'时间待补'};
+}
+function visitStateBadge(h){
+ const status=visitStateOf(h);
+ return `<span class="badge ${status==='看过'?'blue':status==='看房'?'good':'neutral'}">${esc(status)}</span>`;
+}
+
 const VISIT_RESULTS=['待判断','继续考虑','值得议价','不合适','未看'];
 function visitRecords(){return Array.isArray(state.visitSessions)?state.visitSessions:[];}
 function visitIdentity(input){const v=inspectListingUrl(input||'');return v.ok?((v.channel==='贝壳'?'ke:':'5i5j:')+v.id):'';}
@@ -634,13 +703,32 @@ function visitRegisterEntry(session,record){
   return true;
 }
 function renderVisits(){
- const all=visitRecords().slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))||String(b.createdAt).localeCompare(String(a.createdAt)));
- const finished=all.filter(s=>s.status==='finished'),active=all.filter(s=>s.status!=='finished');
- const items=visitView==='active'?active:visitView==='history'?finished:all;
- const visited=all.reduce((n,s)=>n+(s.entries||[]).filter(e=>e.visitedAt).length,0);
- return `<div class="box visit-summary"><div class="visit-hero"><div><h3>我的看房行程</h3><p>中介提前发链接 → 建立一次行程 → 现场逐套写感受、传照片 → 结束后进入历史。房源不会因为日期过去而删除。</p><div class="muted">${active.length} 个进行中 · ${finished.length} 个历史行程 · ${visited} 次实际带看</div></div><button class="btn primary" data-action="visitNew">＋ 新建看房行程</button></div></div>
- <div class="visit-pills"><button class="chip ${visitView==='active'?'active':''}" data-action="visitFilter" data-view-visits="active">计划／进行中 ${active.length}</button><button class="chip ${visitView==='history'?'active':''}" data-action="visitFilter" data-view-visits="history">历史带看 ${finished.length}</button><button class="chip ${visitView==='all'?'active':''}" data-action="visitFilter" data-view-visits="all">全部</button></div>
- ${items.length?items.map(session=>renderVisitSession(session)).join(''):`<div class="empty">${visitView==='history'?'还没有结束的带看行程。':'还没有进行中的行程。你可以先录入中介发来的官方链接。'}</div>`}`;
+ const visible=state.houses.filter(h=>!h.deletedAt);
+ const pending=visible.filter(h=>visitStateOf(h)==='看房');
+ const finished=visible.filter(h=>visitStateOf(h)==='看过');
+ const selected=visitView==='history'?'history':'pending';
+ const tabs=`<div class="visit-v2-tabs" role="tablist" aria-label="看房列表"><button class="${selected==='pending'?'active':''}" role="tab" aria-selected="${selected==='pending'}" data-action="visitSelectTab" data-visit-tab="pending">待看房源 <small>${pending.length}</small></button><button class="${selected==='history'?'active':''}" role="tab" aria-selected="${selected==='history'}" data-action="visitSelectTab" data-visit-tab="history">看房历史 <small>${finished.length}</small></button></div>`;
+ const renderRow=(h,isHistory,meta=null)=>{
+  const image=firstImage(h);
+  const source=validSources(h)[0];
+  const thumb=image?`<img class="visit-v2-thumb" src="${esc(image)}" referrerpolicy="no-referrer" loading="lazy" alt="房源照片">`:`<div class="visit-v2-thumb no-photo">⌂</div>`;
+  const extras=(h.media||[]).filter(m=>!/(网站照片|网站图片|平台图片|网页采集)/.test(String(m.source||'')));
+  const photos=extras.filter(m=>String(m.mimeType||'').startsWith('image/')).length;
+  const videos=extras.filter(m=>String(m.mimeType||'').startsWith('video/')).length;
+  const subtitle=[h.floorBand||[h.floor,h.total].filter(Boolean).join(' / '),h.rooms,h.community].filter(Boolean).map(esc).join(' · ');
+  const actions=isHistory?`<button class="btn sm" data-open="${esc(h.id)}">编辑记录</button>`:`<button class="btn sm" data-open="${esc(h.id)}">编辑房源</button><button class="btn sm primary" data-action="visitMarkSeen" data-id="${esc(h.id)}">✓ 标记看过</button>`;
+  return `<article class="visit-v2-row">${thumb}<div class="visit-v2-info"><div class="visit-v2-title">${esc(h.title||h.community||h.id)}</div><div class="muted">${subtitle}</div><div class="visit-v2-price"><b>${h.price==null?'待核价':esc(h.price)+' 万'}</b><span>${h.area?esc(h.area)+'㎡':''}</span>${source?`<span class="source-tag">${esc(source.channel)}</span>`:''}</div>${isHistory?`<div class="muted">${photos} 张现场照片 · ${videos} 段视频</div>`:''}</div>${isHistory?`<div class="visit-v2-history-meta"><strong>${new Date(meta.time).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})}</strong><small>${esc(meta.kind)}</small></div>`:''}<div class="visit-v2-actions">${actions}</div></article>`;
+ };
+ let section;
+ if(selected==='pending'){
+  section=`<div class="visit-v2-heading"><h3>待看房源</h3><p>标记为「看房」的房源一直保留在这里，不受日期影响。</p></div>${pending.length?`<div class="visit-v2-rows">${pending.map(h=>renderRow(h,false)).join('')}</div>`:`<div class="empty">暂无待看房源。在 Chrome 采集或编辑已有房源时选择「看房」，即可加入。</div>`}`;
+ }else{
+  const order=finished.map(h=>({h,meta:visitHistoryMeta(h)})).sort((a,b)=>Date.parse(b.meta.time)-Date.parse(a.meta.time));
+  const buckets=new Map();
+  for(const item of order){const d=new Date(item.meta.time);const key=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');if(!buckets.has(key))buckets.set(key,[]);buckets.get(key).push(item);}
+  section=`<div class="visit-v2-heading"><h3>看房历史时间轴</h3><p>优先使用现场照片或视频的有效拍摄时间；没有拍摄时间时使用标记「看过」的时间。</p></div>${order.length?`<div class="visit-v2-timeline">${[...buckets.entries()].map(([key,items])=>`<section class="visit-v2-day"><div class="visit-v2-date">${esc(key)} <small>${items.length} 套</small></div><div class="visit-v2-rows">${items.map(item=>renderRow(item.h,true,item.meta)).join('')}</div></section>`).join('')}</div>`:`<div class="empty">还没有看房历史。将房源状态改为「看过」，即可归档。</div>`}`;
+ }
+ return `<div class="visit-v2">${tabs}${section}</div>`;
 }
 function renderVisitSession(session){
  const completed=session.status==='finished',entries=session.entries||[],seen=entries.filter(e=>e.visitedAt).length;
@@ -1008,8 +1096,8 @@ document.addEventListener('click',async ev=>{
  }catch(error){toast('无法读取本机待传记录：'+error.message)}
 });
 
-function openDetail(id){const h=state.houses.find(x=>x.id===id);if(!h)return;detail=id;const hard=issue(h);document.getElementById('overlay').innerHTML=`<div class="shade detail-shade" data-close="1"><div class="drawer detail-sheet" role="dialog" aria-modal="true" aria-label="房源详情"><div class="drawer-body"><div class="modal-header"><span class="eyebrow">房源档案 · ${esc(h.id)}</span><button class="icon-btn" data-close="1" aria-label="关闭">×</button></div><div class="source-row" style="margin-bottom:10px"><button class="btn sm primary" data-action="shareHouse" data-id="${esc(h.id)}">↗ 分享 / 复制房源链接</button><span class="muted">链接即房源身份</span></div><div class="badges" style="justify-content:flex-start;margin-bottom:12px">${origin(h)}${scene(h)}${visitBadgeForHouse(h)}<span class="badge neutral">${esc(h.stage)}</span></div>${photoMarkup(h,'detail')}<div id="houseMedia">${houseMediaMarkup(h)}</div><div class="detail-title">${esc(h.community)}<br>${esc(h.title)}</div><div class="detail-sub">档案编号 ${esc(h.id)} · 首次记录 ${esc(h.firstSeen)} · 末次观察 ${esc(h.lastSeen)}</div><div class="detail-price">${fmtMoney(h)}<small> 万</small><span style="font-size:13px;font-weight:400;color:#8d98a2;margin-left:12px">${unit(h)}</span></div><div class="fact-grid"><div class="fact"><small>面积 / 户型</small><strong>${fmt(h.area)}㎡ / ${esc(h.rooms)}</strong></div><div class="fact"><small>楼层</small><strong>${esc(h.floor||'未知')} / ${esc(h.total||'未知')} 层</strong></div><div class="fact"><small>环境等级</small><strong>${esc(envFor(h))}</strong></div><div class="fact"><small>电梯</small><strong>${esc(h.elevator)}</strong></div><div class="fact"><small>噪声</small><strong>${esc(h.noise)}</strong></div><div class="fact"><small>装修</small><strong>${esc(h.decoration)}</strong></div></div><div class="minihead">自动筛选结论</div>${issueTags(h)}<div class="help">${hard.length?`<b style="color:#b65047">一票否决：${hard.map(esc).join('、')}</b>`:unknown(h)?'<b>待核验：</b>存在环境、噪声、楼层/电梯、产权或一楼特殊风险信息缺失，不能直接认定无硬伤。':'<b style="color:#188066">初筛通过：</b>根据已填字段暂未触发已定义硬伤。仍应现场和产权核验。'}</div><div class="minihead">各平台来源 <button class="btn sm" data-action="editSource" data-id="${esc(h.id)}">＋ 关联 / 修改</button></div>${h.sources.length?h.sources.map((s,i)=>`<div class="source-box"><div class="row"><strong>${esc(s.channel)}</strong><span class="badge neutral">${esc(s.relation||'未核验')}</span></div><div class="muted" style="margin:5px 0">平台ID：${esc(s.platformId||'未知')} · ${esc(s.urlType||'未注明')}</div><div class="row">${urlSafe(s.originalUrl||s.url)?`<a href="${esc(urlSafe(s.originalUrl||s.url))}" target="_blank" rel="noopener noreferrer">直接打开原始房源 ↗</a>`:'<span class="nourl">暂无链接</span>'}<span><button class="btn text sm" data-action="editSource" data-id="${esc(h.id)}" data-index="${i}">修改</button><button class="btn text sm" data-action="splitSource" data-id="${esc(h.id)}" data-index="${i}">拆分</button><button class="btn text sm danger" data-action="detachSource" data-id="${esc(h.id)}" data-index="${i}">解绑</button></span></div></div>`).join(''):'<div class="help">尚未关联来源，点击上方按钮添加官方单套房源详情链接。</div>'}<div class="minihead">历史带看记录 <button class="btn sm" data-tab="visits">查看行程 →</button></div>${visitsForHouse(h).map(v=>`<div class="visit-feedback"><b>${esc(v.session.date)} · ${esc(v.session.broker||'现场看房')}</b><br>${esc(v.entry.decision||'待判断')} · ${esc(v.entry.impression||'暂无备注')}${v.entry.photoData?`<div><img src="${esc(v.entry.photoData)}" alt="现场照片" class="visit-photo"></div>`:''}</div>`).join('')||'<p class="muted">尚无实际带看记录。中介发来的链接应先加入「看房行程」。</p>'}<div class="minihead">你的判断与看房记录 <button class="btn sm soft" data-action="saveHouse" data-id="${esc(h.id)}">保存修改</button></div><div class="form-grid"><div class="form-item"><label>是否合适</label><select id="editSuit">${selectOptions(['待判断','合适','不合适'],h.suitability)}</select></div><div class="form-item"><label>行动状态</label><select id="editStage">${selectOptions(['观察中','重点关注','准备看房','已看房','放弃'],h.stage)}</select></div><div class="form-item"><label>小区环境（继承目录）</label><div class="environment-readonly">${esc(envFor(h))}级 · 在「监控小区」里统一修改</div></div><div class="form-item"><label>噪音</label><select id="editNoise">${selectOptions(['未知','安静','一般可接受','严重'],h.noise)}</select></div><div class="form-item"><label>真实楼层</label><input id="editFloor" type="number" min="0" max="99" value="${esc(h.floor||'')}"></div><div class="form-item"><label>电梯</label><select id="editElevator">${selectOptions(['未知','有','无'],h.elevator)}</select></div><div class="form-item"><label>目前报价（万）</label><input id="editPrice" type="number" min="0.1" step="0.1" value="${esc(h.price??'')}"></div><div class="form-item"><label>产权/入学核查</label><select id="editLegal">${selectOptions(['待核实','普通住宅待核学位','已核实符合','产权/入学不符'],h.legal||'待核实')}</select></div></div>
-<div class="defects-block"><h4>⛔ 一票否决硬伤（可多选）</h4><p class="subnote">任一项勾选后自动归入「硬伤排除」，不会从数据库删除，可随时改回。</p>${defectMarkup('editHard',HARD_DEFECTS,h.defects||[])}</div>
+function openDetail(id){const h=state.houses.find(x=>x.id===id);if(!h)return;detail=id;const hard=issue(h);document.getElementById('overlay').innerHTML=`<div class="shade detail-shade" data-close="1"><div class="drawer detail-sheet" role="dialog" aria-modal="true" aria-label="房源详情"><div class="drawer-body"><div class="modal-header"><span class="eyebrow">房源档案 · ${esc(h.id)}</span><button class="icon-btn" data-close="1" aria-label="关闭">×</button></div><div class="source-row" style="margin-bottom:10px"><button class="btn sm primary" data-action="shareHouse" data-id="${esc(h.id)}">↗ 分享 / 复制房源链接</button><span class="muted">链接即房源身份</span></div><div class="badges" style="justify-content:flex-start;margin-bottom:12px">${origin(h)}${scene(h)}${visitStateBadge(h)}${visitBadgeForHouse(h)}<span class="badge neutral">${esc(h.stage)}</span></div>${photoMarkup(h,'detail')}<div id="houseMedia">${houseMediaMarkup(h)}</div><div class="detail-title">${esc(h.community)}<br>${esc(h.title)}</div><div class="detail-sub">档案编号 ${esc(h.id)} · 首次记录 ${esc(h.firstSeen)} · 末次观察 ${esc(h.lastSeen)}</div><div class="detail-price">${fmtMoney(h)}<small> 万</small><span style="font-size:13px;font-weight:400;color:#8d98a2;margin-left:12px">${unit(h)}</span></div><div class="fact-grid"><div class="fact"><small>面积 / 户型</small><strong>${fmt(h.area)}㎡ / ${esc(h.rooms)}</strong></div><div class="fact"><small>楼层</small><strong>${esc(h.floor||'未知')} / ${esc(h.total||'未知')} 层</strong></div><div class="fact"><small>环境等级</small><strong>${esc(envFor(h))}</strong></div><div class="fact"><small>电梯</small><strong>${esc(h.elevator)}</strong></div><div class="fact"><small>噪声</small><strong>${esc(h.noise)}</strong></div><div class="fact"><small>装修</small><strong>${esc(h.decoration)}</strong></div></div><div class="minihead">自动筛选结论</div>${issueTags(h)}<div class="help">${hard.length?`<b style="color:#b65047">一票否决：${hard.map(esc).join('、')}</b>`:unknown(h)?'<b>待核验：</b>存在环境、噪声、楼层/电梯、产权或一楼特殊风险信息缺失，不能直接认定无硬伤。':'<b style="color:#188066">初筛通过：</b>根据已填字段暂未触发已定义硬伤。仍应现场和产权核验。'}</div><div class="minihead">各平台来源 <button class="btn sm" data-action="editSource" data-id="${esc(h.id)}">＋ 关联 / 修改</button></div>${h.sources.length?h.sources.map((s,i)=>`<div class="source-box"><div class="row"><strong>${esc(s.channel)}</strong><span class="badge neutral">${esc(s.relation||'未核验')}</span></div><div class="muted" style="margin:5px 0">平台ID：${esc(s.platformId||'未知')} · ${esc(s.urlType||'未注明')}</div><div class="row">${urlSafe(s.originalUrl||s.url)?`<a href="${esc(urlSafe(s.originalUrl||s.url))}" target="_blank" rel="noopener noreferrer">直接打开原始房源 ↗</a>`:'<span class="nourl">暂无链接</span>'}<span><button class="btn text sm" data-action="editSource" data-id="${esc(h.id)}" data-index="${i}">修改</button><button class="btn text sm" data-action="splitSource" data-id="${esc(h.id)}" data-index="${i}">拆分</button><button class="btn text sm danger" data-action="detachSource" data-id="${esc(h.id)}" data-index="${i}">解绑</button></span></div></div>`).join(''):'<div class="help">尚未关联来源，点击上方按钮添加官方单套房源详情链接。</div>'}<div class="minihead">历史带看记录 <button class="btn sm" data-tab="visits">查看行程 →</button></div>${visitsForHouse(h).map(v=>`<div class="visit-feedback"><b>${esc(v.session.date)} · ${esc(v.session.broker||'现场看房')}</b><br>${esc(v.entry.decision||'待判断')} · ${esc(v.entry.impression||'暂无备注')}${v.entry.photoData?`<div><img src="${esc(v.entry.photoData)}" alt="现场照片" class="visit-photo"></div>`:''}</div>`).join('')||'<p class="muted">尚无实际带看记录。中介发来的链接应先加入「看房行程」。</p>'}<div class="minihead">你的判断与看房记录 <button class="btn sm soft" data-action="saveHouse" data-id="${esc(h.id)}">保存修改</button></div><div class="form-grid"><div class="form-item"><label>是否合适</label><select id="editSuit">${selectOptions(['待判断','合适','不合适'],h.suitability)}</select></div><div class="form-item"><label>行动状态</label><select id="editStage">${selectOptions(['观察中','重点关注','准备看房','已看房','放弃'],h.stage)}</select></div><div class="form-item"><label>小区环境（继承目录）</label><div class="environment-readonly">${esc(envFor(h))}级 · 在「监控小区」里统一修改</div></div><div class="form-item"><label>噪音</label><select id="editNoise">${selectOptions(['未知','安静','一般可接受','严重'],h.noise)}</select></div><div class="form-item"><label>真实楼层</label><input id="editFloor" type="number" min="0" max="99" value="${esc(h.floor||'')}"></div><div class="form-item"><label>电梯</label><select id="editElevator">${selectOptions(['未知','有','无'],h.elevator)}</select></div><div class="form-item"><label>目前报价（万）</label><input id="editPrice" type="number" min="0.1" step="0.1" value="${esc(h.price??'')}"></div><div class="form-item"><label>产权/入学核查</label><select id="editLegal">${selectOptions(['待核实','普通住宅待核学位','已核实符合','产权/入学不符'],h.legal||'待核实')}</select></div></div>
+<div class="visit-v2-state-editor"><label>看房属性</label>${visitStateChoices('editVisitStatus',visitStateOf(h))}</div><div class="defects-block"><h4>⛔ 一票否决硬伤（可多选）</h4><p class="subnote">任一项勾选后自动归入「硬伤排除」，不会从数据库删除，可随时改回。</p>${defectMarkup('editHard',HARD_DEFECTS,h.defects||[])}</div>
 <div class="defects-block soft"><h4>一般缺点（可多选）</h4><p class="subnote">只作为议价／看房参考，不会自动排除。</p>${defectMarkup('editSoft',SOFT_DEFECTS,h.drawbacks||[])}</div>
 <div id="editScreeningPreview">${statusHint(h.defects||[],h.drawbacks||[],envFor(h),issue(h).filter(x=>!HARD_DEFECTS.some(y=>y[1]===x)))}</div>
 <div style="margin-top:13px"><label>看房评价 / 人工备注</label><textarea id="editNote" rows="4">${esc(h.note||'')}</textarea></div><div class="minihead">价格与状态历史 <button class="btn sm" data-action="log" data-id="${esc(h.id)}">＋ 添加事件</button></div><div class="history">${(h.events||[]).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).map(e=>`<div class="hist"><b>${esc(e.title)} ${e.demo?'<span class="badge blue">模拟</span>':''}</b><p>${esc(e.desc)}</p><time>${esc(e.date)}</time></div>`).join('')||'<p class="muted">尚无记录</p>'}</div><div class="minihead">房源管理</div><div class="source-row"><button class="btn sm" data-action="merge" data-id="${esc(h.id)}">⇄ 手动合并同一套房</button><button class="btn sm" data-action="editInfo" data-id="${esc(h.id)}">✎ 修改基础资料</button><button class="btn sm danger" data-action="removeHouse" data-id="${esc(h.id)}">从列表隐藏（保留档案）</button></div></div></div></div>`;document.body.style.overflow='hidden';document.querySelector('#overlay .detail-sheet .icon-btn[data-close]')?.focus({preventScroll:true})}
@@ -1040,7 +1128,7 @@ modal(h?'修改房源档案':'添加贝壳／我爱我家房源',`<div class="he
 <div class="form-item"><label>电梯</label><select id="newElevator">${selectOptions(['未知','有','无'],p.elevator||h?.elevator||'未知')}</select></div>
 <div class="form-item"><label>朝向</label><input id="newOrient" value="${esc(p.orientation||h?.orient||'')}"></div>
 <div class="form-item"><label>装修</label><input id="newDeco" value="${esc(p.decoration||h?.decoration||'')}"></div>
-<div class="form-item"><label>房源照片（可后补）</label><input id="newPhotoFile" type="file" accept="image/*"></div></div>
+<div class="form-item"><label>房源照片（可后补）</label><input id="newPhotoFile" type="file" accept="image/*"></div><div class="form-item"><label>看房属性</label>${visitStateChoices('newVisitStatus',p.visitStatus|| (h?visitStateOf(h):'未看'))}</div></div>
 <div class="defects-block"><h4>⛔ 硬伤（多选，一票否决）</h4><p class="subnote">勾选后自动归入「硬伤排除」，保留完整档案与历史。</p>${defectMarkup('newHard',HARD_DEFECTS,p.defects||h?.defects||[])}</div>
 <div class="defects-block soft"><h4>一般缺点（多选）</h4><p class="subnote">记录缺点但仍保留备选资格。</p>${defectMarkup('newSoft',SOFT_DEFECTS,p.drawbacks||h?.drawbacks||[])}</div>
 <div id="newScreeningPreview">${statusHint(p.defects||h?.defects||[],p.drawbacks||h?.drawbacks||[],scopeFor(community)?.env||'待评')}</div>
@@ -1071,7 +1159,9 @@ window.addEventListener('focus',()=>{if(!document.hidden)onCloudWake()});
 window.addEventListener('pageshow',e=>{if(e.persisted)onCloudWake(true)});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)onCloudWake()});
 window.addEventListener('online',()=>{if(cloudStartupDone)onCloudWake(true)});
-document.addEventListener('click',e=>{const ui=e.target.closest('[data-ui]');if(ui){const cmd=ui.dataset.ui;if(cmd==='drawerOpen'){openBhDrawer();return}if(cmd==='drawerClose'){closeBhDrawer();return}if(cmd==='searchToggle'){searchOpen=!searchOpen;render();if(searchOpen)document.getElementById('search')?.focus();return}if(cmd==='searchClose'){search='';searchOpen=false;render();return}if(cmd==='help'){modal('买房助手 · 使用说明','<p>房源信息、历史价格、看房行程和小区记录均可查看。新增、修改或归档需要在「数据管理」输入 PIN。</p><p>正式房源须有可识别的单套官方详情链接；待核实线索独立保存，不能计入正式房源。</p><p>首页概览来自真实数据库，使用「更多筛选」查看其他状态。</p>');return}}const close=e.target.closest('[data-close]');if(close&&(close===e.target||e.target.closest('button[data-close]'))){closeOverlay();return}const nt=e.target.closest('[data-tab]');if(nt){if(configFormDirty&&tab==='config'&&nt.dataset.tab!=='config'){if(!confirm('页面配置有未保存的修改，确认放弃吗？'))return;configFormDirty=false;}closeBhDrawer();tab=nt.dataset.tab;filter=state.pageConfig.defaultFilter;search='';searchOpen=false;render();window.scrollTo(0,0);return}const ff=e.target.closest('[data-filter]');if(ff){window.__hqUserFiltersTouched=true;filter=ff.dataset.filter;render();return}const vv=e.target.closest('[data-view]');if(vv){window.__hqUserFiltersTouched=true;view=vv.dataset.view;render();return}const oo=e.target.closest('[data-open]');if(oo){openDetail(oo.dataset.open);return}const a=e.target.closest('[data-action]');if(!a)return;const action=a.dataset.action;const publicActions=new Set(['visitFilter','reopen','shareHouse','exportLinks','export','saveCloudConfig','lockCloud','cloudPull']);if(!cloudConfig.token&&!publicActions.has(action)){toast('当前为公开只读模式；输入 PIN 解锁后才能修改数据');tab='settings';render();return;}const id=a.dataset.id, h=state.houses.find(x=>x.id===id);switch(action){
+document.addEventListener('click',e=>{const ui=e.target.closest('[data-ui]');if(ui){const cmd=ui.dataset.ui;if(cmd==='drawerOpen'){openBhDrawer();return}if(cmd==='drawerClose'){closeBhDrawer();return}if(cmd==='searchToggle'){searchOpen=!searchOpen;render();if(searchOpen)document.getElementById('search')?.focus();return}if(cmd==='searchClose'){search='';searchOpen=false;render();return}if(cmd==='help'){modal('买房助手 · 使用说明','<p>房源信息、历史价格、看房行程和小区记录均可查看。新增、修改或归档需要在「数据管理」输入 PIN。</p><p>正式房源须有可识别的单套官方详情链接；待核实线索独立保存，不能计入正式房源。</p><p>首页概览来自真实数据库，使用「更多筛选」查看其他状态。</p>');return}}const close=e.target.closest('[data-close]');if(close&&(close===e.target||e.target.closest('button[data-close]'))){closeOverlay();return}const nt=e.target.closest('[data-tab]');if(nt){if(configFormDirty&&tab==='config'&&nt.dataset.tab!=='config'){if(!confirm('页面配置有未保存的修改，确认放弃吗？'))return;configFormDirty=false;}closeBhDrawer();tab=nt.dataset.tab;filter=state.pageConfig.defaultFilter;search='';searchOpen=false;render();window.scrollTo(0,0);return}const ff=e.target.closest('[data-filter]');if(ff){window.__hqUserFiltersTouched=true;filter=ff.dataset.filter;render();return}const vv=e.target.closest('[data-view]');if(vv){window.__hqUserFiltersTouched=true;view=vv.dataset.view;render();return}const oo=e.target.closest('[data-open]');if(oo){openDetail(oo.dataset.open);return}const a=e.target.closest('[data-action]');if(!a)return;const action=a.dataset.action;const publicActions=new Set(['visitSelectTab','visitFilter','reopen','shareHouse','exportLinks','export','saveCloudConfig','lockCloud','cloudPull']);if(!cloudConfig.token&&!publicActions.has(action)){toast('当前为公开只读模式；输入 PIN 解锁后才能修改数据');tab='settings';render();return;}const id=a.dataset.id, h=state.houses.find(x=>x.id===id);switch(action){
+ case 'visitSelectTab':visitView=a.dataset.visitTab==='history'?'history':'pending';render();break;
+ case 'visitMarkSeen':if(h){if(visitApplyStatus(h,'看过')){changed(h,'看房状态','标记看过；进入历史时间轴');save();}visitView='history';render();toast('已归入看房历史');}break;
  case 'visitNew':editVisitSession();break;
  case 'visitEditSession':editVisitSession(id);break;
  case 'visitFilter':visitView=a.dataset.viewVisits||'active';render();break;
@@ -1109,6 +1199,7 @@ document.addEventListener('click',e=>{const ui=e.target.closest('[data-ui]');if(
      }
    }
    syncVisitToHouse(entry);
+   const matching=visitMatchedHouse(entry);if(matching&&entry.visitedAt)visitApplyStatus(matching,'看过');
    save();closeOverlay();tab='visits';render();toast(entry.visitedAt?'已保存看房反馈，关联房源自动标记已带看':'已保存本次未看，房源保留在行程中');break;
  }
  case 'visitFinish':{
@@ -1129,7 +1220,7 @@ case 'reopen':openDetail(id);break;
 case 'editSource':editSource(id,a.hasAttribute('data-index')?Number(a.dataset.index):undefined);break;
 case 'log':eventModal(id);break;
 case 'merge':mergeModal(id);break;
-case 'saveHouse':if(!h)break;{let price=val('editPrice')?Number(val('editPrice')):null, floor=Number(val('editFloor'));if(price!==null&&!(price>0)){toast('报价必须大于0，未知可留空');break}let oldprice=h.price,oldnote=h.note;Object.assign(h,{suitability:val('editSuit'),stage:val('editStage'),noise:val('editNoise'),floor:floor||null,elevator:val('editElevator'),legal:val('editLegal'),note:val('editNote'),price,defects:selectedDefects('editHard'),drawbacks:selectedDefects('editSoft')});h.baseDefects=h.defects.slice();h.baseDrawbacks=h.drawbacks.slice();h.top=h.defects.includes('top');h.duplex=h.defects.includes('duplex');h.env=envFor(h);refreshScreeningTags(h);changed(h,oldprice!==price?'人工价格调整':'人工评价和缺点更新',oldprice!==price?`${oldprice||'未知'}万元 → ${price||'未知'}万元；状态：${h.stage}`:`状态：${h.stage}，硬伤：${issue(h).join('、')||'未勾选'}。${h.note!==oldnote?'备注已修改':''}`);save();render();openDetail(id);toast(issue(h).length?'已保存 · 自动标记硬伤排除':'已保存 · 未触发硬伤排除');break}
+case 'saveHouse':if(!h)break;{let price=val('editPrice')?Number(val('editPrice')):null, floor=Number(val('editFloor'));if(price!==null&&!(price>0)){toast('报价必须大于0，未知可留空');break}let oldprice=h.price,oldnote=h.note;Object.assign(h,{suitability:val('editSuit'),stage:val('editStage'),noise:val('editNoise'),floor:floor||null,elevator:val('editElevator'),legal:val('editLegal'),note:val('editNote'),price,defects:selectedDefects('editHard'),drawbacks:selectedDefects('editSoft')});visitApplyStatus(h,document.querySelector('input[name="editVisitStatus"]:checked')?.value||visitStateOf(h));h.baseDefects=h.defects.slice();h.baseDrawbacks=h.drawbacks.slice();h.top=h.defects.includes('top');h.duplex=h.defects.includes('duplex');h.env=envFor(h);refreshScreeningTags(h);changed(h,oldprice!==price?'人工价格调整':'人工评价和缺点更新',oldprice!==price?`${oldprice||'未知'}万元 → ${price||'未知'}万元；状态：${h.stage}`:`状态：${h.stage}，硬伤：${issue(h).join('、')||'未勾选'}。${h.note!==oldnote?'备注已修改':''}`);save();render();openDetail(id);toast(issue(h).length?'已保存 · 自动标记硬伤排除':'已保存 · 未触发硬伤排除');break}
 case 'commitSource':if(!h)break;{const raw=val('srcUrl').trim(),channel=val('srcChannel'),v=inspectListingUrl(raw,channel);if(!v.ok){toast('不能保存：'+v.reason);break}const s={channel,platformId:val('srcId').trim()||v.id,url:v.canonical,originalUrl:raw,urlType:'独立详情页',relation:'用户手动关联（结构已核验）',checked:nowDay()};const idx=Number(a.dataset.index);const duplicate=findBySource(raw,channel,id);if(duplicate){if(duplicate.deletedAt){toast('该链接属于已隐藏档案 '+duplicate.id+'，不会自动复活；如需使用请先手动恢复。');break}toast('该链接已关联到 '+duplicate.id+'，请打开原档案，不要重复关联。');closeOverlay();openDetail(duplicate.id);break}if(idx>=0&&h.sources[idx]){h.sources[idx]=s;changed(h,'人工更新独立详情链接',`${s.channel}，编号：${s.platformId}`)}else{h.sources.push(s);changed(h,'人工关联独立详情链接',`${s.channel}，编号：${s.platformId}`)}save();render();openDetail(id);toast('链接结构核验通过，已保存');break}
 case 'splitSource':if(!h)break;{const idx=Number(a.dataset.index),source=h.sources[idx];if(!source)break;if(validSources(h).length<2){toast('该房源只有一条有效详情链接，不能拆分成无来源档案');break}if(!confirm('将 '+source.channel+' 拆分为一个独立、待核验的房源档案？原房源仍保留其余来源。'))break;const nums=state.houses.map(x=>/TJ-HQ-(\d+)/.exec(x.id)?.[1]).filter(Boolean).map(Number);let nr=Math.max(2,...nums)+1;const nid='TJ-HQ-'+String(nr).padStart(4,'0');const another={...h,id:nid,origin:'用户录入',title:'拆分待核验 · '+source.channel,env:'待评',noise:'未知',elevator:'未知',legal:'待核实',suitability:'待判断',stage:'观察中',note:'从 '+h.id+' 拆分平台来源，房屋面积、报价、楼层等沿用原记录仅供线索，尚不能确认是同一套房。',sources:[source],events:[ev(nowStamp(),'人工拆分来源','从 '+h.id+' 拆分 '+source.channel+' / '+source.platformId,'manual',false)],firstSeen:nowDay(),lastSeen:nowDay()};h.sources.splice(idx,1);changed(h,'人工拆分平台来源','拆分 '+source.channel+' 至新房源 '+nid);state.houses.push(another);save();render();openDetail(nid);toast('已拆分为 '+nid);break}
 case 'detachSource':if(!h)break;{const n=Number(a.dataset.index),s=h.sources[n];if(!s)break;if(validSources(h).length<=1&&inspectListingUrl(s.url,s.channel).ok){toast('必须至少保留一条独立房源链接；请先关联另一平台再解绑');break}if(!confirm('确认解绑 '+s.channel+'？原关联操作将记入历史。'))break;h.sources.splice(n,1);changed(h,'来源解绑',`解除 ${s.channel} / ${s.platformId} 的关联`);save();render();openDetail(id);break}
@@ -1152,6 +1243,7 @@ case 'commitHouse':{
  if(index>=0)item.sources[index]=source;else(item.sources=item.sources||[]).push(source);
  const oldPrice=item.price;
  Object.assign(item,{community,title:val('newTitle'),area,price,rooms:val('newRooms')||'待核实',floor:Number(val('newFloor'))||null,total:Number(val('newTotal'))||null,floorBand:val('newFloorBand'),elevator:val('newElevator'),env:scopeFor(community)?.env||'待评',decoration:val('newDeco')||'待核实',orient:val('newOrient')||'待核实',defects:selectedDefects('newHard'),drawbacks:selectedDefects('newSoft'),origin:editing?item.origin:'用户录入',lastSeen:nowDay()});
+ visitApplyStatus(item,document.querySelector('input[name="newVisitStatus"]:checked')?.value||'未看');
  item.baseDefects=item.defects.slice();item.baseDrawbacks=item.drawbacks.slice();item.top=item.defects.includes('top');item.duplex=item.defects.includes('duplex');refreshScreeningTags(item);
  if(pendingPhoto)item.photoData=pendingPhoto;
  state.listingCandidates=(state.listingCandidates||[]).filter(c=>!(c.platform===v.channel&&String(c.platformListingId)===v.id));
