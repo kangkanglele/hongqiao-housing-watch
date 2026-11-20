@@ -256,6 +256,27 @@ body{font-size:calc(14px * var(--hq-text-scale))}
 .hq-upload-chip{box-shadow:0 8px 24px #27272725;background:#fff}
 @media(max-width:700px){#hqUploadDock{max-width:100%}.hq-upload-mini{padding:6px 8px}.hq-upload-mini button{font-size:10px;gap:5px}.hq-upload-list{max-height:28vh}.hq-upload-panel{right:0;width:min(390px,calc(100vw - 20px))}}
 
+
+/* 2026-11-20 — 激活色与房源照片选择控件 */
+:root{--active:#111E36}
+.nav button.active{background:#EEF0F5;color:var(--active)}
+.segments button.active{background:var(--active);color:#fff}
+.chip.active{background:var(--active);border-color:var(--active);color:#fff}
+.mobile-nav button.active{background:#EEF0F5;color:var(--active)}
+.defects-block.soft .defect-pill input{accent-color:var(--active)}
+.defects-block.soft .defect-pill:has(input:checked){background:var(--active);border-color:var(--active);color:#fff}
+.visit-pills button.active{background:var(--active);color:#fff;border-color:var(--active)}
+.visit-v2-tabs button.active{color:var(--active);border-bottom-color:var(--active)}
+.visit-state-choices label:has(input:checked){background:var(--active);border-color:var(--active);color:#fff}
+.visit-state-choices input:focus-visible+span{outline-color:var(--active)}
+.photo-file-input{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.photo-file-picker{width:100%;min-height:76px;margin:0;padding:16px 18px;display:flex;align-items:center;justify-content:center;gap:12px;border:1px solid #E1E3E8;border-radius:18px;background:#fff;color:#515967;font-size:17px;font-weight:500;line-height:1.3;cursor:pointer;transition:border-color .16s,background .16s;box-shadow:none}
+.photo-file-picker .photo-file-icon{display:inline-flex;align-items:center;justify-content:center;flex:none;width:30px;height:30px;color:#AEB3BB}
+.photo-file-picker .photo-file-name{min-width:0;max-width:calc(100% - 42px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.photo-file-picker:hover{border-color:#C9CFD8;background:#FCFCFD}
+#newPhotoFile:focus-visible+.photo-file-picker{outline:2px solid var(--active);outline-offset:3px}
+@media(max-width:730px){.photo-file-picker{min-height:68px;border-radius:16px;font-size:15px;gap:10px;padding:14px}.photo-file-picker .photo-file-icon{width:26px;height:26px}}
+
 </style><link rel="stylesheet" href="/buyhouse-v08.css?v=20261120-gray-theme-v1"></head><body>
 
 <div class="topbar-shell"><header class="bh-topbar">
@@ -875,6 +896,7 @@ const BH_PATHS={
  lock:'<path d="M7 10V7a5 5 0 0 1 10 0v3h-2.5V7a2.5 2.5 0 0 0-5 0v3z" opacity=".45"/><rect x="4" y="9" width="16" height="13" rx="2.5"/>',
  plus:'<path d="M10.3 2.5h3.4v8h8v3.4h-8v8h-3.4v-8h-8v-3.4h8z"/>',
  upload:'<path d="M10 14V5.8L7.1 8.7 5 6.6 12 0l7 6.6-2.1 2.1L14 5.8V14z" transform="translate(0 1)"/><path d="M3 15h3v4h12v-4h3v5.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 20.5z"/>',
+ filePlus:'<path d="M6 2.5h8l5 5v13.2a1.3 1.3 0 0 1-1.3 1.3H6.3A1.3 1.3 0 0 1 5 20.7V3.8a1.3 1.3 0 0 1 1-1.3z"/><path d="M14 2.8V8h5" fill="none" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 11v7m-3.5-3.5h7" fill="none" stroke="#111E36" stroke-width="2.2" stroke-linecap="round"/>',
  image:'<rect x="2.5" y="3" width="19" height="18" rx="2.2" opacity=".35"/><circle cx="16.5" cy="8" r="2" fill="#fff"/><path d="m3.5 17 5.2-5.6 3.2 3 3.3-4 5.3 6.6v2H3.5z"/>',
  video:'<rect x="2.5" y="5" width="14" height="14" rx="2.5"/><path d="m17 9 5-3v12l-5-3z" opacity=".5"/>',
  play:'<path d="M6 3.8a1.4 1.4 0 0 1 2.1-1.2l12.1 7.9a1.8 1.8 0 0 1 0 3L8.1 21.4A1.4 1.4 0 0 1 6 20.2z"/>',
@@ -1324,7 +1346,7 @@ modal(h?'修改房源档案':'添加贝壳／我爱我家房源',`<div class="he
 <div class="form-item"><label>电梯</label><select id="newElevator">${selectOptions(['未知','有','无'],p.elevator||h?.elevator||'未知')}</select></div>
 <div class="form-item"><label>朝向</label><input id="newOrient" value="${esc(p.orientation||h?.orient||'')}"></div>
 <div class="form-item"><label>装修</label><input id="newDeco" value="${esc(p.decoration||h?.decoration||'')}"></div>
-<div class="form-item"><label>房源照片（可后补）</label><input id="newPhotoFile" type="file" accept="image/*"></div><div class="form-item"><label>看房属性</label>${visitStateChoices('newVisitStatus',p.visitStatus|| (h?visitStateOf(h):'未看'))}</div></div>
+<div class="form-item"><label>房源照片（可后补）</label><input class="photo-file-input" id="newPhotoFile" type="file" accept="image/*"><label class="photo-file-picker" for="newPhotoFile"><span class="photo-file-icon">${bhIcon('filePlus',27)}</span><span class="photo-file-name" id="newPhotoFileName">未选择任何文件</span></label></div><div class="form-item"><label>看房属性</label>${visitStateChoices('newVisitStatus',p.visitStatus|| (h?visitStateOf(h):'未看'))}</div></div>
 <div class="defects-block"><h4>${bhIcon('block',14)} 硬伤（多选，一票否决）</h4><p class="subnote">勾选后自动归入「硬伤排除」，保留完整档案与历史。</p>${defectMarkup('newHard',HARD_DEFECTS,p.defects||h?.defects||[])}</div>
 <div class="defects-block soft"><h4>一般缺点（多选）</h4><p class="subnote">记录缺点但仍保留备选资格。</p>${defectMarkup('newSoft',SOFT_DEFECTS,p.drawbacks||h?.drawbacks||[])}</div>
 <div id="newScreeningPreview">${statusHint(p.defects||h?.defects||[],p.drawbacks||h?.drawbacks||[],scopeFor(community)?.env||'待评')}</div>
@@ -1488,7 +1510,7 @@ if(e.target.id==='newCommunity'){const scope=scopeFor(e.target.value);const view
 if((e.target.name==='newHard'||e.target.name==='newSoft'||e.target.id==='newCommunity')){const v=document.getElementById('newScreeningPreview');if(v)v.innerHTML=statusHint(selectedDefects('newHard'),selectedDefects('newSoft'),scopeFor(val('newCommunity'))?.env||'待评')}
 if(e.target.name==='editHard'||e.target.name==='editSoft'){const v=document.getElementById('editScreeningPreview');if(v)v.innerHTML=statusHint(selectedDefects('editHard'),selectedDefects('editSoft'),envFor(state.houses.find(x=>x.id===detail)||{}))}
 if(e.target.id==='visitPhotoFile'){const f=e.target.files?.[0];if(f){visitPhotoBusy=true;try{pendingVisitPhoto=await compressVisitPhoto(f);const el=document.getElementById('visitPhotoMsg');if(el)el.textContent='已生成现场图片缩略预览（原图不上传）。保存现场记录后进入云端快照。';}catch(err){pendingVisitPhoto=undefined;toast(err.message)}finally{visitPhotoBusy=false}}}
-if(e.target.id==='newPhotoFile'){const f=e.target.files?.[0];if(f){try{pendingPhoto=await compressPhoto(f);const info=document.getElementById('photoMessage');if(info)info.textContent='图片已准备：将随档案保存（压缩缩略图）。'}catch(err){pendingPhoto=undefined;toast(err.message)}}}const c=e.target.closest('[data-scope]');if(c){let s=state.scopes.find(x=>x.id===c.dataset.scope);if(!s)return;s.env=c.value;let changedCount=0;state.houses.forEach(h=>{if(h.community===s.name){h.env=s.env;refreshScreeningTags(h);changed(h,'同步小区环境评级','根据监控小区目录继承环境：'+s.env);changedCount++}});save();render();toast('已保存小区评级，更新'+changedCount+'条未评级房源')}
+if(e.target.id==='newPhotoFile'){const f=e.target.files?.[0];const name=document.getElementById('newPhotoFileName');if(name)name.textContent=f?.name||'未选择任何文件';if(f){try{pendingPhoto=await compressPhoto(f);const info=document.getElementById('photoMessage');if(info)info.textContent='图片已准备：将随档案保存（压缩缩略图）。'}catch(err){pendingPhoto=undefined;toast(err.message)}}}const c=e.target.closest('[data-scope]');if(c){let s=state.scopes.find(x=>x.id===c.dataset.scope);if(!s)return;s.env=c.value;let changedCount=0;state.houses.forEach(h=>{if(h.community===s.name){h.env=s.env;refreshScreeningTags(h);changed(h,'同步小区环境评级','根据监控小区目录继承环境：'+s.env);changedCount++}});save();render();toast('已保存小区评级，更新'+changedCount+'条未评级房源')}
 if(e.target.id==='importInput'){const f=e.target.files?.[0];if(!f)return;const reader=new FileReader();reader.onload=()=>{try{const obj=JSON.parse(reader.result);if(!Array.isArray(obj.houses)||!Array.isArray(obj.scopes))throw Error('文件结构错误');if(!confirm('导入将覆盖当前浏览器的所有房源，请确认已经备份。'))return;state=sanitizeState(obj);save();closeOverlay();render();toast('导入成功；无独立链接的旧档案已隔离')}catch(x){toast('JSON格式不正确：'+x.message)}};reader.readAsText(f);e.target.value=''}});
 
 // Chrome 扩展桥接：插件只负责采集当前用户主动浏览的官方页面，先持久化插件待同步队列。
