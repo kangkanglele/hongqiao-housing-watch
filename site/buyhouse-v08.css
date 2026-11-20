@@ -153,3 +153,15 @@ body.bh-drawer-open{overflow:hidden}
  .bh-listing-price b{font-size:23px}
 }
 @media(prefers-reduced-motion:reduce){.app-drawer,.bh-backdrop{transition:none!important}}
+
+/* 首页精简：总房源、待看、重点各自独立；移动端横向滚动。 */
+.bh-metrics{display:flex;gap:12px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
+.bh-metrics::-webkit-scrollbar,.bh-filter-accordion .filters::-webkit-scrollbar{display:none}
+.bh-metrics .bh-metric{flex:1 0 0;min-width:165px;scroll-snap-align:start}
+.bh-filter-accordion{margin:0 0 14px;min-width:0}
+.bh-filter-accordion .filters{display:flex;flex-wrap:nowrap;gap:7px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:4px 1px 9px;scroll-snap-type:x proximity}
+.bh-filter-accordion .filters .chip{white-space:nowrap;flex:0 0 auto;scroll-snap-align:start}
+@media(max-width:700px){
+ .bh-metrics .bh-metric{flex:0 0 44%;min-width:145px;max-width:200px}
+ .bh-list-head{margin-top:21px}
+}
