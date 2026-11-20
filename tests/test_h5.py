@@ -173,7 +173,7 @@ with sync_playwright() as pw:
     page.locator('#navToggle').click()
     mobile_drawer_left = page.locator('#navDrawer').evaluate('(el)=>el.getBoundingClientRect().left')
     assert mobile_drawer_left <= 1, f'mobile navigation drawer must open from the left: {mobile_drawer_left}'
-    page.locator('#navBackdrop').click()
+    page.keyboard.press('Escape')
 
     assert page.locator('#adminPin').count() == 0
     page.locator('#navToggle').click()
