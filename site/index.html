@@ -1041,7 +1041,7 @@ function houseMediaMarkup(h){
     <label>上传现场照片或视频（支持多选，原文件保存在私人 Google Drive）</label>
     <input id="houseMediaFiles" data-media-house="${esc(h.id)}" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" multiple>
     <button class="btn sm" data-media-retry="1">重试本机待上传文件</button>
-    <p id="hqMediaProgress" class="muted">单个文件不超过120MB；上传中断可从本机待传记录重新上传。</p>
+    <p id="hqMediaProgress" class="muted">不设置应用内单文件上限；实际上传受 Google Drive 空间、平台时限和网络稳定性限制。中断后可重试。</p>
   </div>`:''}
   ${sourceImages.length?`<p class="muted">网站来源还识别到 ${sourceImages.length} 张图片地址；只有成功写入 Drive 的文件才计入归档。</p>`:''}`;
 }
