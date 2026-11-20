@@ -569,7 +569,7 @@ async function initCloud(){
  }
 let tab='houses', filter=state.pageConfig.defaultFilter, search='', searchOpen=false, kind='all', view=state.pageConfig.defaultView, detail=null;
 const navs=[['houses','house','房源概览'],['visits','calendar','看房行程'],['changes','chart','市场记录'],['benchmark','bars','成交基准'],['scopes','building','监控小区'],['settings','settings','数据管理']];
-const titles={houses:['房源概览','实体房屋 × 跨平台关联 × 用户反馈'],visits:['看房行程','待看房源不计日期；历史按实际拍摄时间归档。'],changes:['市场记录','小区扫描快照与单套房源事件分开记录。'],benchmark:['成交基准','正常房基准与有缺陷房折价分开研究。'],scopes:['监控小区','周六实勘后逐个评级、调整筛选规则。'],config:['页面配置','动态修改样式、布局和筛选规则，无须重新发布。'],settings:['数据管理','资料核验 · 云端同步 · 备份。']};
+const titles={houses:['房源概览','实体房屋 × 跨平台关联 × 用户反馈'],visits:['看房行程','待看房源不计日期；历史按实际拍摄时间归档。'],changes:['市场记录','只展示单套房源记录与可追溯的修改历史。'],benchmark:['成交基准','正常房基准与有缺陷房折价分开研究。'],scopes:['监控小区','周六实勘后逐个评级、调整筛选规则。'],config:['页面配置','动态修改样式、布局和筛选规则，无须重新发布。'],settings:['数据管理','资料核验 · 云端同步 · 备份。']};
 const HARD_DEFECTS=[
  ['duplex','跃层／复式结构'],['top','顶层'],['severeNoise','卧室持续明显噪音'],
  ['legal','产权或入学条件不符'],['structure','漏水／结构安全问题'],['groundDamp','一楼严重返潮／潮湿'],
@@ -930,12 +930,15 @@ function renderItems(){
  </button></article>`}).join('')}</div>`;
 }
 function renderChanges(){
- const scans=(state.marketScans||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
- const logs=state.houses.flatMap(h=>(h.events||[]).map(e=>({...e,house:h}))).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
- return `<div class="alert"><span>ⓘ</span><div><b>这里显示的是小区市场快照，不是单套房源。</b>它们有来源页面，但没有具体房屋的唯一详情链接，因此不进入正式房源库、也不参与单套挂牌量。挂牌指标来自不同时间的公开页面，不能视为实时数据。</div></div>
- <div class="box"><div class="sectionhead" style="margin:0 0 12px"><h2>小区挂牌扫描 <span class="badge good">${scans.length} 条</span></h2><span class="hint">每次采样保留原始页面</span></div>
- ${scans.length?`<div class="table-wrap" style="box-shadow:none"><table class="main-table"><thead><tr><th>采样日 / 索引新鲜度</th><th>小区</th><th>挂牌均价</th><th>页面在售</th><th>近30天带看</th><th>平台</th><th>来源</th></tr></thead><tbody>${scans.map(x=>`<tr><td>${esc(x.date||'—')}<div class="muted">${esc(x.observationAt||'未标注')}</div></td><td><strong>${esc(x.community)}</strong></td><td>${Number(x.listedAvg)>0?fmt(x.listedAvg)+' 元/㎡':'—'}</td><td>${x.listedCount??'—'} 套</td><td>${x.visits30??'—'} 次</td><td>${esc(x.channel||'—')}</td><td>${urlSafe(x.url)?`<a href="${esc(urlSafe(x.url))}" target="_blank" rel="noopener noreferrer" style="color:#17735e">小区页 ↗</a>`:'—'}</td></tr>`).join('')}</tbody></table></div><p class="muted" style="margin-top:10px">各条记录保留原始小区页面、观察时间和局限说明；不是已核验单套房源。</p>`:'<div class="empty">尚无小区挂牌扫描记录。</div>'}</div>
- <div class="box"><h3>单套房源变动流水 <span class="muted">${logs.length} 条</span></h3><p class="muted">只有已经进入正式房源库的真实房源，才会形成调价、上下架、看房等单套事件。</p>${logs.length?logs.map(e=>`<div class="log-item"><div class="log-ico">◷</div><div><strong>${esc(e.house.community)} · ${esc(e.title)}</strong><p>${esc(e.desc)}</p><time>${esc(e.date)} · ${esc(e.house.id)} <button class="btn text sm" data-open="${esc(e.house.id)}">查看房源档案</button></time></div></div>`).join(''):'<div class="muted">目前还没有单套房源事件。</div>'}</div>`;
+ // 旧小区扫描继续保留于 state.marketScans / Google Sheets，仅从前台隐藏。
+ // 市场记录只展示能追溯到单套房源档案的事件，不推断真实成交。
+ const logs=(state.houses||[]).flatMap(h=>(h.events||[]).map(e=>({...e,house:h})))
+   .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+ return `<section class="box">
+  <div class="sectionhead" style="margin:0 0 12px"><h2>单套房源变动流水 <span class="badge neutral">${logs.length} 条</span></h2></div>
+  <p class="muted" style="margin:0 0 18px">记录已经建档房源的新增、报价调整和人工观察，按记录时间排序。仅有记录不代表已成交；真实成交价格、成交日期需另外核验。</p>
+  ${logs.length?logs.map(e=>`<div class="log-item"><div class="log-ico">◷</div><div><strong>${esc(e.house.community||'待核实小区')} · ${esc(e.title||'房源记录')}</strong><p>${esc(e.desc||'暂无事件说明')}</p><time>${esc(e.date||'时间待核实')} · ${esc(e.house.id)} <button class="btn text sm" data-open="${esc(e.house.id)}">查看房源档案</button></time></div></div>`).join(''):'<div class="empty">暂无单套房源变动记录。通过 Chrome 采集或编辑已有房源后，相关操作会逐步保存在这里。</div>'}
+ </section>`;
 }
 function renderBenchmark(){const ds=state.benchmarks||[];return `<div class="alert"><span>ⓘ</span><div><b>成交基准只使用已确认、可比的正常房成交。</b> 缺少楼层、环境或房屋状态的公开成交可以保留为“参考样本”，但不能直接归入B级无硬伤基准。暂不生成未经证实的溢价比例。</div></div><div class="grid2"><div class="box"><h3>B级环境 · 正常房基准</h3><div style="font-size:28px;font-weight:780;margin:18px 0 8px">待建立</div><p>同园区、同面积段、相近楼层，优先近6–12个月真实成交。至少有可比证据才能计算。</p></div><div class="box"><h3>A级环境 · 合理溢价</h3><div style="font-size:28px;font-weight:780;margin:18px 0 8px">证据不足</div><p>只有市场成交支持时才加价。好楼层、优质环境、好装修分开比较，防止重复计价。</p></div></div><div class="box"><h3>已收录的公开成交参考</h3><div class="table-wrap" style="box-shadow:none"><table class="main-table"><thead><tr><th>园区</th><th>日期</th><th>面积</th><th>成交总价</th><th>单价</th><th>可比性</th><th>证据</th></tr></thead><tbody>${ds.map(b=>`<tr><td><strong>${esc(b.community)}</strong></td><td>${esc(b.date)}</td><td>${fmt(b.area)}㎡</td><td>${fmt(b.price)}万</td><td>${Math.round(b.price*10000/b.area).toLocaleString()}元/㎡</td><td>${esc(b.quality)}</td><td>${urlSafe(b.url)?`<a href="${esc(urlSafe(b.url))}" target="_blank" rel="noopener noreferrer">来源 ↗</a>`:'未核验'}</td></tr>`).join('')}</tbody></table></div><p class="muted">仅通过严格来源核实的成交才可进入这张表，参考线索不得作为定价基准。</p></div>
 <div class="box"><h3>历史成交线索 <span class="badge warn">待核实 ${(state.saleLeads||[]).length} 条</span></h3>
