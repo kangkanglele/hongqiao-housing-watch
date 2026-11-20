@@ -17,6 +17,9 @@ if command -v node >/dev/null 2>&1; then
   echo "==> JavaScript syntax checks"
   node --check netlify/functions/hq-api.mjs
   node --check scripts/mock-preview.mjs
+  node --check extension/media-upload.js
+  node --check extension/extract.js
+  node --check site/media-client.js
   node --check extension/background.js
   node --check extension/popup.js
   node --check extension/status-overlay.js
@@ -32,8 +35,23 @@ if command -v node >/dev/null 2>&1; then
   echo "==> Chrome extension popup and sync simulation"
   node tests/test_extension.cjs
 
+  echo "==> Draft Drive media and listing-image tests (offline)"
+  node tests/test_media_draft.cjs
+
+  echo "==> Mobile browser private media outbox compatibility"
+  node tests/test_media_queue_compat.cjs
+
+  echo "==> Visit V2 status and capture-time timeline tests (offline)"
+  node tests/test_visit_v2.cjs
+
+  echo "==> Market record page: individual-listing events only (offline)"
+  node tests/test_market_records.cjs
+
   echo "==> Apps Script / Google Sheets snapshot simulation"
   node tests/test_apps_script_snapshot.cjs
+
+  echo "==> Apps Script Google Drive media resumable-upload simulation"
+  node tests/test_apps_script_media.cjs
 
   echo "==> Node-based local mock server regression"
   node tests/test_mock_preview.mjs

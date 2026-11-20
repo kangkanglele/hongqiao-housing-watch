@@ -1,14 +1,14 @@
 'use strict';
 const $=selector=>document.querySelector(selector);
 const labels={
- extracting:['正在读取房源','正在识别当前打开的贝壳／我爱我家详情页','◌'],
+ extracting:['正在读取房源','正在识别当前打开的贝壳／链家／我爱我家详情页','◌'],
  queued:['已保存在本机','房源已进入本地队列，正在准备上传','✓'],
  syncing:['正在同步云端','云端正在核验并保存这条房源','↥'],
  synced:['同步完成','云端已确认保存；本地队列已清空','✓'],
  auth_required:['等待 PIN 授权','记录已安全保存在本机，连接后自动上传','🔐'],
  offline:['网络暂不可用','数据没有丢失，网络恢复后会自动重试','↻'],
  error:['本次操作未完成','记录仍保留在本机队列，可查看错误并重试','!'],
- idle:['准备就绪','打开贝壳或我爱我家单套详情页，点击扩展图标即可采集','⌂']
+ idle:['准备就绪','选择看房属性后，点击“采集并加入房源”','⌂']
 };
 function render(state){
  const phase=state.phase||'idle',meta=labels[phase]||labels.idle;
@@ -27,19 +27,20 @@ function render(state){
   $('#listingLink').href=/^https:\/\//.test(record.url||'')?record.url:'#';
  }else $('#listing').hidden=true;
  $('#auth').hidden=!!state.authed;
- $('#queueCount').textContent=(state.queued||0)+' 条待同步';
+ $('#queueCount').textContent=(state.queued||0)+' 条房源、'+(state.mediaQueued||0)+' 张图片待同步';
  $('#lastSynced').textContent=state.lastSyncedAt?'上次成功：'+new Date(state.lastSyncedAt).toLocaleString('zh-CN'):'尚未同步';
- $('#retry').disabled=!state.queued;
- $('#retry').style.opacity=state.queued?1:.5;
+ $('#retry').disabled=!(state.queued||state.mediaQueued);
+ $('#retry').style.opacity=(state.queued||state.mediaQueued)?1:.5;
 }
 async function refresh(){
  try{const state=await chrome.runtime.sendMessage({type:'STATUS'});render(state||{});}
  catch(error){$('#statusMessage').textContent=error.message||String(error);}
 }
+let visitStatusExplicit=false;
 async function init(){
- await refresh();
- try{const result=await chrome.runtime.sendMessage({type:'CAPTURE_ACTIVE'});if(!result?.ok&&result?.error)$('#statusMessage').textContent=result.error;}
- catch(error){$('#statusMessage').textContent=error.message||String(error);}
+ const config=await chrome.storage.local.get('imageCount');
+ $('#imageCount').value=Number(config.imageCount)===8?'8':'1';
+ $('#visitStatus').value='未看';
  await refresh();
 }
 $('#login').addEventListener('click',async()=>{
@@ -54,9 +55,25 @@ $('#login').addEventListener('click',async()=>{
  }catch(error){$('#authMessage').textContent=error.message||String(error);}
  finally{$('#login').disabled=false;}
 });
+$('#imageCount').addEventListener('change',async e=>{
+ await chrome.runtime.sendMessage({type:'SET_IMAGE_COUNT',value:Number(e.target.value)});
+});
+$('#visitStatus').addEventListener('change',()=>{visitStatusExplicit=true;});
+$('#recapture').addEventListener('click',async()=>{
+ const button=$('#recapture');button.disabled=true;
+ $('#statusMessage').textContent='正在采集房源数据与看房属性…';
+ try{
+  const result=await chrome.runtime.sendMessage({type:'CAPTURE_ACTIVE',visitStatus:$('#visitStatus').value,visitStatusExplicit});
+  if(!result?.ok)throw Error(result?.error||'采集失败');
+  visitStatusExplicit=false;
+ }catch(error){$('#statusMessage').textContent=error.message||String(error);}
+ finally{button.disabled=false;}
+ await refresh();
+});
 $('#retry').addEventListener('click',async()=>{
  $('#statusMessage').textContent='正在重试本机待同步队列…';
  await chrome.runtime.sendMessage({type:'WAKE_SYNC'});
+ await chrome.runtime.sendMessage({type:'RETRY_IMAGES'});
  await refresh();
 });
 chrome.storage.onChanged.addListener((_changes,area)=>{if(area==='local')refresh()});

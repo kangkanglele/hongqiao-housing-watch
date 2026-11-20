@@ -41,6 +41,14 @@ const bad=await call('login',{pin:wrongPin});assert.equal(bad.status,401);
 const login=await call('login',{pin:testPin});assert.equal(login.status,200);const session=login.body.session;
 assert.ok(session);const noAuth=await call('load');assert.equal(noAuth.status,200,'public read-only load should not require PIN');assert.equal(noAuth.body.version,8);
 const publicPing=await call('ping');assert.equal(publicPing.status,200);
+const previewHealth=await handler(new Request(root,{method:'POST',headers:{origin:'https://deploy-preview-8--hongqiao-housing-watch.netlify.app','content-type':'application/json'},body:JSON.stringify({action:'health'})}));
+assert.equal(previewHealth.status,200,'approved Netlify PR preview alias may call health');
+assert.equal((await previewHealth.json()).configured,true);
+const hashedPreview=await handler(new Request(root,{method:'POST',headers:{origin:'https://6affb154e51ace2e467538f7--hongqiao-housing-watch.netlify.app','content-type':'application/json'},body:JSON.stringify({action:'health'})}));
+assert.equal(hashedPreview.status,200,'Netlify deploy permalink origin must be allowed');
+const untrustedPreview=await handler(new Request(root,{method:'POST',headers:{origin:'https://deploy-preview-8--another-site.netlify.app','content-type':'application/json'},body:JSON.stringify({action:'health'})}));
+assert.equal(untrustedPreview.status,403,'other Netlify sites must remain blocked');
+
 const noAuthWrite=await call('begin',{uploadId:'upload0001',expectedVersion:8});assert.equal(noAuthWrite.status,401,'mutations must still require a PIN session');
 const old=await call('load',{},session);assert.equal(old.body.version,8);
 const item={platform:'贝壳',platformId:'101126703003',url:'https://m.ke.com/tj/ershoufang/101126703003.html?shareSource=beike_app',community:'水木天成碧杉园',title:'碧杉园南向一居',area:71.31,price:56,rooms:'1居',floorBand:'高楼层/7层',totalFloors:7,orientation:'南'};
@@ -53,6 +61,45 @@ assert.equal(unknown.body.status,'pending_community');assert.equal(state.houses.
 const thirdParty=await call('capture',{record:{...item,url:'https://anjuke.com/tj/ershoufang/101126703003.html'}},session);assert.equal(thirdParty.status,502);assert.equal(state.houses.length,1);
 const opts=await handler(new Request(root,{method:'OPTIONS',headers:{origin:'chrome-extension://abcdefgh'}}));assert.equal(opts.status,204);
 assert.equal(snapshotPostCalls,3,'each successful mutation must be one Apps Script POST');
+// V2: a new capture defaults to 未看; an explicit edit moves it into the timeless pending list.
+assert.equal(state.houses[0].visitStatus,'未看');
+const visitPending=await call('capture',{record:{...item,price:54,visitStatus:'看房',visitStatusExplicit:true}},session);
+assert.equal(visitPending.body.status,'updated');
+assert.equal(state.houses[0].visitStatus,'看房');
+const beforeNoOp=snapshotPostCalls;
+const recapture=await call('capture',{record:{...item,price:54,visitStatus:'未看',visitStatusExplicit:false}},session);
+assert.equal(recapture.body.status,'unchanged','recapture without touching visit selector must preserve earlier intent');
+assert.equal(state.houses[0].visitStatus,'看房');
+assert.equal(snapshotPostCalls,beforeNoOp);
+const visitSeen=await call('capture',{record:{...item,price:54,visitStatus:'看过',visitStatusExplicit:true}},session);
+assert.equal(visitSeen.body.status,'updated');
+assert.equal(state.houses[0].visitStatus,'看过');
+assert.ok(Number.isFinite(Date.parse(state.houses[0].visitSeenAt)),'marking seen should keep a timestamp');
+assert.ok(Number.isFinite(Date.parse(state.houses[0].visitSeenAt)),'marking seen should keep a timestamp');
+
+// Drive media: an uploaded image/video is attached to the matching cloud house.
+// A retry with the same Drive file ID must not create duplicate media or snapshots.
+const beforeMediaAttach=snapshotPostCalls;
+const imageMedia={driveFileId:'drive-image-test-123456',mimeType:'image/jpeg',name:'livingroom.jpg',size:12345,source:'网站照片',sourceUrl:'https://image1.ljcdn.com/real-estate/room.jpg',previewData:'data:image/jpeg;base64,AA=='};
+const imageAttach=await call('mediaAttach',{houseId:state.houses[0].id,media:imageMedia},session);
+assert.equal(imageAttach.status,200);
+assert.equal(imageAttach.body.status,'added');
+assert.equal(state.houses[0].media.length,1);
+assert.equal(state.houses[0].media[0].driveFileId,imageMedia.driveFileId);
+assert.equal(snapshotPostCalls,beforeMediaAttach+1,'first media association must save one atomic snapshot');
+const duplicateImage=await call('mediaAttach',{houseId:state.houses[0].id,media:imageMedia},session);
+assert.equal(duplicateImage.status,200);
+assert.equal(duplicateImage.body.status,'unchanged');
+assert.equal(state.houses[0].media.length,1,'retry must not duplicate the image');
+assert.equal(snapshotPostCalls,beforeMediaAttach+1,'duplicate media association must not create another snapshot');
+const videoAttach=await call('mediaAttach',{houseId:state.houses[0].id,media:{driveFileId:'drive-video-test-123456',mimeType:'video/mp4',name:'onsite.mp4',size:987654,source:'现场上传'}},session);
+assert.equal(videoAttach.status,200);
+assert.equal(videoAttach.body.status,'added');
+assert.equal(state.houses[0].media.length,2);
+assert.equal(state.houses[0].media[1].mimeType,'video/mp4');
+assert.equal(snapshotPostCalls,beforeMediaAttach+2,'video association must also save one atomic snapshot');
+
+
 // H5 now uses the exact same one-request Apps Script POST as the extension.
 const snapshotInvalid=await call('snapshotCommit',{expectedVersion:version,state:{houses:'invalid',scopes:[]} },session);
 assert.equal(snapshotInvalid.status,400,'H5 snapshots must include valid houses and scopes');

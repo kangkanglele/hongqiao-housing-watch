@@ -14,7 +14,7 @@ def basic_route(route):
     if request.resource_type == 'document':
         route.fulfill(status=200, content_type='text/html; charset=utf-8', body=html)
         return
-    if request.url.endswith('/buyhouse-v08.css'):
+    if request.url.split('?')[0].endswith('/buyhouse-v08.css'):
         route.fulfill(status=200, content_type='text/css; charset=utf-8', body=layout_css)
         return
     if request.url.endswith('/sync-merge.js'):
@@ -68,7 +68,7 @@ def conflict_route_factory():
         if request.resource_type == 'document':
             route.fulfill(status=200, content_type='text/html; charset=utf-8', body=html)
             return
-        if request.url.endswith('/buyhouse-v08.css'):
+        if request.url.split('?')[0].endswith('/buyhouse-v08.css'):
             route.fulfill(status=200, content_type='text/css; charset=utf-8', body=layout_css)
             return
         if request.url.endswith('/sync-merge.js'):
@@ -129,12 +129,41 @@ with sync_playwright() as pw:
     page.wait_for_timeout(300)
     root_text = page.locator('#root').inner_text()
     assert page.locator('.bh-overview-head h1').inner_text() == '房源概览', f'new dynamic overview missing; errors={errors}; root={root_text[:500]}'
-    assert page.locator('.bh-metric').count() == 4, 'four real-data dashboard metrics expected'
+    assert page.locator('.bh-metric').count() == 3, 'three independent overview metrics expected'
     assert page.locator('#nav [data-tab="config"]').count() == 0, 'page configuration must not appear in navigation'
-    page.wait_for_function("document.querySelectorAll('.bh-metric-value').length === 4 && document.querySelector('.bh-metric-value').textContent.includes('2')", timeout=6000)
-    assert [x.replace('套','').strip() for x in page.locator('.bh-metric-value').all_inner_texts()] == ['2','1','1','1'], 'metrics must reflect loaded records'
+    page.wait_for_function("document.querySelectorAll('.bh-metric-value').length === 3 && document.querySelector('.bh-metric-value').textContent.includes('2')", timeout=6000)
+    assert [x.replace('套','').strip() for x in page.locator('.bh-metric-value').all_inner_texts()] == ['2','0','1'], 'total, pending and focus must reflect loaded records'
+    assert page.locator('.bh-sync-line').count() == 0, 'redundant homepage refresh strip removed'
+    assert page.locator('.bh-filter-accordion .filters').is_visible(), 'filters visible by default'
+    assert page.locator('.bh-filter-accordion .chip').count() == 9, 'focus, pending visit and visited are separate filters'
+    assert page.get_by_role('button', name='待看房源').count() == 1, 'pending visit filter is distinct from focus'
     assert page.locator('.bh-listing').count() == 1, 'default list excludes hard defects and deleted records'
+    assert page.locator('.photo-placeholder .photo-symbol .bh-metric-icon').count() >= 1, 'listing placeholder reuses overview house icon'
     assert '水木天成翠杨园' in page.locator('.bh-listing-name').inner_text()
+    # Header: no white slab or redundant cloud/help block; upload slot is reserved at the right.
+    header_style = page.locator('.topbar-shell').evaluate("""el => ({background:getComputedStyle(el).backgroundColor,border:getComputedStyle(el).borderBottomWidth})""")
+    assert header_style['background'] == 'rgb(255, 255, 255)' and header_style['border'] == '0px', f'header should blend into page background: {header_style}'
+    assert page.locator('.bh-mini-status').count() == 0 and page.locator('[data-ui="help"]').count() == 0, 'remove compact cloud status and help block from header'
+    assert page.locator('#topbarUploadSlot[hidden]').count() == 1, 'empty upload slot must stay hidden'
+    toolbar_order = page.locator('.bh-browse-toolbar').evaluate("""el => [...el.children].map(x=>x.classList.contains('bh-search-toggle')?'search':x.classList.contains('bh-select-wrap')?'community':'view').join(',')""")
+    assert toolbar_order == 'search,community,view', f'search, community and view controls must follow requested order: {toolbar_order}'
+    search_width = page.locator('.bh-search-toggle').evaluate('(el)=>el.getBoundingClientRect().width')
+    assert search_width >= 108, f'search target should be widened: {search_width}'
+    fab_style = page.locator('#fabNew').evaluate("""el => ({position:getComputedStyle(el).position,top:getComputedStyle(el).top,right:getComputedStyle(el).right,bottom:getComputedStyle(el).bottom})""")
+    assert fab_style['position'] == 'fixed' and float(fab_style['top'].replace('px','')) < 100 and 0 < float(fab_style['right'].replace('px','')) < 60, f'new listing button should float at upper right: {fab_style}'
+    # Read-only preview must explain why upload controls are unavailable and offer a safe route to PIN unlock.
+    page.locator('.bh-listing-main').first.click()
+    assert page.locator('.hq-media-locked').is_visible(), 'locked preview must explain upload is disabled until PIN unlock'
+    page.locator('[data-ui="goSettings"]').click()
+    assert page.locator('#adminPin').count() == 1, 'locked media prompt must navigate to PIN unlock'
+    page.locator('#navToggle').click()
+    page.locator('#nav [data-tab="houses"]').click()
+    # Desktop navigation drawer must open from the physical left edge.
+    page.locator('#navToggle').click()
+    page.wait_for_function("document.body.classList.contains('bh-drawer-open') && document.querySelector('#navDrawer').dataset.open === 'true' && Math.abs(new DOMMatrix(getComputedStyle(document.querySelector('#navDrawer')).transform).m41) < 1", timeout=2500)
+    drawer = page.locator('#navDrawer').evaluate("""el => ({left:el.getBoundingClientRect().left,position:getComputedStyle(el).position,transform:getComputedStyle(el).transform,translateX:new DOMMatrix(getComputedStyle(el).transform).m41})""")
+    assert drawer['left'] <= 1 and drawer['position'] == 'fixed' and abs(drawer['translateX']) < 1, f'desktop drawer must be fixed to the left edge and fully open: {drawer}'
+    page.locator('#navBackdrop').click()
     page.locator('[data-view="table"]').click()
     assert page.locator('.bh-listings.compact').count() == 1
     page.locator('[data-view="cards"]').click()
@@ -148,6 +177,22 @@ with sync_playwright() as pw:
     assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), '390px layout must not scroll horizontally'
     page.set_viewport_size({'width':320,'height':740})
     assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), '320px layout must not scroll horizontally'
+    # Opening a property modal must shade the sticky top bar too.
+    page.locator('.bh-listing-main').first.click()
+    assert page.locator('#overlay .detail-shade').count() == 1
+    layers = page.evaluate("""() => ({
+      header:Number(getComputedStyle(document.querySelector('.topbar-shell')).zIndex),
+      shade:Number(getComputedStyle(document.querySelector('#overlay .shade')).zIndex)
+    })""")
+    assert layers['header'] < layers['shade'], f'modal shade must cover top navigation: {layers}'
+    assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), '320px detail modal must not create page-level horizontal scrolling'
+    page.locator('.detail-sheet [aria-label="关闭"]').click()
+    # The mobile navigation drawer remains anchored at the left edge.
+    page.locator('#navToggle').click()
+    page.wait_for_function("document.body.classList.contains('bh-drawer-open') && document.querySelector('#navDrawer').getBoundingClientRect().left >= -1", timeout=2500)
+    mobile_drawer_left = page.locator('#navDrawer').evaluate('(el)=>el.getBoundingClientRect().left')
+    assert mobile_drawer_left <= 1, f'mobile navigation drawer must open from the left: {mobile_drawer_left}'
+    page.keyboard.press('Escape')
 
     assert page.locator('#adminPin').count() == 0
     page.locator('#navToggle').click()

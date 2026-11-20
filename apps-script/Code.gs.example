@@ -56,8 +56,12 @@ function doPost(e) {
     if (!expectedToken || !constantTimeEqual_(String(body.token || ''), expectedToken)) {
       throw new Error('访问令牌错误。');
     }
-    if (String(body.action || '') !== 'snapshotCommit') throw new Error('不支持的 POST 操作。');
-    result = commitSnapshot_(body);
+    const action = String(body.action || '');
+    if (action === 'snapshotCommit') result = commitSnapshot_(body);
+    else if (action === 'mediaStart') result = mediaStart_(body);
+    else if (action === 'mediaPart') result = mediaPart_(body);
+    else if (action === 'mediaFinish') result = mediaFinish_(body);
+    else throw new Error('不支持的 POST 操作。');
   } catch (err) {
     result = { ok: false, error: String(err && err.message || err) };
   }
@@ -781,3 +785,118 @@ function productionHealthCheck() {
   Logger.log(JSON.stringify(report, null, 2));
   return report;
 }
+
+/* MEDIA API: private Google Drive files.
+ * Media bytes NEVER go into the Sheets snapshot. Upload session URLs and OAuth
+ * tokens remain in Apps Script CacheService and never reach the browser.
+ * No application-defined per-file cap; Google Drive quota and platform limits still apply. Upload parts must be sequential, 256 KiB multiples.
+ * Google Apps Script deployment must have Drive and external_request scopes.
+ */
+const MEDIA_PART_BYTES_ = 2 * 1024 * 1024;
+const MEDIA_CACHE_TTL_ = 21600;
+function mediaCache_(){return CacheService.getScriptCache();}
+function mediaSession_(id) {
+  if(!/^[a-zA-Z0-9_-]{20,90}$/.test(String(id||'')))throw Error('上传会话无效');
+  const value=mediaCache_().get('media:'+id);
+  if(!value)throw Error('上传会话已过期，请重新选择文件');
+  return JSON.parse(value);
+}
+function mediaSessionPut_(id,obj){mediaCache_().put('media:'+id,JSON.stringify(obj),MEDIA_CACHE_TTL_);}
+function mediaFolder_(key){
+  // Two concurrent file uploads for the same listing must reuse one Drive folder.
+  const lock=LockService.getScriptLock();
+  lock.waitLock(10000);
+  try{
+    const props=PropertiesService.getScriptProperties();
+    let rootId=props.getProperty('MEDIA_ROOT_FOLDER_ID');
+    let root;
+    if(rootId){try{root=DriveApp.getFolderById(rootId);root.getName();}catch(_){root=null;}}
+    if(!root){
+      const folder=DriveApp.createFolder('红桥房源观察站媒体库');
+      props.setProperty('MEDIA_ROOT_FOLDER_ID',folder.getId());root=folder;
+    }
+    const safe=String(key||'unassigned').replace(/[^a-zA-Z0-9:_-]/g,'_').slice(0,90)||'unassigned';
+    const matches=root.getFoldersByName(safe);
+    return matches.hasNext()?matches.next():root.createFolder(safe);
+  }finally{lock.releaseLock();}
+}
+function mediaStart_(body){
+  const mime=String(body.mimeType||'').toLowerCase();
+  if(!/^(image\/(jpeg|png|webp)|video\/(mp4|quicktime|webm))$/.test(mime))throw Error('仅支持 JPG/PNG/WebP、MP4/MOV/WebM');
+  const size=Number(body.size);
+  if(!Number.isSafeInteger(size)||size<=0)throw Error('文件大小无效');
+  const name=String(body.name||'media').replace(/[\\/\x00-\x1f]/g,'_').slice(0,150);
+  const listingKey=String(body.listingKey||'unassigned').slice(0,90);
+  const folder=mediaFolder_(listingKey);
+  const url='https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,mimeType,size,webViewLink';
+  const start=UrlFetchApp.fetch(url,{method:'post',headers:{
+    'Authorization':'Bearer '+ScriptApp.getOAuthToken(),
+    'X-Upload-Content-Type':mime,
+    'X-Upload-Content-Length':String(size)
+  },contentType:'application/json',payload:JSON.stringify({name:name,mimeType:mime,parents:[folder.getId()]}),muteHttpExceptions:true});
+  const code=start.getResponseCode(),headers=start.getAllHeaders();
+  const location=headers.Location||headers.location;
+  if(code!==200||!location||!/^https:\/\/[a-z0-9.-]*googleapis\.com\//i.test(String(location)))throw Error('Drive 上传会话创建失败：HTTP '+code);
+  const uploadId=Utilities.getUuid().replace(/-/g,'')+Utilities.getUuid().slice(0,8);
+  mediaSessionPut_(uploadId,{url:String(location),mime:mime,name:name,size:size,next:0,listingKey:listingKey});
+  return {ok:true,uploadId:uploadId,chunkSize:MEDIA_PART_BYTES_};
+}
+function mediaPart_(body){
+  const id=String(body.uploadId||''),session=mediaSession_(id);
+  if(session.file)return {ok:true,finished:true,next:session.size,file:session.file};
+  const offset=Number(body.offset||0);
+  if(!Number.isSafeInteger(offset)||offset<0)throw Error('上传块偏移量无效');
+  const value=String(body.base64||'');
+  if(value.length>MEDIA_PART_BYTES_*2)throw Error('上传块过大');
+  let bytes;
+  try{bytes=Utilities.base64Decode(value);}catch(_){throw Error('图片/视频分块编码损坏');}
+  if(bytes.length<=0||bytes.length>MEDIA_PART_BYTES_||offset+bytes.length>session.size)throw Error('上传块大小不正确');
+  if(offset+bytes.length<session.size&&bytes.length%262144!==0)throw Error('中间上传块必须为256KB整数倍');
+  const digest=sha256Hex_(value);
+
+  // Drive may have accepted the previous request even if the response
+  // was lost. Accept only an exact replay of the last acknowledged chunk.
+  if(offset!==session.next){
+    const last=session.lastPart;
+    if(offset<session.next&&last&&offset===Number(last.offset)&&digest===String(last.digest)&&session.next===Number(last.next)){
+      return {ok:true,finished:false,next:session.next,duplicate:true};
+    }
+    throw Error('上传块顺序不正确，请按进度重试');
+  }
+
+  const end=offset+bytes.length-1;
+  const answer=UrlFetchApp.fetch(session.url,{
+    method:'put',headers:{
+      'Authorization':'Bearer '+ScriptApp.getOAuthToken(),
+      'Content-Range':'bytes '+offset+'-'+end+'/'+session.size,
+    },contentType:session.mime,payload:bytes,muteHttpExceptions:true
+  });
+  const code=answer.getResponseCode();
+  if(code===308){
+    const responseHeaders=answer.getAllHeaders();
+    const range=responseHeaders.Range||responseHeaders.range;
+    const match=String(range||'').match(/^bytes=0-(\d+)$/);
+    if(!match)throw Error('Drive 未返回已接收字节范围，无法确认分块进度');
+    const serverEnd=Number(match[1]);
+    if(!Number.isSafeInteger(serverEnd)||serverEnd<offset-1||serverEnd>end)throw Error('Drive 返回的上传进度无效');
+    session.next=serverEnd+1;
+    if(session.next<=offset)throw Error('Drive 尚未确认当前分块，请重试');
+    session.lastPart={offset:offset,digest:digest,next:session.next};
+    mediaSessionPut_(id,session);
+    return {ok:true,finished:false,next:session.next};
+  }
+  if(code!==200&&code!==201)throw Error('Drive 上传块失败：HTTP '+code+' '+answer.getContentText().slice(0,150));
+  let file;try{file=JSON.parse(answer.getContentText());}catch(_){throw Error('Drive 未返回文件信息');}
+  if(!file.id)throw Error('Drive 未返回文件编号');
+  session.next=session.size;
+  session.lastPart={offset:offset,digest:digest,next:session.next};
+  session.file={driveFileId:String(file.id),name:session.name,mimeType:session.mime,size:session.size,driveUrl:'https://drive.google.com/file/d/'+encodeURIComponent(file.id)+'/view',listingKey:session.listingKey};
+  mediaSessionPut_(id,session);
+  return {ok:true,finished:true,next:session.next,file:session.file};
+}
+function mediaFinish_(body){
+  const session=mediaSession_(String(body.uploadId||''));
+  if(!session.file||session.next!==session.size)throw Error('上传未完成，不能写入房源档案');
+  return {ok:true,file:session.file};
+}
+

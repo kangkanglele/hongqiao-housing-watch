@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "红桥房源采集助手",
   "short_name": "红桥采集",
-  "version": "0.6",
-  "description": "点击扩展图标自动采集房源；弹窗显示进度，页面悬浮提示同步状态。",
+  "version": "0.8",
+  "description": "采集房源数据与主图，可选保存相册到私人 Google Drive；先本地排队。",
   "minimum_chrome_version": "110",
   "permissions": [
     "activeTab",
@@ -12,7 +12,11 @@
     "alarms"
   ],
   "host_permissions": [
-    "https://hongqiao-housing-watch.netlify.app/*"
+    "https://hongqiao-housing-watch.netlify.app/*",
+    "https://*.ljcdn.com/*",
+    "https://*.ke.com/*",
+    "https://*.lianjia.com/*",
+    "https://*.5i5j.com/*"
   ],
   "action": {
     "default_title": "一键采集并同步房源",

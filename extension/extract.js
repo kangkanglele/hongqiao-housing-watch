@@ -2,8 +2,8 @@
 // 注入用户当前可见的页面；不向目标网站新增请求，也不绕过权限或验证码。
 function extractListingFromCurrentPage(){
  const loc=location.href; let u;try{u=new URL(loc)}catch(e){return {error:'当前页面 URL 无效'}}
- const host=u.hostname.toLowerCase();const platform=host==='ke.com'||host.endsWith('.ke.com')?'贝壳':host==='5i5j.com'||host.endsWith('.5i5j.com')?'我爱我家':'';
- if(!platform)return {error:'仅支持贝壳（ke.com）和我爱我家（5i5j.com）官网'};
+ const host=u.hostname.toLowerCase();const platform=host==='ke.com'||host.endsWith('.ke.com')?'贝壳':host==='lianjia.com'||host.endsWith('.lianjia.com')?'链家':host==='5i5j.com'||host.endsWith('.5i5j.com')?'我爱我家':'';
+ if(!platform)return {error:'仅支持贝壳、链家和我爱我家官网'};
  const match=u.pathname.match(/^\/(?:[a-z]{2}\/)?ershoufang\/(\d{8,})(?:\.html)?$/i);
  if(!match)return {error:'当前打开的不是单套房源详情页；请先点进某一套房子'};
  const text=(document.body?.innerText||'').slice(0,50000);
@@ -63,9 +63,49 @@ function extractListingFromCurrentPage(){
  if(decMatch)decoration=decMatch[1];
  const elevMatch=first.match(/(?:配备电梯|有无电梯|电梯)[:：\s]*(有|无|是|否)/);
  if(elevMatch)elevator=['有','是'].includes(elevMatch[1])?'有':'无';
+ // Only inspect images on the single listing being actively viewed. No web requests.
+ // Exclude maps, broker avatars, related listings, logos and tracking pixels.
+ const mediaCandidates=[];
+ const takeImage=(raw)=>{
+   if(!raw||typeof raw!=='string')return;
+   let addr;try{addr=new URL(raw,location.href);}catch(_){return;}
+   if(addr.protocol!=='https:')return;
+   const imageHost=addr.hostname.toLowerCase();
+   if(!(/(^|\.)(ljcdn\.com|ke\.com|lianjia\.com|5i5j\.com)$/.test(imageHost)))return;
+   if(/(avatar|agent|broker|logo|qrcode|qr_code|map|sprite|icon|captcha)/i.test(addr.pathname))return;
+   const value=addr.toString().slice(0,1000);
+   if(!mediaCandidates.includes(value))mediaCandidates.push(value);
+ };
+ const og=document.querySelector('meta[property="og:image"]')?.getAttribute('content');
+ const galleryContainers=[
+   '.overview','.housePic','.house-pic','.housePhoto','.house-photo',
+   '.house-img','.imglist','.house-view','.image-wrap','.photo-view',
+   '.carousel','.picture','.houseImg','.frame .container','.photoList',
+   '[class*="gallery"]','[class*="swiper"]','[class*="houseImg"]'
+ ];
+ const imgs=new Set();
+ for(const selector of galleryContainers){
+   try{document.querySelectorAll(selector+' img').forEach(img=>imgs.add(img));}catch(_){}
+ }
+ if(!imgs.size)document.querySelectorAll('main img,.content img').forEach(img=>imgs.add(img));
+ for(const img of imgs){
+   if(img.closest('[class*="recommend"],[class*="agent"],[class*="broker"],[class*="similar"],[class*="nearby"],footer'))continue;
+   const w=img.naturalWidth||Number(img.width)||0,h=img.naturalHeight||Number(img.height)||0;
+   if(w&&h&&(w<240||h<120))continue;
+   for(const attr of ['data-original','data-src','data-lazy','data-img','src']){
+     const value=img.getAttribute(attr);
+     if(value&&!value.startsWith('data:')){takeImage(value);break;}
+   }
+   const set=img.getAttribute('srcset');
+   if(set)takeImage(set.split(',').pop()?.trim().split(/\s+/)[0]);
+ }
+ // The social sharing image is a fallback only; the visible listing gallery is preferred.
+ if(!mediaCandidates.length&&og)takeImage(og);
+ // A thumbnail belongs to the listing only when it is inside the current detail gallery.
+ const images=mediaCandidates.slice(0,12);
  // 明确不把“高楼层/7层”误读成实际第7层。
  const tags=[];if(price===null)tags.push('价格未能可靠识别');if(area===null)tags.push('面积未能可靠识别');if(!community)tags.push('小区需手动选择');
- return {platform,platformId:match[1],url:loc,community:community||'',title,area,price,rooms,floor,totalFloors,floorBand,orientation,decoration,elevator,notes:tags.join('；'),captureAt:new Date().toISOString(),extraction:'用户打开的官方页面 DOM（字段可能需要人工核对）'};
+ return {platform,platformId:match[1],url:loc,community:community||'',title,area,price,rooms,floor,totalFloors,floorBand,orientation,decoration,elevator,notes:tags.join('；'),captureAt:new Date().toISOString(),images,coverImage:images[0]||'',extraction:'用户打开的官方页面 DOM（字段可能需要人工核对）'};
 }
 
 extractListingFromCurrentPage();
