@@ -41,6 +41,14 @@ const bad=await call('login',{pin:wrongPin});assert.equal(bad.status,401);
 const login=await call('login',{pin:testPin});assert.equal(login.status,200);const session=login.body.session;
 assert.ok(session);const noAuth=await call('load');assert.equal(noAuth.status,200,'public read-only load should not require PIN');assert.equal(noAuth.body.version,8);
 const publicPing=await call('ping');assert.equal(publicPing.status,200);
+const previewHealth=await handler(new Request(root,{method:'POST',headers:{origin:'https://deploy-preview-8--hongqiao-housing-watch.netlify.app','content-type':'application/json'},body:JSON.stringify({action:'health'})}));
+assert.equal(previewHealth.status,200,'approved Netlify PR preview alias may call health');
+assert.equal((await previewHealth.json()).configured,true);
+const hashedPreview=await handler(new Request(root,{method:'POST',headers:{origin:'https://6affb154e51ace2e467538f7--hongqiao-housing-watch.netlify.app','content-type':'application/json'},body:JSON.stringify({action:'health'})}));
+assert.equal(hashedPreview.status,200,'Netlify deploy permalink origin must be allowed');
+const untrustedPreview=await handler(new Request(root,{method:'POST',headers:{origin:'https://deploy-preview-8--another-site.netlify.app','content-type':'application/json'},body:JSON.stringify({action:'health'})}));
+assert.equal(untrustedPreview.status,403,'other Netlify sites must remain blocked');
+
 const noAuthWrite=await call('begin',{uploadId:'upload0001',expectedVersion:8});assert.equal(noAuthWrite.status,401,'mutations must still require a PIN session');
 const old=await call('load',{},session);assert.equal(old.body.version,8);
 const item={platform:'贝壳',platformId:'101126703003',url:'https://m.ke.com/tj/ershoufang/101126703003.html?shareSource=beike_app',community:'水木天成碧杉园',title:'碧杉园南向一居',area:71.31,price:56,rooms:'1居',floorBand:'高楼层/7层',totalFloors:7,orientation:'南'};
