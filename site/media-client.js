@@ -66,6 +66,103 @@ async function preview(file){
    img.src=url;
  });
 }
+function exifDateToIso(raw){
+ const m=String(raw||'').match(/^(\d{4})[:/-](\d{2})[:/-](\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+ if(!m)return null;
+ const [y,mo,d,h,mi,s]=m.slice(1).map(Number);
+ if(y<2000||y>2100||mo<1||mo>12||d<1||d>31||h>23||mi>59||s>59)return null;
+ const result=new Date(y,mo-1,d,h,mi,s);
+ if(result.getFullYear()!==y||result.getMonth()!==mo-1||result.getDate()!==d)return null;
+ return result.toISOString();
+}
+function scanExifShotDate(buffer){
+ const bytes=new Uint8Array(buffer),dv=new DataView(buffer);
+ if(bytes[0]!==255||bytes[1]!==216)return null;
+ for(let p=2;p+12<bytes.length;){
+  if(bytes[p]!==255){p++;continue}
+  const marker=bytes[p+1];if(marker===218||marker===217)break;
+  const len=dv.getUint16(p+2,false);if(len<2||p+2+len>bytes.length)break;
+  if(marker===225&&bytes[p+4]===69&&bytes[p+5]===120&&bytes[p+6]===105&&bytes[p+7]===102){
+   const base=p+10;
+   if(base+8>bytes.length)break;
+   const little=bytes[base]===73&&bytes[base+1]===73;
+   if(!little&&!(bytes[base]===77&&bytes[base+1]===77))break;
+   const read16=o=>o+2<=bytes.length?dv.getUint16(o,little):0;
+   const read32=o=>o+4<=bytes.length?dv.getUint32(o,little):0;
+   const readAscii=(offset,size)=>{
+    if(!size||size>128||offset<0||offset+size>bytes.length)return '';
+    return String.fromCharCode(...bytes.slice(offset,offset+size)).replace(/\0.*$/,'').trim();
+   };
+   const walk=(offset,depth=0)=>{
+    if(depth>2||offset+2>bytes.length)return null;
+    const count=read16(offset);
+    if(count>150)return null;
+    let fallback=null,pointer=null;
+    for(let i=0;i<count;i++){
+     const at=offset+2+i*12;
+     if(at+12>bytes.length)break;
+     const tag=read16(at),type=read16(at+2),n=read32(at+4);
+     const ptr=read32(at+8),dataAt=n<=4?at+8:base+ptr;
+     if(tag===0x8769)pointer=base+ptr;
+     if(type===2&&(tag===0x9003||tag===0x9004||tag===0x0132)){
+      const parsed=exifDateToIso(readAscii(dataAt,n));
+      if(parsed&&tag===0x9003)return {shotAt:parsed,shotSource:'EXIF DateTimeOriginal'};
+      if(parsed&&!fallback)fallback={shotAt:parsed,shotSource:tag===0x0132?'EXIF DateTime':'EXIF DateTimeDigitized'};
+     }
+    }
+    return pointer?walk(pointer,depth+1)||fallback:fallback;
+   };
+   return walk(base+read32(base+4));
+  }
+  p+=2+len;
+ }
+ return null;
+}
+function scanMovieCreationTime(buffer){
+ const dv=new DataView(buffer),bytes=new Uint8Array(buffer);
+ const str=p=>String.fromCharCode(...bytes.slice(p,p+4));
+ const limits={min:946684800000,max:Date.now()+86400000};
+ function scan(from,to,level){
+  if(level>3)return null;
+  for(let at=from;at+8<=to;){
+   let size=dv.getUint32(at,false),head=8;
+   const box=str(at+4);
+   if(size===1){if(at+16>to)break;const hi=dv.getUint32(at+8,false),lo=dv.getUint32(at+12,false);size=hi*4294967296+lo;head=16;}
+   if(size===0)size=to-at;
+   if(!Number.isSafeInteger(size)||size<head||at+size>to)break;
+   if(box==='mvhd'){
+    const ver=bytes[at+head];
+    const epoch=2082844800;
+    let secs=0;
+    if(ver===0&&at+head+8<=to)secs=dv.getUint32(at+head+4,false);
+    else if(ver===1&&at+head+12<=to)secs=dv.getUint32(at+head+8,false)*4294967296+dv.getUint32(at+head+12,false);
+    const millis=(secs-epoch)*1000;
+    if(millis>=limits.min&&millis<=limits.max)return {shotAt:new Date(millis).toISOString(),shotSource:'视频容器创建时间（需核验是否为拍摄时间）'};
+   }
+   if(['moov','udta','trak'].includes(box)){const nested=scan(at+head,at+size,level+1);if(nested)return nested;}
+   at+=size;
+  }
+  return null;
+ }
+ return scan(0,bytes.length,0);
+}
+async function extractCapturedAt(file){
+ if(!file||typeof file.slice!=='function')return null;
+ try{
+  const first=await file.slice(0,Math.min(file.size,4*1024*1024)).arrayBuffer();
+  if(file.type==='image/jpeg')return scanExifShotDate(first);
+  if(['video/mp4','video/quicktime'].includes(file.type)){
+   const front=scanMovieCreationTime(first);
+   if(front)return front;
+   if(file.size>4*1024*1024){
+    // Typical recording files carry moov at the end. The buffer uses local offsets.
+    const tail=await file.slice(Math.max(0,file.size-4*1024*1024)).arrayBuffer();
+    return scanMovieCreationTime(tail);
+   }
+  }
+ }catch(_){}
+ return null;
+}
 // Files survive a reload in IndexedDB while awaiting upload. Do not persist video
 // base64 in localStorage, Chrome extension settings, or a JSON snapshot.
 const DB='hq-private-media-queue',STORE='media';
@@ -84,5 +181,5 @@ async function transact(mode,fn){const db=await database();try{
 const enqueue=record=>transact('readwrite',store=>store.put(record));
 const remove=id=>transact('readwrite',store=>store.delete(id));
 const pending=()=>transact('readonly',store=>store.getAll());
-root.HQMedia={post,upload,preview,validate,enqueue,remove,pending,MAX,CHUNK};
+root.HQMedia={post,upload,preview,validate,extractCapturedAt,enqueue,remove,pending,MAX,CHUNK};
 })(window);
