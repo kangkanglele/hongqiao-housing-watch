@@ -12,9 +12,9 @@
  <div><strong>红桥房源采集助手</strong><small>PROPERTY WATCH · AUTO SYNC</small></div>
  <span id="connection" class="connection">检查中</span>
 </header>
-<section class="status-card" id="statusCard" data-phase="extracting">
+<section class="status-card" id="statusCard" data-phase="idle">
  <div class="status-icon" id="statusIcon"><span class="spinner"></span></div>
- <div class="status-copy"><strong id="statusTitle">正在连接当前页面…</strong><p id="statusMessage">读取房源详情并保存到本机队列</p></div>
+ <div class="status-copy"><strong id="statusTitle">准备采集</strong><p id="statusMessage">选择看房属性，再点击采集</p></div>
 </section>
 <section class="listing" id="listing" hidden>
  <div class="listing-label">本次采集房源</div>
@@ -23,13 +23,19 @@
  <a id="listingLink" href="#" target="_blank" rel="noopener">打开原始房源 ↗</a>
 </section>
 <section class="listing">
+ <label for="visitStatus">看房属性（加入房源时选择）</label>
+ <select id="visitStatus" style="display:block;width:100%;margin:8px 0 14px;padding:9px;border:1px solid #dce9e2;border-radius:9px;background:#fff;color:#28513f">
+   <option value="未看">未看 · 只入房源库</option>
+   <option value="看房">看房 · 进入待看列表</option>
+   <option value="看过">看过 · 进入历史时间轴</option>
+ </select>
  <label for="imageCount">网站图片采集方式</label>
  <div class="auth-row">
    <select id="imageCount" style="flex:1;min-width:0">
      <option value="1">主图：保存1张</option>
      <option value="8">相册：最多保存8张</option>
    </select>
-   <button id="recapture" class="secondary">按此设置重新采集</button>
+   <button id="recapture" class="secondary">采集并加入房源</button>
  </div>
  <p class="hint">只有成功存入私人 Google Drive 的照片才算归档。下载受网站限制时，会保留房源图片地址并提示失败。</p>
 </section>
@@ -42,7 +48,7 @@
  <div><strong id="queueCount">0 条待同步</strong><small id="lastSynced">尚未同步</small></div>
  <button class="secondary" id="retry">重新同步</button>
 </footer>
-<div class="hint">点击扩展图标会自动采集当前房源及主图。选择多图后点击“重新采集”。图片失败不会删除已保存的房源文本。</div>
+<div class="hint">选择看房属性后点击「采集并加入房源」；价格、面积等继续自动识别。重新采集已有房源时，只有你主动切换状态才会改变它的看房属性。</div>
 <script src="popup.js"></script>
 </body>
 </html>
