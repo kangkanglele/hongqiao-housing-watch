@@ -23,7 +23,7 @@ const context={
  CacheService:{getScriptCache:()=>({get:k=>cache.get(k)||null,put:(k,v)=>cache.set(k,String(v))})},
  DriveApp:{createFolder:n=>{const f=makeFolder(n);rootFolder.createFolder(n);return f},getFolderById:id=>folders.get(id)||rootFolder},
  ScriptApp:{getOAuthToken:()=>'test-oauth-token'},
- Utilities:{getUuid:()=>('12345678-1234-4abc-8def-'+String(++uuid).padStart(12,'0')),base64Decode:s=>Buffer.from(s,'base64'),computeDigest:(_algo,s)=>crypto.createHash('sha256').update(String(s),'utf8').digest(),DigestAlgorithm:{SHA_256:'SHA_256'},Charset:{UTF_8:'UTF_8'}},
+ Utilities:{getUuid:()=>('12345678-1234-4abc-8def-'+String(++uuid).padStart(12,'0')),base64Decode:s=>Buffer.from(s,'base64'),computeDigest:(_algo,s)=>Array.from(crypto.createHash('sha256').update(String(s),'utf8').digest()),DigestAlgorithm:{SHA_256:'SHA_256'},Charset:{UTF_8:'UTF_8'}},
  UrlFetchApp:{fetch:(url,options)=>{
   driveRequests.push({url,method:options.method,headers:options.headers,payload:options.payload});
   if(options.method==='post')return {getResponseCode:()=>200,getAllHeaders:()=>({Location:'https://www.googleapis.com/upload/drive/v3/files?upload_id=test-resumable'}),getContentText:()=>''};
