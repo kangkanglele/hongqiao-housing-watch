@@ -198,7 +198,7 @@ async function flush(tabId){
   return {ok:queue.length===0&&!(media.queued||0),queued:queue.length,mediaQueued:media.queued||0};
  }finally{busy=false;}
 }
-async function captureActiveTab(){
+async function captureActiveTab(visitStatus='未看',visitStatusExplicit=false){
  const [tab]=await chrome.tabs.query({active:true,currentWindow:true});
  if(!tab?.id)throw Error('没有找到当前浏览器标签页');
  const tabId=tab.id;
@@ -211,6 +211,8 @@ async function captureActiveTab(){
   const result=await chrome.scripting.executeScript({target:{tabId},files:['extract.js']});
   const record=result?.[0]?.result;
   if(!record||record.error)throw Error(record?.error||'未能读取房源信息');
+  record.visitStatus=['未看','看房','看过'].includes(visitStatus)?visitStatus:'未看';
+  record.visitStatusExplicit=visitStatusExplicit===true;
   await setStatus('queued','已识别房源，正在本机留存…',tabId,{lastCapture:record});
   return await capture(record,tabId);
  }catch(error){
@@ -220,7 +222,7 @@ async function captureActiveTab(){
 }
 chrome.runtime.onMessage.addListener((message,sender,reply)=>{
  (async()=>{
-  if(message?.type==='CAPTURE_ACTIVE')return captureActiveTab();
+  if(message?.type==='CAPTURE_ACTIVE')return captureActiveTab(message.visitStatus,message.visitStatusExplicit);
   if(message?.type==='CAPTURE')return capture(message.record,message.tabId||sender.tab?.id);
   if(message?.type==='AUTH')return login(String(message.pin||''));
   if(message?.type==='STATUS'){
