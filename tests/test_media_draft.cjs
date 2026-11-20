@@ -52,6 +52,12 @@ const context={
 };
 run('site/media-client.js',context);
 (async()=>{
+ // The H5 media client must accept metadata for a file larger than the former 120 MiB app cap.
+ assert.doesNotThrow(()=>context.window.HQMedia.validate({type:'video/mp4',size:130*1024*1024}));
+ const appScript=read('apps-script/Code.gs.example');
+ assert.ok(!appScript.includes('MEDIA_LIMIT_BYTES_')&&!appScript.includes('120MB'),'Apps Script must not enforce an app-level media cap');
+ const h5Source=read('site/index.html');
+ assert.ok(!h5Source.includes('12*1024*1024'),'legacy image thumbnail inputs must not retain a per-file cap');
  const file=new Blob([Buffer.alloc(600000,3)],{type:'image/jpeg'});
  file.name='livingroom.jpg';
  const saved=await context.window.HQMedia.upload('fake-session',file,'house:TJ-HQ-0001');
