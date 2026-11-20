@@ -436,3 +436,15 @@ input[type="checkbox"],input[type="radio"]{accent-color:#111111!important}
  .bh-metric{box-shadow:none!important}
  .visit-v2-tabs{width:100%;overflow-x:auto}
 }
+
+
+/* Final monochrome cleanup for status, defect and utility states. */
+.online:before{background:#999999!important}
+.bh-mini-status{color:#888888!important}
+.visit-v2-price{color:#777777!important}
+.tiny-tag.hard{color:#555555!important;background:#F2F2F2!important;border-color:#E8E8E8!important}
+.screening-hint.excluded,.screening-hint.review{background:#F5F5F5!important;color:#555555!important;border-color:#ECECEC!important}
+.defect-pill input{accent-color:#111111!important}
+.defect-pill:has(input:checked){background:#111111!important;border-color:#111111!important;color:#FFFFFF!important}
+.link-policy{background:#F2F2F2!important;border-color:#E6E6E6!important;color:#555555!important}
+.help b[style*="color"]{color:#333333!important}
