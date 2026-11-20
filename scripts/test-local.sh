@@ -17,6 +17,9 @@ if command -v node >/dev/null 2>&1; then
   echo "==> JavaScript syntax checks"
   node --check netlify/functions/hq-api.mjs
   node --check scripts/mock-preview.mjs
+  node --check extension/media-upload.js
+  node --check extension/extract.js
+  node --check site/media-client.js
   node --check extension/background.js
   node --check extension/popup.js
   node --check extension/status-overlay.js
@@ -31,6 +34,9 @@ if command -v node >/dev/null 2>&1; then
 
   echo "==> Chrome extension popup and sync simulation"
   node tests/test_extension.cjs
+
+  echo "==> Draft Drive media and listing-image tests (offline)"
+  node tests/test_media_draft.cjs
 
   echo "==> Apps Script / Google Sheets snapshot simulation"
   node tests/test_apps_script_snapshot.cjs
