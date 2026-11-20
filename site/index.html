@@ -259,13 +259,13 @@ body{font-size:calc(14px * var(--hq-text-scale))}
 </style><link rel="stylesheet" href="/buyhouse-v08.css?v=20261120-header-upload-fab-v2"></head><body>
 
 <div class="topbar-shell"><header class="bh-topbar">
- <div class="bh-topbar-left"><button type="button" class="bh-icon-btn bh-menu-btn" id="navToggle" data-ui="drawerOpen" aria-expanded="false" aria-controls="navDrawer" aria-label="打开导航菜单">☰</button><strong class="bh-logo">买房助手</strong></div>
+ <div class="bh-topbar-left"><button type="button" class="bh-icon-btn bh-menu-btn" id="navToggle" data-ui="drawerOpen" aria-expanded="false" aria-controls="navDrawer" aria-label="打开导航菜单"></button><strong class="bh-logo">买房助手</strong></div>
  <div class="bh-topbar-right" id="topbarUploadSlot" hidden aria-live="polite"></div>
 </header></div>
 <div class="app">
  <button type="button" class="bh-backdrop" id="navBackdrop" data-ui="drawerClose" aria-label="关闭导航菜单" tabindex="-1"></button>
  <aside class="app-drawer" id="navDrawer" data-open="false" aria-label="功能导航" aria-hidden="true">
-  <div class="bh-drawer-head"><div class="bh-drawer-brand"><span class="bh-drawer-glyph">⌂</span><div><strong>买房助手</strong><small>个人房源跟踪工具</small></div></div><button class="bh-icon-btn" type="button" data-ui="drawerClose" aria-label="关闭导航">×</button></div>
+  <div class="bh-drawer-head"><div class="bh-drawer-brand"><span class="bh-drawer-glyph" id="drawerBrandGlyph"></span><div><strong>买房助手</strong><small>个人房源跟踪工具</small></div></div><button class="bh-icon-btn" type="button" data-ui="drawerClose" aria-label="关闭导航"></button></div>
   <div class="bh-drawer-label">功能导航</div><nav class="nav drawer-links" id="nav"></nav>
   <div class="bh-drawer-bottom"><div id="cloudSidebarStatus">云端连接中</div>房源、成交记录和看房档案持续保留</div>
  </aside>
@@ -274,7 +274,7 @@ body{font-size:calc(14px * var(--hq-text-scale))}
   <div id="root"></div>
  </div></main>
 </div>
-<button class="bh-fab" id="fabNew" data-action="new" aria-label="新增房源" title="新增房源">＋</button>
+<button class="bh-fab" id="fabNew" data-action="new" aria-label="新增房源" title="新增房源"></button>
 <div id="overlay"></div>
 <input id="importInput" type="file" accept=".json,application/json" hidden>
 <script src="/sync-merge.js"></script><script src="/media-client.js"></script>
@@ -883,6 +883,8 @@ function renderNav(){
  document.getElementById('nav').innerHTML=navs.map(([id,icon,label])=>'<button type="button" class="'+(tab===id?'active':'')+'" data-tab="'+id+'" aria-label="'+esc(label)+'" '+(tab===id?'aria-current="page"':'')+'><span class="ico">'+bhIcon(icon,20)+'</span>'+esc(label)+'</button>').join('');
  const fab=document.getElementById('fabNew');if(fab){fab.hidden=tab!=='houses';fab.innerHTML=bhIcon('plus',27)}
  const toggle=document.getElementById('navToggle');if(toggle)toggle.innerHTML=bhIcon('menu',21);
+ const brand=document.getElementById('drawerBrandGlyph');if(brand)brand.innerHTML=bhIcon('app',23);
+ const close=document.querySelector('.bh-drawer-head [data-ui="drawerClose"]');if(close)close.innerHTML=bhIcon('close',15);
 }
 
 function render(){
