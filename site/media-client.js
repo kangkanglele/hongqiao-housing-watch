@@ -3,7 +3,7 @@
  */
 (function(root){
 'use strict';
-const API='/.netlify/functions/hq-api',CHUNK=512*1024,MAX=Number.MAX_SAFE_INTEGER;
+const API='/.netlify/functions/hq-api',CHUNK=512*1024;
 const types=new Set(['image/jpeg','image/png','image/webp','video/mp4','video/quicktime','video/webm']);
 function validate(file){
  if(!file||!types.has(file.type))throw Error('请使用 JPG、PNG、WebP、MP4、MOV 或 WebM');
