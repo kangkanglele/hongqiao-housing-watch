@@ -41,7 +41,7 @@ const start=context.mediaStart_,part=context.mediaPart_,finish=context.mediaFini
 (async()=>{
  const large=start({mimeType:'video/mp4',size:130*1024*1024,name:'over-120mb.mp4',listingKey:'ke:12345678'});
  assert.ok(large.uploadId,'130 MiB file must be accepted at mediaStart');
- assert.equal(large.chunkSize,512*1024);
+ assert.equal(large.chunkSize,2*1024*1024);
  assert.equal(props.get('MEDIA_ROOT_FOLDER_ID')!==undefined,true,'Drive root folder ID should be persisted');
  const size=512*1024+1;
  const session=start({mimeType:'video/mp4',size,name:'test-video.mp4',listingKey:'ke:12345678'});
@@ -63,5 +63,5 @@ const start=context.mediaStart_,part=context.mediaPart_,finish=context.mediaFini
  assert.equal(driveRequests[2].headers['Content-Range'],'bytes 0-524287/524289');
  assert.equal(driveRequests[3].headers['Content-Range'],'bytes 524288-524288/524289');
  assert.ok(!code.includes('MEDIA_LIMIT_BYTES_')&&!code.includes('120MB'),'Apps Script must not contain an app-level file size cap');
- console.log('PASS Apps Script Drive media: >120 MiB metadata, private resumable session, 512 KiB chunking, finalization and idempotent retry');
+ console.log('PASS Apps Script Drive media: >120 MiB metadata, private resumable session, 2 MiB chunk support, finalization and idempotent retry');
 })().catch(e=>{console.error(e);process.exitCode=1});
