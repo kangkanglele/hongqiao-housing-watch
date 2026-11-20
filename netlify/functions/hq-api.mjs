@@ -58,7 +58,7 @@ function mergeRecord(state,input){
  let out;
  if(found){
    if(found.deletedAt||found.archived)return {status:'already_hidden',houseId:found.id};
-   found.sources=found.sources||[];if(!found.sources.some(s=>{try{return identity({url:s.url}).key===id.key}catch{return false}}))found.sources.push(src);
+   found.sources=found.sources||[];if(!found.sources.some(s=>{try{return identity({url:s.url}).canonical===id.canonical}catch{return false}}))found.sources.push(src);
    const oldPrice=num(found.price);if(price&&oldPrice!==price){found.events=found.events||[];found.events.unshift({id:'CAP-'+Date.now().toString(36),date:stamp,kind:'price',title:'插件观测到报价变化',desc:`${oldPrice??'未知'}万 → ${price}万；来自用户当时浏览的官网页面`,prevPrice:oldPrice,newPrice:price,sourceUrl:url});found.price=price;}
    for(const [k,v] of [['area',area],['floor',floor],['total',total],['rooms',str(input.rooms,50)],['floorBand',str(input.floorBand,60)],['orient',str(input.orientation,30)],['decoration',str(input.decoration,50)]])if((found[k]===null||found[k]===undefined||found[k]===''||found[k]==='待核实')&&v)found[k]=v;
    if((!found.elevator||found.elevator==='未知')&&['有','无'].includes(input.elevator))found.elevator=input.elevator;
