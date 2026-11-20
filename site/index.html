@@ -390,13 +390,9 @@ function configNumber(v,min,max,fallback){const n=Number(v);return Number.isFini
 function configColor(v,fallback){return typeof v==='string'&&/^#[0-9a-fA-F]{6}$/.test(v)?v:fallback}
 function normalizeThemeGray(value,fallback){
  const c=configColor(value,fallback).toLowerCase();
- if(c==='#167a63'||c==='#187964')return fallback;
- if(c==='#59616f')return fallback;
- const n=parseInt(c.slice(1),16),rgb=[(n>>16)&255,(n>>8)&255,n&255];
- const max=Math.max(...rgb),min=Math.min(...rgb),d=max-min,l=(max+min)/510;
- let hue=0,sat=0;
- if(d){sat=d/(1-Math.abs(2*l-1));if(max===rgb[0])hue=((rgb[1]-rgb[2])/d)%6;else if(max===rgb[1])hue=(rgb[2]-rgb[0])/d+2;else hue=(rgb[0]-rgb[1])/d+4;hue=(hue*60+360)%360}
- if(sat>.08&&hue>=75&&hue<=270){const g=Math.round(l*255).toString(16).padStart(2,'0');return '#'+g+g+g}
+ // Migrate the previous app's built-in green/blue-gray defaults to the new monochrome default.
+ // Preserve explicit custom colors chosen by the user in Page Settings.
+ if(c==='#167a63'||c==='#187964'||c==='#59616f')return fallback;
  return c;
 }
 function normalizeThemeBackground(value,fallback){
