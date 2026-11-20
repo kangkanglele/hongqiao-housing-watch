@@ -71,7 +71,7 @@ function extractListingFromCurrentPage(){
    let addr;try{addr=new URL(raw,location.href);}catch(_){return;}
    if(addr.protocol!=='https:')return;
    const imageHost=addr.hostname.toLowerCase();
-   if(!(/(^|\\.)(ljcdn\\.com|ke\\.com|lianjia\\.com|5i5j\\.com)$/.test(imageHost)))return;
+   if(!(/(^|\.)(ljcdn\.com|ke\.com|lianjia\.com|5i5j\.com)$/.test(imageHost)))return;
    if(/(avatar|agent|broker|logo|qrcode|qr_code|map|sprite|icon|captcha)/i.test(addr.pathname))return;
    const value=addr.toString().slice(0,1000);
    if(!mediaCandidates.includes(value))mediaCandidates.push(value);
