@@ -132,7 +132,7 @@ with sync_playwright() as pw:
     assert page.locator('.bh-metric').count() == 4, 'four independent overview metrics expected'
     assert page.locator('#nav [data-tab="config"]').count() == 0, 'page configuration must not appear in navigation'
     page.wait_for_function("document.querySelectorAll('.bh-metric-value').length === 4 && document.querySelector('.bh-metric-value').textContent.includes('2')", timeout=6000)
-    assert [x.replace('套','').strip() for x in page.locator('.bh-metric-value').all_inner_texts()] == ['2','0','1','1'], 'total, visit-pending, focus and unverified-link counts must remain separate'
+    assert [x.replace('套','').replace('条','').strip() for x in page.locator('.bh-metric-value').all_inner_texts()] == ['2','0','1','1'], 'total, visit-pending, focus and unverified-link counts must remain separate'
     assert page.locator('.bh-sync-line').count() == 0, 'redundant homepage refresh strip removed'
     assert page.locator('.bh-pending-details').count() == 0, 'old pending-link strip should be removed'
     page.locator('[data-ui="pendingLinks"]').click()
