@@ -129,10 +129,13 @@ with sync_playwright() as pw:
     page.wait_for_timeout(300)
     root_text = page.locator('#root').inner_text()
     assert page.locator('.bh-overview-head h1').inner_text() == '房源概览', f'new dynamic overview missing; errors={errors}; root={root_text[:500]}'
-    assert page.locator('.bh-metric').count() == 4, 'four real-data dashboard metrics expected'
+    assert page.locator('.bh-metric').count() == 3, 'three independent overview metrics expected'
     assert page.locator('#nav [data-tab="config"]').count() == 0, 'page configuration must not appear in navigation'
-    page.wait_for_function("document.querySelectorAll('.bh-metric-value').length === 4 && document.querySelector('.bh-metric-value').textContent.includes('2')", timeout=6000)
-    assert [x.replace('套','').strip() for x in page.locator('.bh-metric-value').all_inner_texts()] == ['2','1','1','1'], 'metrics must reflect loaded records'
+    page.wait_for_function("document.querySelectorAll('.bh-metric-value').length === 3 && document.querySelector('.bh-metric-value').textContent.includes('2')", timeout=6000)
+    assert [x.replace('套','').strip() for x in page.locator('.bh-metric-value').all_inner_texts()] == ['2','0','1'], 'total, pending and focus must reflect loaded records'
+    assert page.locator('.bh-sync-line').count() == 0, 'redundant homepage refresh strip removed'
+    assert page.locator('.bh-filter-accordion .filters').is_visible(), 'filters visible by default'
+    assert page.locator('.bh-filter-accordion .chip').count() == 8, 'filters remain horizontally scrollable'
     assert page.locator('.bh-listing').count() == 1, 'default list excludes hard defects and deleted records'
     assert '水木天成翠杨园' in page.locator('.bh-listing-name').inner_text()
     page.locator('[data-view="table"]').click()
