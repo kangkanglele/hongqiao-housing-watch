@@ -258,7 +258,7 @@ body{font-size:calc(14px * var(--hq-text-scale))}
 
 
 /* 2026-11-20 — 激活色与房源照片选择控件 */
-:root{--active:#111E36}
+:root{--active:#111111}
 .nav button.active{background:#EEF0F5;color:var(--active)}
 .segments button.active{background:var(--active);color:#fff}
 .chip.active{background:var(--active);border-color:var(--active);color:#fff}
@@ -378,7 +378,7 @@ const scopesSeed=[...parks.map((p,i)=>({id:'S'+(i+1),name:'水木天成'+p,group
 const ev=(date,title,desc,kind='manual',demo=false)=>({id:'E'+Math.random().toString(36).slice(2,9),date,title,desc,kind,demo});
 // V3.3：数据按需刷新，真实修改自动保存；运行时代码固定，页面配置是云端数据；改设置不需要重发 Netlify。
 const DEFAULT_PAGE_CONFIG=Object.freeze({
-  schema:1, colorPrimary:'#59616F',colorBackground:'#EAECF4',textScale:1,
+  schema:1, colorPrimary:'#111111',colorBackground:'#FFFFFF',textScale:1,
   cardRadius:18,cardGap:15,cardPhotoHeight:165,cardColumns:2,mobileNav:'right',detailTop:20,
   showMarketPanel:true,defaultView:'cards',defaultFilter:'all',defaultSort:'recent',
   priceMin:20,priceMax:70,noLiftFloor:4,excludeEnvironmentC:true,
@@ -391,7 +391,7 @@ function configColor(v,fallback){return typeof v==='string'&&/^#[0-9a-fA-F]{6}$/
 function normalizeThemeGray(value,fallback){
  const c=configColor(value,fallback).toLowerCase();
  if(c==='#167a63'||c==='#187964')return fallback;
- if(c==='#59616f')return c;
+ if(c==='#59616f')return fallback;
  const n=parseInt(c.slice(1),16),rgb=[(n>>16)&255,(n>>8)&255,n&255];
  const max=Math.max(...rgb),min=Math.min(...rgb),d=max-min,l=(max+min)/510;
  let hue=0,sat=0;
