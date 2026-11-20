@@ -1028,7 +1028,7 @@ function houseMediaMarkup(h){
        `<span class="hq-media-icon">${String(x.mimeType).startsWith('video/')?'▶':'▧'}</span>`}
       <div class="hq-media-label">${esc(x.name||'媒体文件')}</div>
       <div class="muted">${esc(x.source||'用户上传')}</div>
-      ${url?`<a href="${url}" target="_blank" rel="noopener noreferrer">在我的 Drive 中查看 ↗</a>`:''}
+      ${x.shotAt?`<div class="muted">拍摄：${esc(new Date(x.shotAt).toLocaleString('zh-CN'))}</div>`:''}${url?`<a href="${url}" target="_blank" rel="noopener noreferrer">在我的 Drive 中查看 ↗</a>`:''}
    </div>`;
  };
  const sourceImages=(h.sourceImages||[]).filter(x=>/^https:\/\//i.test(String(x))).slice(0,12);
@@ -1060,7 +1060,7 @@ async function uploadPendingMedia(item){
  const previewData=item.previewData||'';
  house.media=Array.isArray(house.media)?house.media:[];
  if(!house.media.some(x=>x.driveFileId===file.driveFileId)){
-   house.media.push({...file,previewData,source:'现场上传',createdAt:new Date().toISOString()});
+   house.media.push({...file,previewData,source:'现场上传',shotAt:item.shotAt||null,shotSource:item.shotSource||'',createdAt:new Date().toISOString()});
    if(!house.photoData&&previewData)house.photoData=previewData;
  }
  if(!save())throw Error('Drive 已存文件，但本地房源未能保存；请重试关联');
@@ -1079,7 +1079,7 @@ document.addEventListener('change',async ev=>{
      window.HQMedia.validate(file);
      const listingKey='house:'+house.id;
      const item={id:'hqm'+Date.now().toString(36)+Math.random().toString(36).slice(2),
-       houseId:house.id,listingKey,file,previewData:await window.HQMedia.preview(file),at:new Date().toISOString()};
+       houseId:house.id,listingKey,file,previewData:await window.HQMedia.preview(file),...(await window.HQMedia.extractCapturedAt(file)||{}),at:new Date().toISOString()};
      await window.HQMedia.enqueue(item);
      await uploadPendingMedia(item);
    }catch(error){toast('媒体文件保留/上传失败：'+error.message)}
