@@ -301,7 +301,7 @@ input[type="checkbox"],input[type="radio"]{accent-color:#111111!important}
 
 /* Navigation and page chrome */
 .topbar-shell,.bh-topbar{background:#FFFFFF!important;border-color:#EEEEEE!important}
-.topbar-shell{border-bottom:1px solid #F0F0F0!important}
+.topbar-shell{border-bottom:0!important}
 .bh-logo,.bh-drawer-brand strong{color:#111111!important}
 .bh-icon-btn{background:#F4F4F4!important;border:0!important;color:#222!important;border-radius:12px!important}
 .bh-icon-btn:hover{background:#ECECEC!important}
