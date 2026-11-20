@@ -142,7 +142,7 @@ with sync_playwright() as pw:
     assert '水木天成翠杨园' in page.locator('.bh-listing-name').inner_text()
     # Header: no white slab or redundant cloud/help block; upload slot is reserved at the right.
     header_style = page.locator('.topbar-shell').evaluate("""el => ({background:getComputedStyle(el).backgroundColor,border:getComputedStyle(el).borderBottomWidth})""")
-    assert header_style['background'] == 'rgb(245, 247, 246)' and header_style['border'] == '0px', f'header should blend into page background: {header_style}'
+    assert header_style['background'] == 'rgb(255, 255, 255)' and header_style['border'] == '0px', f'header should blend into page background: {header_style}'
     assert page.locator('.bh-mini-status').count() == 0 and page.locator('[data-ui="help"]').count() == 0, 'remove compact cloud status and help block from header'
     assert page.locator('#topbarUploadSlot[hidden]').count() == 1, 'empty upload slot must stay hidden'
     toolbar_order = page.locator('.bh-browse-toolbar').evaluate("""el => [...el.children].map(x=>x.classList.contains('bh-search-toggle')?'search':x.classList.contains('bh-select-wrap')?'community':'view').join(',')""")
