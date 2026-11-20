@@ -142,6 +142,7 @@ with sync_playwright() as pw:
     assert '水木天成翠杨园' in page.locator('.bh-listing-name').inner_text()
     # Desktop navigation drawer must open from the left edge.
     page.locator('#navToggle').click()
+    page.wait_for_function("document.body.classList.contains('bh-drawer-open') && document.querySelector('#navDrawer').getBoundingClientRect().left >= -1", timeout=2500)
     drawer_left = page.locator('#navDrawer').evaluate('(el)=>el.getBoundingClientRect().left')
     drawer_transform = page.locator('#navDrawer').evaluate('(el)=>getComputedStyle(el).transform')
     assert drawer_left <= 1 and drawer_transform in ('none','matrix(1, 0, 0, 1, 0, 0)'), f'desktop drawer must open on the left: left={drawer_left}, transform={drawer_transform}'
@@ -171,6 +172,7 @@ with sync_playwright() as pw:
     page.locator('.detail-sheet [aria-label="关闭"]').click()
     # The mobile navigation drawer remains anchored at the left edge.
     page.locator('#navToggle').click()
+    page.wait_for_function("document.body.classList.contains('bh-drawer-open') && document.querySelector('#navDrawer').getBoundingClientRect().left >= -1", timeout=2500)
     mobile_drawer_left = page.locator('#navDrawer').evaluate('(el)=>el.getBoundingClientRect().left')
     assert mobile_drawer_left <= 1, f'mobile navigation drawer must open from the left: {mobile_drawer_left}'
     page.keyboard.press('Escape')
