@@ -106,7 +106,8 @@ function setup({idbWorks=true,localWorks=true}={}){
  assert.ok(h5.includes('topbarUploadSlot') && h5.includes('slot.hidden=!tasks.length'),'empty header progress slot must stay hidden');
  assert.ok(h5.includes('hq-media-locked'),'read-only preview must explain why upload controls are unavailable');
  assert.ok(h5.includes('data-ui="goSettings"'),'locked upload prompt must navigate to PIN unlock');
- assert.ok(h5.includes('/buyhouse-v08.css?v=20261120-header-upload-fab'),'header layout CSS must be cache-busted in preview');
+ assert.ok(h5.includes('/buyhouse-v08.css?v=20261120-header-upload-fab-v2'),'header layout CSS must be cache-busted in preview');
+ assert.ok(h5.includes('height:100%;max-width:540px;'),'expanded upload details must anchor below the full header height');
  const css=fs.readFileSync(path.join(__dirname,'../site/buyhouse-v08.css'),'utf8');
  assert.ok(css.includes('#navDrawer[data-open="true"]'),'drawer open state must explicitly anchor the panel to the left');
  assert.ok(css.includes('inset:0 auto 0 0!important'),'drawer must be anchored to left rather than right');
