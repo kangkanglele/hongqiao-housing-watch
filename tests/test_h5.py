@@ -14,7 +14,7 @@ def basic_route(route):
     if request.resource_type == 'document':
         route.fulfill(status=200, content_type='text/html; charset=utf-8', body=html)
         return
-    if request.url.endswith('/buyhouse-v08.css'):
+    if request.url.split('?')[0].endswith('/buyhouse-v08.css'):
         route.fulfill(status=200, content_type='text/css; charset=utf-8', body=layout_css)
         return
     if request.url.endswith('/sync-merge.js'):
@@ -68,7 +68,7 @@ def conflict_route_factory():
         if request.resource_type == 'document':
             route.fulfill(status=200, content_type='text/html; charset=utf-8', body=html)
             return
-        if request.url.endswith('/buyhouse-v08.css'):
+        if request.url.split('?')[0].endswith('/buyhouse-v08.css'):
             route.fulfill(status=200, content_type='text/css; charset=utf-8', body=layout_css)
             return
         if request.url.endswith('/sync-merge.js'):
