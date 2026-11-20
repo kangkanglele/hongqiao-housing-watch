@@ -550,3 +550,7 @@ body.bh-drawer-open .app-drawer{transform:translate3d(0,0,0)!important}
 @media(max-width:350px){
  .bh-topbar{gap:6px!important;padding-left:14px!important;padding-right:14px!important}
 }
+
+/* Brand sizing adjustment: 50% larger than previous 90px preview. */
+.bh-topbar .bh-full-logo{width:135px!important;max-height:39px!important}
+@media(max-width:760px){.bh-topbar .bh-full-logo{width:135px!important;max-height:39px!important}}
