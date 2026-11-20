@@ -870,7 +870,7 @@ function mediaPart_(body){
   if(code===308){
     const responseHeaders=answer.getAllHeaders();
     const range=responseHeaders.Range||responseHeaders.range;
-    const match=String(range||'').match(/^bytes=0-(\\d+)$/);
+    const match=String(range||'').match(/^bytes=0-(\d+)$/);
     if(!match)throw Error('Drive 未返回已接收字节范围，无法确认分块进度');
     const serverEnd=Number(match[1]);
     if(!Number.isSafeInteger(serverEnd)||serverEnd<offset-1||serverEnd>end)throw Error('Drive 返回的上传进度无效');
