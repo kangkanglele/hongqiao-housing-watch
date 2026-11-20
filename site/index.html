@@ -1144,6 +1144,7 @@ async function uploadPendingMedia(item,onProgress){
    onSession:async session=>{
     item.uploadId=session.uploadId;item.offset=session.offset;item.chunkSize=session.chunkSize;
     item.status='uploading';await window.HQMedia.enqueue(item);
+    onProgress?.({percent:item.size?Math.round(session.offset/item.size*100):0,loaded:session.offset,total:item.size,offset:session.offset,uploadId:session.uploadId});
    },
    onCheckpoint:async checkpoint=>{
     item.uploadId=checkpoint.uploadId;item.offset=checkpoint.offset;item.chunkSize=checkpoint.chunkSize;
@@ -1164,7 +1165,7 @@ async function uploadPendingMedia(item,onProgress){
 }
 async function runMediaTask(task){
  if(!cloudConfig.token){task.status='needs-login';renderMediaDock();return;}
- task.status='uploading';task.error='';task.lastAt=Date.now();task.lastLoaded=task.loaded;
+ task.status='uploading';task.error='';task.speed=0;task.lastAt=Date.now();task.lastLoaded=task.loaded;
  renderMediaDock();
  try{
   await uploadPendingMedia(task.item,progress=>{
@@ -1232,7 +1233,7 @@ document.addEventListener('click',ev=>{
  const mediaButton=ev.target.closest('[data-media-task-action]');
  if(!mediaButton)return;
  const action=mediaButton.dataset.mediaTaskAction;
- if(action==='open'){mediaDockCollapsed=false;renderMediaDock();return;}
+ if(action==='open'){if(!mediaTasks.size){toast('当前没有上传任务');return;}mediaDockCollapsed=false;renderMediaDock();return;}
  if(action==='collapse'){mediaDockCollapsed=true;renderMediaDock();return;}
  if(action==='retry'){retryMediaTask(mediaButton.dataset.mediaTaskId);return;}
  if(action==='retryAll'){for(const task of mediaTasks.values())if(task.status==='failed')retryMediaTask(task.id);return;}
