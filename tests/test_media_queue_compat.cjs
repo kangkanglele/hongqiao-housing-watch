@@ -52,7 +52,7 @@ function setup({idbWorks=true,localWorks=true}={}){
  const blob=new Blob([Buffer.from('sample-raw-file')],{type:'image/jpeg'});
  blob.name='sample.jpg';blob.lastModified=1763553600000;
  const record={id:'q1',houseId:'TJ-HQ-0005',listingKey:'house:TJ-HQ-0005',
-  file:blob,previewData:'data:image/jpeg;base64,AAA',at:'2026-11-20T03:00:00Z'};
+  file:blob,previewData:'data:image/jpeg;base64,AAA',uploadId:'drive-session-1234567890',offset:524288,chunkSize:2*1024*1024,at:'2026-11-20T03:00:00Z'};
  const normal=setup();
  const first=await normal.api.enqueue(record);
  assert.equal(first.persisted,true);
@@ -61,6 +61,9 @@ function setup({idbWorks=true,localWorks=true}={}){
  assert.equal(normal.putRecords[0].name,'sample.jpg');
  assert.equal(normal.putRecords[0].size,blob.size);
  assert.equal(normal.putRecords[0].mimeType,'image/jpeg');
+ assert.equal(normal.putRecords[0].uploadId,'drive-session-1234567890');
+ assert.equal(normal.putRecords[0].offset,524288);
+ assert.equal(normal.putRecords[0].chunkSize,2*1024*1024);
  const saved=await normal.api.pending();
  assert.equal(saved.length,1);
  assert.equal(saved[0].file,undefined,'page reload requires user to reselect original file');
@@ -89,8 +92,12 @@ function setup({idbWorks=true,localWorks=true}={}){
  assert.equal((await noStorage.api.pending()).length,0);
 
  const h5=fs.readFileSync(path.join(__dirname,'../site/index.html'),'utf8');
- assert.ok(h5.includes("await uploadPendingMedia(item)"),'direct upload must continue after enqueue');
+ assert.ok(h5.includes('const MEDIA_CONCURRENCY=2;'),'mobile upload queue must cap concurrency at two files');
+ assert.ok(h5.includes('function pumpMediaQueue()'),'uploads must continue independently of the detail drawer');
+ assert.ok(h5.includes('data-media-task-action="retryAll"'),'failed files must have a retry-all action');
+ assert.ok(h5.includes('总体进度'),'the global upload dock must show overall progress');
+ assert.ok(h5.includes('await uploadPendingMedia(item)'),'direct upload must continue after enqueue');
  assert.ok(h5.includes("请重新选择"),'media UI must tell user when original File needs reselecting');
  assert.ok(h5.includes("不能自动恢复尚未上传的原文件"),'the UI must not promise persistence of File/Blob');
- console.log('PASS mobile media outbox: no Blob/File IndexedDB writes, direct upload, localStorage and memory fallbacks, explicit reselect');
+ console.log('PASS mobile media outbox: metadata-only resumable checkpoints, no Blob/File IndexedDB writes, fallbacks, multi-upload dock and retry actions');
 })().catch(error=>{console.error(error);process.exitCode=1});
