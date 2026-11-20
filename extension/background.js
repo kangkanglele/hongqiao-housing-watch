@@ -112,13 +112,14 @@ async function flushMediaQueue(tabId,manual=false){
    }
   }
   const end=await getState(),remaining=(end.mediaQueue||[]).length;
-  await scheduleRetry(remaining+(end.queue||[]).length);
-  return {ok:remaining===0,queued:remaining,completed:complete};
+  const retryable=(end.mediaQueue||[]).filter(x=>(x.attempts||0)<3).length;
+  await scheduleRetry(retryable+(end.queue||[]).length);
+  return {ok:remaining===0,queued:remaining,retryable,completed:complete};
  }finally{mediaBusy=false;}
 }
 
 async function capture(record,tabId){
- if(!record||!['贝壳','我爱我家'].includes(record.platform)||!/^\d{8,}$/.test(String(record.platformId||'')))throw Error('仅接收贝壳或我爱我家官网单套详情页');
+ if(!record||!['贝壳','链家','我爱我家'].includes(record.platform)||!/^\d{8,}$/.test(String(record.platformId||'')))throw Error('仅接收贝壳、链家或我爱我家官网单套详情页');
  const current=await getState(),queue=Array.isArray(current.queue)?current.queue:[];
  const item={...record,queueId:queueKey(record),queuedAt:new Date().toISOString()};
  const index=queue.findIndex(x=>x.queueId===item.queueId);
@@ -142,7 +143,7 @@ async function flush(tabId){
   let queue=Array.isArray(current.queue)?current.queue:[];
   if(!queue.length){
    const m=await flushMediaQueue(tabId);
-   await scheduleRetry(m.queued||0);
+   await scheduleRetry(m.retryable||0);
    if(!m.queued)await setStatus('synced','本机待同步房源与图片均已处理',tabId);
    return {ok:!m.queued,queued:0,mediaQueued:m.queued||0};
   }
@@ -193,7 +194,7 @@ async function flush(tabId){
   }
   current=await getState();queue=Array.isArray(current.queue)?current.queue:[];
   const media=queue.length?{queued:(await getState()).mediaQueue?.length||0}:await flushMediaQueue(tabId);
-  await scheduleRetry(queue.length+(media.queued||0));
+  await scheduleRetry(queue.length+(media.retryable||0));
   return {ok:queue.length===0&&!(media.queued||0),queued:queue.length,mediaQueued:media.queued||0};
  }finally{busy=false;}
 }
