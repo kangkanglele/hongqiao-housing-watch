@@ -528,3 +528,25 @@ input[type="checkbox"],input[type="radio"]{accent-color:#111111!important}
 .bh-drawer-full-logo img{display:block;width:208px;height:auto;max-height:65px;object-fit:contain;object-position:left center}
 .bh-drawer-brand:has(.bh-drawer-full-logo){align-items:center}
 @media(max-width:390px){.bh-full-logo{width:155px}}
+
+/* Header v2: brand | upload queue | menu, matching page gutters. */
+.bh-topbar{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important}
+.bh-topbar-left{flex:0 0 auto!important;min-width:0!important}
+.bh-topbar .bh-brand-lockup{display:flex!important;margin:0!important}
+.bh-topbar .bh-full-logo{width:90px!important;height:auto!important;max-height:27px!important;object-fit:contain!important;object-position:left center!important}
+.bh-topbar-right#topbarUploadSlot{flex:1 1 0!important;width:auto!important;min-width:0!important;max-width:none!important;justify-content:center!important;overflow:visible}
+#hqUploadDock{width:100%!important;max-width:100%!important;justify-content:center!important}
+#hqUploadDock .hq-upload-mini{max-width:100%!important}
+.bh-topbar>#navToggle{order:3;flex:0 0 37px!important;margin:0!important}
+.app-drawer{left:auto!important;right:0!important;transform:translate3d(104%,0,0)!important;box-shadow:-15px 0 45px rgba(42,42,42,.16)!important}
+body.bh-drawer-open .app-drawer{transform:translate3d(0,0,0)!important}
+@media(max-width:760px){
+ .bh-topbar{padding-left:16px!important;padding-right:16px!important}
+ .app-drawer{left:auto!important;right:0!important;transform:translate3d(104%,0,0)!important}
+ body.bh-drawer-open .app-drawer{transform:translate3d(0,0,0)!important}
+ .bh-topbar .bh-full-logo{width:90px!important;max-height:27px!important}
+ .bh-topbar-right#topbarUploadSlot{max-width:none!important}
+}
+@media(max-width:350px){
+ .bh-topbar{gap:6px!important;padding-left:14px!important;padding-right:14px!important}
+}
