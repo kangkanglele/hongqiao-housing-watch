@@ -135,8 +135,10 @@ with sync_playwright() as pw:
     assert [x.replace('套','').strip() for x in page.locator('.bh-metric-value').all_inner_texts()] == ['2','0','1'], 'total, pending and focus must reflect loaded records'
     assert page.locator('.bh-sync-line').count() == 0, 'redundant homepage refresh strip removed'
     assert page.locator('.bh-filter-accordion .filters').is_visible(), 'filters visible by default'
-    assert page.locator('.bh-filter-accordion .chip').count() == 8, 'filters remain horizontally scrollable'
+    assert page.locator('.bh-filter-accordion .chip').count() == 9, 'focus, pending visit and visited are separate filters'
+    assert page.get_by_role('button', name='待看房源').count() == 1, 'pending visit filter is distinct from focus'
     assert page.locator('.bh-listing').count() == 1, 'default list excludes hard defects and deleted records'
+    assert page.locator('.photo-placeholder .photo-symbol .bh-metric-icon').count() >= 1, 'listing placeholder reuses overview house icon'
     assert '水木天成翠杨园' in page.locator('.bh-listing-name').inner_text()
     page.locator('[data-view="table"]').click()
     assert page.locator('.bh-listings.compact').count() == 1
