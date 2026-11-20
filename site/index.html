@@ -651,7 +651,7 @@ function visitStateBadge(h){
 
 const VISIT_RESULTS=['待判断','继续考虑','值得议价','不合适','未看'];
 function visitRecords(){return Array.isArray(state.visitSessions)?state.visitSessions:[];}
-function visitIdentity(input){const v=inspectListingUrl(input||'');return v.ok?((v.channel==='贝壳'?'ke:':'5i5j:')+v.id):'';}
+function visitIdentity(input){const v=inspectListingUrl(input||'');return v.ok?((v.channel==='我爱我家'?'5i5j:':'ke:')+v.id):'';}
 function visitMatchedHouse(entry){return state.houses.find(h=>h.id===entry.houseId || (h.sources||[]).some(s=>visitIdentity(s.originalUrl||s.url)===entry.listingKey))||null;}
 function visitsForHouse(h){const keys=new Set((h.sources||[]).map(s=>visitIdentity(s.originalUrl||s.url)).filter(Boolean));return visitRecords().flatMap(t=>(t.entries||[]).filter(e=>e.visitedAt&&(e.houseId===h.id||keys.has(e.listingKey))).map(e=>({session:t,entry:e})));}
 function visitBadgeForHouse(h){const seen=visitsForHouse(h);return seen.length?`<span class="badge blue">✓ 已带看 ${seen.length} 次</span>`:'';}
@@ -1213,7 +1213,7 @@ document.addEventListener('click',e=>{const ui=e.target.closest('[data-ui]');if(
    sess.status='planned';delete sess.finishedAt;save();visitView='active';render();toast('行程已重新打开，历史记录未删除');break;
  }
 case 'new':newHouse();break;
-case 'promoteCandidate':{const c=(state.listingCandidates||[]).find(x=>x.candidateId===id);if(!c)break;newHouse(null,{platform:c.platform,url:c.originalUrl||c.url,title:c.title||'',community:scopeFor(c.community)?c.community:'',price:c.price??null,area:c.area??null,rooms:c.rooms||'',floorBand:c.floorBand||'',floor:c.floor||null,totalFloors:c.totalFloors||null,orientation:c.orient||c.orientation||'',elevator:c.elevator||'未知'});break;}
+case 'promoteCandidate':{const c=(state.listingCandidates||[]).find(x=>x.candidateId===id);if(!c)break;newHouse(null,{platform:c.platform,url:c.originalUrl||c.url,title:c.title||'',community:scopeFor(c.community)?c.community:'',price:c.price??null,area:c.area??null,rooms:c.rooms||'',floorBand:c.floorBand||'',floor:c.floor||null,totalFloors:c.totalFloors||null,orientation:c.orient||c.orientation||'',elevator:c.elevator||'未知',visitStatus:c.visitStatus||'未看'});break;}
 case 'editInfo':newHouse(id);break;
 case 'repairHouse':newHouse(id);break;
 case 'reopen':openDetail(id);break;
@@ -1247,7 +1247,7 @@ case 'commitHouse':{
  item.baseDefects=item.defects.slice();item.baseDrawbacks=item.drawbacks.slice();item.top=item.defects.includes('top');item.duplex=item.defects.includes('duplex');refreshScreeningTags(item);
  if(pendingPhoto)item.photoData=pendingPhoto;
  state.listingCandidates=(state.listingCandidates||[]).filter(c=>!(c.platform===v.channel&&String(c.platformListingId)===v.id));
- state.linkLedger=(state.linkLedger||[]).filter(x=>x.key!==(v.channel==='贝壳'?'ke:':'5i5j:')+v.id);
+ state.linkLedger=(state.linkLedger||[]).filter(x=>x.key!==(v.channel==='我爱我家'?'5i5j:':'ke:')+v.id);
  if((state.quarantine||[]).some(x=>x.id===item.id)){state.quarantine=state.quarantine.filter(x=>x.id!==item.id);state.houses.push(item);delete item.quarantineReason}
  changed(item,editing?'人工修订房源资料':'官方房源链接建档',`${v.channel} #${v.id}，报价${price??'待补'}万，面积${area??'待补'}㎡，硬伤：${issue(item).join('、')||'未勾选'}`);
  if(editing&&oldPrice!==price)changed(item,'挂牌报价更新',`${oldPrice||'待补'}万 → ${price||'待补'}万`);
