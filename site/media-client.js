@@ -181,5 +181,5 @@ async function transact(mode,fn){const db=await database();try{
 const enqueue=record=>transact('readwrite',store=>store.put(record));
 const remove=id=>transact('readwrite',store=>store.delete(id));
 const pending=()=>transact('readonly',store=>store.getAll());
-root.HQMedia={post,upload,preview,validate,extractCapturedAt,enqueue,remove,pending,MAX,CHUNK};
+root.HQMedia={post,upload,preview,validate,extractCapturedAt,enqueue,remove,pending,CHUNK};
 })(window);
