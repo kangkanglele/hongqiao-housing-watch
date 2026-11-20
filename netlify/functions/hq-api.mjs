@@ -51,6 +51,8 @@ function mergeRecord(state,input){
  const id=identity(input);if(input.platform&&input.platform!==id.channel)throw Error('渠道与房源链接域名不一致');if(input.platformId&&String(input.platformId)!==id.id)throw Error('房源编号与链接不一致');const community=str(input.community,60);const validCommunity=(state.scopes||[]).some(s=>s.name===community)&&VALID_NAMES.includes(community);
  const price=num(input.price),area=num(input.area),floor=num(input.floor),total=num(input.totalFloors);
  const url=str(input.url,1000), now=today(), stamp=new Date().toISOString();
+ const visitStatus=['未看','看房','看过'].includes(input.visitStatus)?input.visitStatus:'未看';
+ const hasVisitChoice=input.visitStatusExplicit===true;
  const all=(state.houses||[]);state.houses=all;state.listingCandidates=state.listingCandidates||[];state.linkLedger=state.linkLedger||[];
  const found=all.find(h=>(h.sources||[]).some(s=>{try{return identity({url:s.url||s.originalUrl}).key===id.key}catch{return false}}));
  const images=Array.isArray(input.images)?input.images.filter(x=>typeof x==='string'&&/^https:\/\//i.test(x)).slice(0,12).map(x=>x.slice(0,1000)):[];
@@ -64,17 +66,32 @@ function mergeRecord(state,input){
    if((!found.elevator||found.elevator==='未知')&&['有','无'].includes(input.elevator))found.elevator=input.elevator;
    const newSourceImages=images.filter(u=>!(found.sourceImages||[]).includes(u));
    if(newSourceImages.length){found.sourceImages=[...new Set([...(found.sourceImages||[]),...images])].slice(0,25);}
-   found.lastSeen=now;out={status:oldPrice===price&&!newSourceImages.length?'unchanged':'updated',houseId:found.id};
+   let visitChanged=false;
+   if(hasVisitChoice&&found.visitStatus!==visitStatus){
+     const previous=['未看','看房','看过'].includes(found.visitStatus)?found.visitStatus:'未看';
+     found.visitStatus=visitStatus;
+     found.visitStatusChangedAt=stamp;
+     if(visitStatus==='看过'&&previous!=='看过')found.visitSeenAt=stamp;
+     found.visitStatusHistory=Array.isArray(found.visitStatusHistory)?found.visitStatusHistory:[];
+     found.visitStatusHistory.push({id:'capture-'+Date.now().toString(36),from:previous,to:visitStatus,changedAt:stamp});
+     visitChanged=true;
+   }
+   found.lastSeen=now;out={status:oldPrice===price&&!newSourceImages.length&&!visitChanged?'unchanged':'updated',houseId:found.id};
  }else if(validCommunity){
    const nums=all.map(h=>Number(/TJ-HQ-(\d+)/.exec(h.id||'')?.[1]||0));const next='TJ-HQ-'+String(Math.max(0,...nums)+1).padStart(4,'0');
    const h={id:next,origin:'Chrome人工采集',community,title:str(input.title,180)||community+' · 待补',area,price,rooms:str(input.rooms,50)||'待核实',floor,total,floorBand:str(input.floorBand,60),elevator:['有','无'].includes(input.elevator)?input.elevator:'未知',env:(state.scopes||[]).find(s=>s.name===community)?.env||'待评',noise:'未知',legal:'待核实',decoration:str(input.decoration,50)||'待核实',orient:str(input.orientation,30)||'待核实',defects:[],drawbacks:[],suitability:'待判断',stage:'观察中',top:!!(floor&&total&&floor===total),duplex:false,firstSeen:now,lastSeen:now,note:'Chrome 插件采集：用户主动打开官网页面；字段待现场核验。',sources:[src],events:[{id:'CAP-'+Date.now().toString(36),date:stamp,kind:'manual',title:'首次采集',desc:'Chrome 插件一键同步官方房源详情页'}]};
    h.sourceImages=images;
+   h.visitStatus=visitStatus;
+   h.visitStatusChangedAt=stamp;
+   if(visitStatus==='看过')h.visitSeenAt=stamp;
    if(h.top)h.defects.push('top');if(h.defects.length){h.suitability='不合适';h.stage='硬伤排除';h.excludedReason='顶层';}
    all.push(h);out={status:'created',houseId:next};
  }else{
    const candidate=state.listingCandidates.find(c=>c.listingKey===id.key||c.platformListingId===id.id&&c.platform===id.channel);
-   if(candidate){candidate.sourceImages=[...new Set([...(candidate.sourceImages||[]),...images])].slice(0,25);candidate.lastSeen=now;candidate.title=str(input.title,180)||candidate.title;candidate.area=area||candidate.area;candidate.price=price||candidate.price;out={status:'pending_updated',candidateId:candidate.candidateId}}
-   else{const c={candidateId:'PENDING-'+(id.channel==='我爱我家'?'5I5J-':'KE-')+id.id,platform:id.channel,platformListingId:id.id,listingKey:id.key,originalUrl:url,canonicalUrl:id.canonical,community:community||'待匹配小区',title:str(input.title,180)||id.channel+' · '+id.id,area,price,rooms:str(input.rooms,50),floorBand:str(input.floorBand,60),orient:str(input.orientation,30),elevator:str(input.elevator,10)||'未知',firstSeen:now,lastSeen:now,recordStatus:'官方详情已采集·小区待确认',sourceCheck:'用户当前浏览器页面 DOM',providedBy:'Chrome 插件',urlVerifiedStructure:true,detailsVerifiedByPlatform:false,sourceImages:images};state.listingCandidates.push(c);out={status:'pending_community',candidateId:c.candidateId};}
+   if(candidate){candidate.sourceImages=[...new Set([...(candidate.sourceImages||[]),...images])].slice(0,25);candidate.lastSeen=now;candidate.title=str(input.title,180)||candidate.title;candidate.area=area||candidate.area;candidate.price=price||candidate.price;
+   if(hasVisitChoice){candidate.visitStatus=visitStatus;candidate.visitStatusChangedAt=stamp;if(visitStatus==='看过')candidate.visitSeenAt=stamp;}
+   out={status:'pending_updated',candidateId:candidate.candidateId}}
+   else{const c={candidateId:'PENDING-'+(id.channel==='我爱我家'?'5I5J-':'KE-')+id.id,platform:id.channel,platformListingId:id.id,listingKey:id.key,originalUrl:url,canonicalUrl:id.canonical,community:community||'待匹配小区',title:str(input.title,180)||id.channel+' · '+id.id,area,price,rooms:str(input.rooms,50),floorBand:str(input.floorBand,60),orient:str(input.orientation,30),elevator:str(input.elevator,10)||'未知',firstSeen:now,lastSeen:now,recordStatus:'官方详情已采集·小区待确认',sourceCheck:'用户当前浏览器页面 DOM',providedBy:'Chrome 插件',urlVerifiedStructure:true,detailsVerifiedByPlatform:false,sourceImages:images,visitStatus:visitStatus,visitStatusChangedAt:stamp,visitSeenAt:visitStatus==='看过'?stamp:null};state.listingCandidates.push(c);out={status:'pending_community',candidateId:c.candidateId};}
  }
  const old=state.linkLedger.find(x=>x.key===id.key);if(old){old.lastSeen=now;old.originalUrl=url;old.status=out.status==='already_hidden'?'archived':'active'}else state.linkLedger.push({key:id.key,houseId:out.houseId||out.candidateId,channel:id.channel,platformId:id.id,originalUrl:url,canonicalUrl:id.canonical,status:out.status==='pending_community'?'pending_verification':'active',firstSeen:now,lastSeen:now,note:'Chrome 插件直接同步'});
  if(out.status==='created'||out.status==='pending_community')state.listingCandidates=state.listingCandidates.filter(c=>!(c.listingKey===id.key&&out.status==='created'));
