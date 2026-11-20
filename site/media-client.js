@@ -45,7 +45,9 @@ async function upload(token,file,listingKey,onProgress){
 async function preview(file){
  if(!file.type.startsWith('image/'))return '';
  return new Promise(resolve=>{
-   const url=URL.createObjectURL(file),img=new Image();
+   let url,img;
+   try{url=URL.createObjectURL(file);img=new Image();}
+   catch(_){if(url)URL.revokeObjectURL(url);resolve('');return;}
    img.onload=()=>{
      try{
        const size=120,scale=Math.min(1,size/Math.max(img.naturalWidth,img.naturalHeight));
@@ -186,6 +188,7 @@ function safeRecord(item){
  record.size=Number(record.size||item.file?.size)||0;
  record.mimeType=String(record.mimeType||item.file?.type||'');
  record.lastModified=Number(record.lastModified||item.file?.lastModified)||0;
+ record.updatedAt=new Date().toISOString();
  return record;
 }
 function database(){return new Promise((resolve,reject)=>{
@@ -239,7 +242,13 @@ async function pending(){
  let fromIDB=[];
  try{fromIDB=await transact('readonly',store=>store.getAll())||[];}catch(_){}
  const merged=new Map();
- for(const record of [...fallbackRecords(),...fromIDB,...memoryPending.values()])if(record?.id)merged.set(record.id,record);
+ for(const record of [...fromIDB,...fallbackRecords(),...memoryPending.values()]){
+   if(!record?.id)continue;
+   const prev=merged.get(record.id);
+   const stamp=Date.parse(record.updatedAt||record.at||'')||0;
+   const prevStamp=Date.parse(prev?.updatedAt||prev?.at||'')||0;
+   if(!prev||stamp>=prevStamp)merged.set(record.id,record);
+ }
  return [...merged.values()];
 }
 root.HQMedia={post,upload,preview,validate,extractCapturedAt,enqueue,remove,pending,CHUNK};
