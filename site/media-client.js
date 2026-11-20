@@ -28,7 +28,7 @@ async function upload(token,file,listingKey,onProgress,options={}){
  let uploadId=String(options.uploadId||'');
  let offset=Math.max(0,Number(options.offset)||0);
  let chunkSize=Math.max(262144,Number(options.chunkSize)||CHUNK);
- let restarted=false;
+ let restarted=!!options._restarted;
  if(!uploadId||offset>file.size){
    const session=await start();uploadId=session.uploadId;
    chunkSize=Number(session.chunkSize)||chunkSize;offset=0;
@@ -64,6 +64,12 @@ async function upload(token,file,listingKey,onProgress,options={}){
  for(let attempt=0;attempt<3;attempt++){
    try{finished=await post(token,'mediaFinish',{uploadId});finishError=null;break;}
    catch(error){finishError=error;if(attempt<2)await new Promise(ok=>setTimeout(ok,(attempt+1)*750));}
+ }
+ if(finishError&&!restarted&&/上传会话已过期|上传会话无效/.test(finishError.message||'')){
+   const session=await start();uploadId=session.uploadId;chunkSize=Number(session.chunkSize)||chunkSize;
+   await options.onSession?.({uploadId,offset:0,chunkSize,restarted:true});
+   await options.onCheckpoint?.({uploadId,offset:0,chunkSize,total:file.size});
+   return upload(token,file,listingKey,onProgress,{...options,uploadId,offset:0,chunkSize,_restarted:true});
  }
  if(finishError)throw finishError;
  if(!finished.file?.driveFileId)throw Error('上传完成但未拿到 Drive 文件 ID');
