@@ -797,7 +797,7 @@ function syncVisitToHouse(entry){
 }
 async function compressVisitPhoto(file){
  if(!file||!file.type.startsWith('image/'))throw Error('仅支持图片文件');
- if(file.size>12*1024*1024)throw Error('图片大于12MB，请先压缩');
+ if(!Number.isSafeInteger(file.size)||file.size<=0)throw Error('图片文件大小无效');
  const src=await new Promise((ok,no)=>{const rd=new FileReader();rd.onload=()=>ok(rd.result);rd.onerror=no;rd.readAsDataURL(file)});
  const img=await new Promise((ok,no)=>{const t=new Image();t.onload=()=>ok(t);t.onerror=()=>no(Error('无法读取图片'));t.src=src});
  const max=210,scale=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.width*scale));c.height=Math.max(1,Math.round(img.height*scale));c.getContext('2d').drawImage(img,0,0,c.width,c.height);
@@ -1279,7 +1279,7 @@ case 'reset':if(!confirm('确认恢复空白模板？这会覆盖当前本地修
 
 async function compressPhoto(file){
  if(!file||!file.type.startsWith('image/'))throw new Error('请选择图片文件');
- if(file.size>12*1024*1024)throw new Error('图片超过12MB，请先压缩');
+ if(!Number.isSafeInteger(file.size)||file.size<=0)throw new Error('图片文件大小无效');
  const src=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)});
  const image=await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=()=>reject(new Error('图片无法解码'));i.src=src});
  const scale=Math.min(1,360/Math.max(image.width,image.height)),w=Math.max(1,Math.round(image.width*scale)),h=Math.max(1,Math.round(image.height*scale));
