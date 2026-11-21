@@ -573,3 +573,15 @@ body{padding-bottom:calc(100px + env(safe-area-inset-bottom,0px))!important}
 .bh-browse-toolbar .bh-search-toggle{flex:0 0 42px}
 .bh-browse-toolbar .bh-view-switch{flex:0 0 auto}
 @media(max-width:480px){.bh-browse-toolbar{gap:5px!important}.bh-create-inline{width:42px;min-width:42px;padding:0!important}.bh-create-inline span{display:none}.bh-browse-toolbar .bh-view-switch{transform:scale(.92);transform-origin:right center}.bh-metrics>.bh-metric{flex-basis:42vw!important}}
+
+/* Draft redesign — do not publish until approved */
+.bh-topbar{display:flex!important;align-items:center!important;gap:10px!important}
+.bh-topbar-left{flex:0 0 auto!important}
+.bh-topbar-right#topbarUploadSlot{flex:1 1 auto!important;min-width:0!important;max-width:none!important;justify-content:center!important}
+.bh-header-create{flex:0 0 42px;display:flex;align-items:center;justify-content:center;width:42px;height:42px;border:1.5px solid #222;border-radius:13px;background:#fff;color:#111;cursor:pointer;margin-left:auto}
+.bh-bottom-nav{background:rgba(13,13,15,.78)!important;-webkit-backdrop-filter:blur(24px) saturate(130%)!important;backdrop-filter:blur(24px) saturate(130%)!important;border:1px solid rgba(255,255,255,.14)!important;box-shadow:0 8px 30px rgba(0,0,0,.19)!important}
+.bh-bottom-nav button.active{color:#fff!important}
+.bh-bottom-nav button:not(.active){color:#a9a9ad!important}
+.bh-bottom-nav button .bh-icon-svg{width:24px;height:24px}
+.bh-browse-toolbar{justify-content:space-between}
+@media(max-width:760px){.bh-topbar{padding-left:16px!important;padding-right:16px!important}.bh-topbar .bh-full-logo{width:135px!important;max-height:39px!important}.bh-header-create{flex-basis:42px;width:42px;height:42px}.bh-topbar-right#topbarUploadSlot{min-width:0!important}}
