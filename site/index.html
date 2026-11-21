@@ -282,7 +282,7 @@ body{font-size:calc(14px * var(--hq-text-scale))}
 <div class="topbar-shell"><header class="bh-topbar">
  <div class="bh-topbar-left"><span class="bh-brand-lockup"><img class="bh-full-logo" src="/brand-logo-exact.svg" alt="买房助手" width="135" height="38"></span></div>
  <div class="bh-topbar-right" id="topbarUploadSlot" hidden aria-live="polite"></div>
- <button type="button" class="bh-icon-btn bh-menu-btn" id="navToggle" data-ui="drawerOpen" aria-expanded="false" aria-controls="navDrawer" aria-label="打开导航菜单"></button>
+ 
 </header></div>
 <div class="app">
  <button type="button" class="bh-backdrop" id="navBackdrop" data-ui="drawerClose" aria-label="关闭导航菜单" tabindex="-1"></button>
@@ -296,7 +296,7 @@ body{font-size:calc(14px * var(--hq-text-scale))}
   <div id="root"></div>
  </div></main>
 </div>
-<button class="bh-fab" id="fabNew" data-action="new" aria-label="新增房源" title="新增房源"></button>
+<nav class="bh-bottom-nav" id="bottomNav" aria-label="底部功能导航"></nav><button class="bh-fab" id="fabNew" data-action="new" aria-label="新增房源" title="新增房源" hidden></button>
 <div id="overlay"></div>
 <input id="importInput" type="file" accept=".json,application/json" hidden>
 <script src="/sync-merge.js"></script><script src="/media-client.js"></script>
@@ -919,8 +919,8 @@ function closeBhDrawer(){document.body.classList.remove('bh-drawer-open');const 
 function openBhDrawer(){document.body.classList.add('bh-drawer-open');const d=document.getElementById('navDrawer'),b=document.getElementById('navToggle');if(d){d.dataset.open='true';d.setAttribute('aria-hidden','false')}if(b)b.setAttribute('aria-expanded','true')}
 function renderNav(){
  document.getElementById('nav').innerHTML=navs.map(([id,icon,label])=>'<button type="button" class="'+(tab===id?'active':'')+'" data-tab="'+id+'" aria-label="'+esc(label)+'" '+(tab===id?'aria-current="page"':'')+'><span class="ico">'+bhIcon(icon,20)+'</span>'+esc(label)+'</button>').join('');
- const fab=document.getElementById('fabNew');if(fab){fab.hidden=tab!=='houses';fab.innerHTML=bhIcon('plus',27)}
- const toggle=document.getElementById('navToggle');if(toggle)toggle.innerHTML=bhIcon('menu',21);
+ const fab=document.getElementById('fabNew');if(fab){fab.hidden=true;fab.innerHTML=bhIcon('plus',27)}
+ const bottom=document.getElementById('bottomNav');if(bottom){const items=[['houses','house','房源'],['visits','calendar','行程'],['changes','chart','市场'],['scopes','building','小区'],['settings','settings','数据']];bottom.innerHTML=items.map(([id,icon,label])=>'<button type="button" class="'+(tab===id||(tab==='benchmark'&&id==='changes')?'active':'')+'" data-tab="'+id+'" aria-label="'+label+'" '+(tab===id?'aria-current="page"':'')+'><span class="ico">'+bhIcon(icon,22)+'</span><span>'+label+'</span></button>').join('');}
  // Full original logo remains in the drawer; no dynamic icon redraw.
  const close=document.querySelector('.bh-drawer-head [data-ui="drawerClose"]');if(close)close.innerHTML=bhIcon('close',15);
 }
@@ -976,7 +976,7 @@ function renderHouses(){
   <div class="bh-browse-toolbar">
    <button type="button" class="bh-tool-btn bh-search-toggle ${searchOpen?'active':''}" data-ui="searchToggle" aria-label="搜索房源" title="搜索房源" aria-expanded="${searchOpen}">${bhIcon('search',19)}</button>
    <div class="bh-select-wrap"><select id="kind" aria-label="筛选小区"><option value="all">全部小区</option>${communities.map(x=>`<option value="${esc(x)}" ${kind===x?'selected':''}>${esc(x)}</option>`).join('')}</select>${bhIcon('down',13)}</div>
-   <div class="bh-view-switch" aria-label="切换房源视图"><button type="button" class="bh-tool-btn ${view==='cards'?'active':''}" data-view="cards" aria-label="卡片视图" aria-pressed="${view==='cards'}">${bhIcon('grid',17)}</button><button type="button" class="bh-tool-btn ${view==='table'?'active':''}" data-view="table" aria-label="列表视图" aria-pressed="${view==='table'}">${bhIcon('list',17)}</button></div>
+   <button type="button" class="bh-create-inline" data-action="new" aria-label="新建房源">${bhIcon('plus',19)}<span>新建房源</span></button><div class="bh-view-switch" aria-label="切换房源视图"><button type="button" class="bh-tool-btn ${view==='cards'?'active':''}" data-view="cards" aria-label="卡片视图" aria-pressed="${view==='cards'}">${bhIcon('grid',17)}</button><button type="button" class="bh-tool-btn ${view==='table'?'active':''}" data-view="table" aria-label="列表视图" aria-pressed="${view==='table'}">${bhIcon('list',17)}</button></div>
   </div>
  </section>
  <div class="bh-search-panel" ${searchOpen?'':'hidden'}>${bhIcon('search',17)}<input id="search" type="search" aria-label="搜索房源" placeholder="搜索小区、户型、编号或官方链接…" value="${esc(search)}"><button type="button" data-ui="searchClose" aria-label="关闭搜索">${bhIcon('close',13)}</button></div>
