@@ -277,16 +277,17 @@ body{font-size:calc(14px * var(--hq-text-scale))}
 #newPhotoFile:focus-visible+.photo-file-picker{outline:2px solid var(--active);outline-offset:3px}
 @media(max-width:730px){.photo-file-picker{min-height:68px;border-radius:16px;font-size:15px;gap:10px;padding:14px}.photo-file-picker .photo-file-icon{width:26px;height:26px}}
 
-</style><link rel="stylesheet" href="/buyhouse-v08.css?v=20261120-header-upload-fab-v2&theme=marvis-v2"></head><body>
+</style><link rel="stylesheet" href="/buyhouse-v08.css?v=20261120-header-upload-fab-v2&theme=marvis-v2&mobile=20261120-v3&brand=snail-v2-right-drawer"></head><body>
 
 <div class="topbar-shell"><header class="bh-topbar">
- <div class="bh-topbar-left"><button type="button" class="bh-icon-btn bh-menu-btn" id="navToggle" data-ui="drawerOpen" aria-expanded="false" aria-controls="navDrawer" aria-label="打开导航菜单"></button><strong class="bh-logo">买房助手</strong></div>
- <div class="bh-topbar-right" id="topbarUploadSlot" hidden aria-live="polite"></div>
+ <div class="bh-topbar-left"><span class="bh-brand-lockup"><img class="bh-full-logo" src="/brand-logo-green.svg" alt="买房助手" width="135" height="38"></span></div>
+ <div class="bh-topbar-right" id="topbarUploadSlot" hidden aria-live="polite"></div><button type="button" class="bh-header-create" data-action="new" aria-label="新建房源" title="新建房源"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 4v16M4 12h16"/></svg></button>
+ 
 </header></div>
 <div class="app">
  <button type="button" class="bh-backdrop" id="navBackdrop" data-ui="drawerClose" aria-label="关闭导航菜单" tabindex="-1"></button>
  <aside class="app-drawer" id="navDrawer" data-open="false" aria-label="功能导航" aria-hidden="true">
-  <div class="bh-drawer-head"><div class="bh-drawer-brand"><span class="bh-drawer-glyph" id="drawerBrandGlyph"></span><div><strong>买房助手</strong><small>个人房源跟踪工具</small></div></div><button class="bh-icon-btn" type="button" data-ui="drawerClose" aria-label="关闭导航"></button></div>
+  <div class="bh-drawer-head"><div class="bh-drawer-brand"><span class="bh-drawer-full-logo" id="drawerBrandGlyph"><img src="/brand-logo-exact.svg" alt="买房助手" width="208" height="59" referrerpolicy="no-referrer"></span></div><button class="bh-icon-btn" type="button" data-ui="drawerClose" aria-label="关闭导航"></button></div>
   <div class="bh-drawer-label">功能导航</div><nav class="nav drawer-links" id="nav"></nav>
   <div class="bh-drawer-bottom"><div id="cloudSidebarStatus">云端连接中</div>房源、成交记录和看房档案持续保留</div>
  </aside>
@@ -295,7 +296,7 @@ body{font-size:calc(14px * var(--hq-text-scale))}
   <div id="root"></div>
  </div></main>
 </div>
-<button class="bh-fab" id="fabNew" data-action="new" aria-label="新增房源" title="新增房源"></button>
+<nav class="bh-bottom-nav" id="bottomNav" aria-label="底部功能导航"></nav><button class="bh-fab" id="fabNew" data-action="new" aria-label="新增房源" title="新增房源" hidden></button>
 <div id="overlay"></div>
 <input id="importInput" type="file" accept=".json,application/json" hidden>
 <script src="/sync-merge.js"></script><script src="/media-client.js"></script>
@@ -369,7 +370,7 @@ function sanitizeState(s){
 function firstImage(h){const src=String(h?.photoData||h?.imageUrl||'');return /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(src)||/^https:\/\//i.test(src)?src:''}
 function photoMarkup(h,mode='card'){
  const img=firstImage(h);
- return `<div class="property-photo ${mode}">${img?`<img alt="房源照片（用户提供）" src="${esc(img)}" loading="lazy" referrerpolicy="no-referrer">`:`<div class="photo-placeholder"><span class="photo-symbol">${metricIcon('house')}</span><span>暂无房屋照片</span></div>`}<span class="photo-label">${img?'实地／来源照片':'照片可选'}</span></div>`;
+ return `<div class="property-photo ${mode}">${img?`<img alt="房源照片（用户提供）" src="${esc(img)}" loading="lazy" referrerpolicy="no-referrer">`:`<div class="photo-placeholder" role="img" aria-label="房源暂无照片"><span class="photo-symbol">${metricIcon('house')}</span></div>`}${img?'<span class="photo-label">实地／来源照片</span>':''}</div>`;
 }
 function nextHouseId(){const nums=[...state.houses,...(state.quarantine||[])].map(x=>/TJ-HQ-(\d+)/.exec(x.id)?.[1]).filter(Boolean).map(Number);return 'TJ-HQ-'+String(Math.max(0,...nums)+1).padStart(4,'0')}
 
@@ -908,6 +909,7 @@ const BH_PATHS={
  download:'<path d="M12 4v12"/><path d="m7 11 5 5 5-5"/><path d="M4 20h16"/>',
  external:'<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6"/>'
 };
+BH_PATHS.database='<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/><path d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/>';
 function bhIcon(name,size=19){
  return '<svg class="bh-icon-svg" viewBox="0 0 24 24" width="'+size+'" height="'+size+'" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(BH_PATHS[name]||BH_PATHS.info)+'</svg>';
 }
@@ -918,9 +920,9 @@ function closeBhDrawer(){document.body.classList.remove('bh-drawer-open');const 
 function openBhDrawer(){document.body.classList.add('bh-drawer-open');const d=document.getElementById('navDrawer'),b=document.getElementById('navToggle');if(d){d.dataset.open='true';d.setAttribute('aria-hidden','false')}if(b)b.setAttribute('aria-expanded','true')}
 function renderNav(){
  document.getElementById('nav').innerHTML=navs.map(([id,icon,label])=>'<button type="button" class="'+(tab===id?'active':'')+'" data-tab="'+id+'" aria-label="'+esc(label)+'" '+(tab===id?'aria-current="page"':'')+'><span class="ico">'+bhIcon(icon,20)+'</span>'+esc(label)+'</button>').join('');
- const fab=document.getElementById('fabNew');if(fab){fab.hidden=tab!=='houses';fab.innerHTML=bhIcon('plus',27)}
- const toggle=document.getElementById('navToggle');if(toggle)toggle.innerHTML=bhIcon('menu',21);
- const brand=document.getElementById('drawerBrandGlyph');if(brand)brand.innerHTML=bhIcon('app',23);
+ const fab=document.getElementById('fabNew');if(fab){fab.hidden=true;fab.innerHTML=bhIcon('plus',27)}
+ const bottom=document.getElementById('bottomNav');if(bottom){const items=[['houses','house','房源'],['visits','calendar','行程'],['changes','chart','市场'],['scopes','building','小区'],['settings','database','数据']];bottom.innerHTML=items.map(([id,icon,label])=>'<button type="button" class="'+(tab===id||(tab==='benchmark'&&id==='changes')?'active':'')+'" data-tab="'+id+'" aria-label="'+label+'" '+(tab===id?'aria-current="page"':'')+'><span class="ico">'+bhIcon(icon,22)+'</span><span>'+label+'</span></button>').join('');}
+ // Full original logo remains in the drawer; no dynamic icon redraw.
  const close=document.querySelector('.bh-drawer-head [data-ui="drawerClose"]');if(close)close.innerHTML=bhIcon('close',15);
 }
 
@@ -945,6 +947,15 @@ function render(){
   }
  }
 }
+function pendingCandidatesForOverview(){
+ return (state.listingCandidates||[]).filter(x=>inspectListingUrl(x.originalUrl||x.url,x.platform).ok);
+}
+function showPendingCandidates(){
+ const pending=pendingCandidatesForOverview();
+ const rows=pending.map(x=>`<div class="quarantine-item"><div><strong>${esc(x.community&&x.community!=='待核实'?x.community:x.platform+'房源 '+x.platformListingId)}</strong><div class="muted">${esc(x.platform)} · ${x.price?esc(x.price)+'万 · ':''}${x.area?esc(x.area)+'㎡':''}</div><a href="${esc(urlSafe(x.originalUrl||x.url))}" target="_blank" rel="noopener noreferrer">官方原始链接 ${bhIcon('external',12)}</a></div>${cloudConfig.token?`<button class="btn sm" data-action="promoteCandidate" data-id="${esc(x.candidateId)}">补全建档</button>`:`<button class="btn sm" data-ui="goSettings">解锁后建档</button>`}</div>`).join('');
+ modal('待补全官方链接 · '+pending.length+' 条',
+ `<p class="muted">这些是待核验的独立房源链接，不计入总房源数量；确认小区与房屋信息后再补全建档。</p><div class="hq-pending-modal-list">${rows||'<div class="empty">暂无待补全的官方房源链接</div>'}</div>`);
+}
 function renderHouses(){
  const houses=state.houses.filter(h=>!h.deletedAt);
  const qualified=houses.filter(h=>!issue(h).length);
@@ -955,13 +966,14 @@ function renderHouses(){
  const pending=(state.listingCandidates||[]).filter(x=>inspectListingUrl(x.originalUrl||x.url,x.platform).ok);
  const readOnly=!cloudConfig.token;
  return `
- <section class="bh-overview-head"><h1>房源概览</h1><span class="bh-live-label">实时数据库</span></section>
+ <section class="bh-overview-head"><h1>房源概览</h1></section>
  <section class="bh-metrics" aria-label="房源概览统计">
   <div class="bh-metric"><div class="bh-metric-top"><span class="bh-metric-label">总房源</span>${metricIcon('house')}</div><div class="bh-metric-value">${houses.length}<small>套</small></div></div>
   <div class="bh-metric"><div class="bh-metric-top"><span class="bh-metric-label">待看房源</span>${metricIcon('calendar')}</div><div class="bh-metric-value">${toVisit.length}<small>套</small></div></div>
   <div class="bh-metric"><div class="bh-metric-top"><span class="bh-metric-label">重点关注</span>${metricIcon('bookmark')}</div><div class="bh-metric-value">${focus.length}<small>套</small></div></div>
+  <button type="button" class="bh-metric bh-metric-action" data-ui="pendingLinks" aria-label="待补全官方链接 ${pending.length} 条，查看详情"><div class="bh-metric-top"><span class="bh-metric-label">待补全链接</span>${metricIcon('filePlus')}</div><div class="bh-metric-value">${pending.length}<small>条</small></div></button>
  </section>
- <section class="bh-list-head"><div class="bh-list-title"><h2>房源列表</h2><span id="listingCount">${visibleHouses().length} 套</span></div>
+ <section class="bh-list-head"><div class="bh-list-title"><h2>房源列表</h2></div>
   <div class="bh-browse-toolbar">
    <button type="button" class="bh-tool-btn bh-search-toggle ${searchOpen?'active':''}" data-ui="searchToggle" aria-label="搜索房源" title="搜索房源" aria-expanded="${searchOpen}">${bhIcon('search',19)}</button>
    <div class="bh-select-wrap"><select id="kind" aria-label="筛选小区"><option value="all">全部小区</option>${communities.map(x=>`<option value="${esc(x)}" ${kind===x?'selected':''}>${esc(x)}</option>`).join('')}</select>${bhIcon('down',13)}</div>
@@ -970,7 +982,6 @@ function renderHouses(){
  </section>
  <div class="bh-search-panel" ${searchOpen?'':'hidden'}>${bhIcon('search',17)}<input id="search" type="search" aria-label="搜索房源" placeholder="搜索小区、户型、编号或官方链接…" value="${esc(search)}"><button type="button" data-ui="searchClose" aria-label="关闭搜索">${bhIcon('close',13)}</button></div>
  <div class="bh-filter-accordion" aria-label="房源筛选"><div class="filters" id="filters">${[['all','非硬伤候选'],['focus','重点关注'],['toVisit','待看房源'],['visited','看过房源'],['mine','我觉得合适'],['uncertain','待核验'],['withphoto','有照片'],['excluded','硬伤排除'],['budget','价格区间']].map(([id,label])=>`<button class="chip ${filter===id?'active':''}" data-filter="${id}">${esc(id==='focus'?'重点关注':id==='visited'?'已看房源':state.pageConfig.filterLabels[id]||label)}</button>`).join('')}</div></div>
- ${pending.length?`<details class="bh-pending-details"><summary>待补全官方房源链接 · ${pending.length} 条（不计入正式房源）</summary>${pending.map(x=>`<div class="quarantine-item"><div><strong>${esc(x.community&&x.community!=='待核实'?x.community:x.platform+'房源 '+x.platformListingId)}</strong><div class="muted">${esc(x.platform)} · ${x.price?esc(x.price)+'万 · ':''}${x.area?esc(x.area)+'㎡':''}</div><a href="${esc(urlSafe(x.originalUrl||x.url))}" target="_blank" rel="noopener noreferrer">官方原始链接 ${bhIcon('external',12)}</a></div><button class="btn sm" data-action="promoteCandidate" data-id="${esc(x.candidateId)}">补全建档</button></div>`).join('')}</details>`:''}
  <div id="results">${renderItems()}</div>`;
 }
 function renderResults(){const x=document.getElementById('results');if(x)x.innerHTML=renderItems();const count=document.getElementById('listingCount');if(count)count.textContent=visibleHouses().length+' 套'}
@@ -1373,7 +1384,7 @@ window.addEventListener('focus',()=>{if(!document.hidden)onCloudWake()});
 window.addEventListener('pageshow',e=>{if(e.persisted)onCloudWake(true)});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)onCloudWake()});
 window.addEventListener('online',()=>{if(cloudStartupDone)onCloudWake(true)});
-document.addEventListener('click',e=>{const ui=e.target.closest('[data-ui]');if(ui){const cmd=ui.dataset.ui;if(cmd==='drawerOpen'){openBhDrawer();return}if(cmd==='drawerClose'){closeBhDrawer();return}if(cmd==='goSettings'){closeOverlay();tab='settings';render();window.scrollTo(0,0);return}if(cmd==='searchToggle'){searchOpen=!searchOpen;render();if(searchOpen)document.getElementById('search')?.focus();return}if(cmd==='searchClose'){search='';searchOpen=false;render();return}if(cmd==='help'){modal('买房助手 · 使用说明','<p>房源信息、历史价格、看房行程和小区记录均可查看。新增、修改或归档需要在「数据管理」输入 PIN。</p><p>正式房源须有可识别的单套官方详情链接；待核实线索独立保存，不能计入正式房源。</p><p>首页概览来自真实数据库，筛选条默认展开，左右滑动查看更多状态。</p>');return}}const close=e.target.closest('[data-close]');if(close&&(close===e.target||e.target.closest('button[data-close]'))){closeOverlay();return}const nt=e.target.closest('[data-tab]');if(nt){if(configFormDirty&&tab==='config'&&nt.dataset.tab!=='config'){if(!confirm('页面配置有未保存的修改，确认放弃吗？'))return;configFormDirty=false;}closeBhDrawer();tab=nt.dataset.tab;filter=state.pageConfig.defaultFilter;search='';searchOpen=false;render();window.scrollTo(0,0);return}const ff=e.target.closest('[data-filter]');if(ff){window.__hqUserFiltersTouched=true;filter=ff.dataset.filter;render();return}const vv=e.target.closest('[data-view]');if(vv){window.__hqUserFiltersTouched=true;view=vv.dataset.view;render();return}const oo=e.target.closest('[data-open]');if(oo){openDetail(oo.dataset.open);return}const a=e.target.closest('[data-action]');if(!a)return;const action=a.dataset.action;const publicActions=new Set(['visitSelectTab','visitFilter','reopen','shareHouse','exportLinks','export','saveCloudConfig','lockCloud','cloudPull']);if(!cloudConfig.token&&!publicActions.has(action)){toast('当前为公开只读模式；输入 PIN 解锁后才能修改数据');tab='settings';render();return;}const id=a.dataset.id, h=state.houses.find(x=>x.id===id);switch(action){
+document.addEventListener('click',e=>{const ui=e.target.closest('[data-ui]');if(ui){const cmd=ui.dataset.ui;if(cmd==='drawerOpen'){openBhDrawer();return}if(cmd==='pendingLinks'){showPendingCandidates();return}if(cmd==='drawerClose'){closeBhDrawer();return}if(cmd==='goSettings'){closeOverlay();tab='settings';render();window.scrollTo(0,0);return}if(cmd==='searchToggle'){searchOpen=!searchOpen;render();if(searchOpen)document.getElementById('search')?.focus();return}if(cmd==='searchClose'){search='';searchOpen=false;render();return}if(cmd==='help'){modal('买房助手 · 使用说明','<p>房源信息、历史价格、看房行程和小区记录均可查看。新增、修改或归档需要在「数据管理」输入 PIN。</p><p>正式房源须有可识别的单套官方详情链接；待核实线索独立保存，不能计入正式房源。</p><p>首页概览来自真实数据库，筛选条默认展开，左右滑动查看更多状态。</p>');return}}const close=e.target.closest('[data-close]');if(close&&(close===e.target||e.target.closest('button[data-close]'))){closeOverlay();return}const nt=e.target.closest('[data-tab]');if(nt){if(configFormDirty&&tab==='config'&&nt.dataset.tab!=='config'){if(!confirm('页面配置有未保存的修改，确认放弃吗？'))return;configFormDirty=false;}closeBhDrawer();tab=nt.dataset.tab;filter=state.pageConfig.defaultFilter;search='';searchOpen=false;render();window.scrollTo(0,0);return}const ff=e.target.closest('[data-filter]');if(ff){window.__hqUserFiltersTouched=true;filter=ff.dataset.filter;render();return}const vv=e.target.closest('[data-view]');if(vv){window.__hqUserFiltersTouched=true;view=vv.dataset.view;render();return}const oo=e.target.closest('[data-open]');if(oo){openDetail(oo.dataset.open);return}const a=e.target.closest('[data-action]');if(!a)return;const action=a.dataset.action;const publicActions=new Set(['visitSelectTab','visitFilter','reopen','shareHouse','exportLinks','export','saveCloudConfig','lockCloud','cloudPull']);if(!cloudConfig.token&&!publicActions.has(action)){toast('当前为公开只读模式；输入 PIN 解锁后才能修改数据');tab='settings';render();return;}const id=a.dataset.id, h=state.houses.find(x=>x.id===id);switch(action){
  case 'visitSelectTab':visitView=a.dataset.visitTab==='history'?'history':'pending';render();break;
  case 'visitMarkSeen':if(h){if(visitApplyStatus(h,'看过')){changed(h,'看房状态','标记看过；进入历史时间轴');save();}visitView='history';render();toast('已归入看房历史');}break;
  case 'visitNew':editVisitSession();break;
@@ -1549,6 +1560,77 @@ function importCapturedRecord(record){
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('bh-drawer-open'))closeBhDrawer()});
 // V3.5: 浏览器扩展独立直传 Netlify Functions；已移除旧的 H5 消息中转。
+
+/* Draggable add-listing action: pointer/touch, click-safe and device-local position. */
+const FAB_POSITION_KEY='HQ_FAB_POSITION_V1';
+function initDraggableFab(){
+ const fab=document.getElementById('fabNew');if(!fab)return;
+ let pointer=null,moved=false,lastDragAt=0;
+ const limit=(v,min,max)=>Math.min(Math.max(v,min),max);
+ const bounds=()=>{
+  const vv=window.visualViewport;
+  const width=Math.min(window.innerWidth,(vv?.width||window.innerWidth)+(vv?.offsetLeft||0));
+  const height=Math.min(window.innerHeight,(vv?.height||window.innerHeight)+(vv?.offsetTop||0));
+  const minX=12,maxX=Math.max(minX,width-(fab.offsetWidth||54)-12);
+  const minY=70,maxY=Math.max(minY,height-(fab.offsetHeight||54)-78);
+  return {minX,maxX,minY,maxY};
+ };
+ const put=(x,y)=>{
+  const b=bounds();
+  fab.style.setProperty('left',Math.round(limit(x,b.minX,b.maxX))+'px','important');
+  fab.style.setProperty('top',Math.round(limit(y,b.minY,b.maxY))+'px','important');
+  fab.style.setProperty('right','auto','important');
+  fab.style.setProperty('bottom','auto','important');
+ };
+ const store=()=>{
+  const b=bounds(),r=fab.getBoundingClientRect();
+  const position={
+   x:(r.left-b.minX)/Math.max(1,b.maxX-b.minX),
+   y:(r.top-b.minY)/Math.max(1,b.maxY-b.minY)
+  };
+  try{localStorage.setItem(FAB_POSITION_KEY,JSON.stringify(position));}catch(_){}
+ };
+ const restore=()=>{
+  let p=null;try{p=JSON.parse(localStorage.getItem(FAB_POSITION_KEY)||'null');}catch(_){}
+  if(p&&Number.isFinite(p.x)&&Number.isFinite(p.y)){
+   const b=bounds();
+   put(b.minX+limit(p.x,0,1)*(b.maxX-b.minX),
+       b.minY+limit(p.y,0,1)*(b.maxY-b.minY));
+  }
+ };
+ fab.addEventListener('pointerdown',e=>{
+  if(e.button!==0||!e.isPrimary)return;
+  const r=fab.getBoundingClientRect();
+  pointer={id:e.pointerId,x:e.clientX,y:e.clientY,left:r.left,top:r.top};
+  moved=false;
+  try{fab.setPointerCapture(e.pointerId);}catch(_){}
+ });
+ fab.addEventListener('pointermove',e=>{
+  if(!pointer||e.pointerId!==pointer.id)return;
+  const dx=e.clientX-pointer.x,dy=e.clientY-pointer.y;
+  if(!moved&&Math.hypot(dx,dy)<6)return;
+  moved=true;fab.classList.add('is-dragging');
+  put(pointer.left+dx,pointer.top+dy);
+  if(e.cancelable)e.preventDefault();
+ });
+ const finish=e=>{
+  if(!pointer||e.pointerId!==pointer.id)return;
+  if(moved){store();lastDragAt=Date.now();}
+  pointer=null;moved=false;fab.classList.remove('is-dragging');
+  try{if(fab.hasPointerCapture(e.pointerId))fab.releasePointerCapture(e.pointerId);}catch(_){}
+ };
+ fab.addEventListener('pointerup',finish);
+ fab.addEventListener('pointercancel',finish);
+ // A release after dragging must never trigger "new listing".
+ fab.addEventListener('click',e=>{
+  if(Date.now()-lastDragAt<500){e.preventDefault();e.stopImmediatePropagation();}
+ },true);
+ window.addEventListener('resize',restore);
+ window.visualViewport?.addEventListener('resize',restore);
+ restore();
+}
+
+initDraggableFab();
 applyPageConfig();render();
 const hqCloudInitPromise=initCloud().finally(()=>{cloudStartupDone=true;void restoreMediaTasks();});
 // 新设备首次打开时自动展示 PIN 登录界面，避免看到全是0的空白初始化页。

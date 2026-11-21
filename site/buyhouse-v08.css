@@ -448,3 +448,140 @@ input[type="checkbox"],input[type="radio"]{accent-color:#111111!important}
 .defect-pill:has(input:checked){background:#111111!important;border-color:#111111!important;color:#FFFFFF!important}
 .link-policy{background:#F2F2F2!important;border-color:#E6E6E6!important;color:#555555!important}
 .help b[style*="color"]{color:#333333!important}
+
+
+/* 2026-11-20 mobile layout refinements (preview only). */
+
+/* The fourth overview tile is a real action; keep the same KPI typography. */
+.bh-metrics .bh-metric-action{
+ appearance:none;-webkit-appearance:none;
+ text-align:left;font:inherit;color:inherit;cursor:pointer;
+ display:flex;flex-direction:column;justify-content:space-between;
+}
+.bh-metrics .bh-metric-action:hover{background:#FAFAFA!important}
+.bh-metrics .bh-metric-action:focus-visible{outline:2px solid #111!important;outline-offset:-3px}
+.hq-pending-modal-list{max-height:55dvh;overflow-y:auto;margin-top:14px}
+.hq-pending-modal-list .quarantine-item:first-child{border-top:0}
+.hq-pending-modal-list .quarantine-item{gap:12px}
+.hq-pending-modal-list a{color:#333;text-decoration:underline;text-underline-offset:2px}
+
+/* Keep upload progress flush to the page's right-hand header margin. */
+#topbarUploadSlot.bh-topbar-right{justify-content:flex-end!important}
+#hqUploadDock{justify-content:flex-end!important}
+#hqUploadDock .hq-upload-mini{
+ flex:0 1 auto;min-width:0;max-width:100%;box-sizing:border-box;
+}
+#hqUploadDock .hq-upload-mini button{min-width:0}
+#hqUploadDock .hq-upload-mini button span{flex:1 1 auto;min-width:0}
+#hqUploadDock .hq-upload-panel{right:0!important}
+
+/* All horizontal status chips use at least a 40pt/iOS logical-pixel tap height. */
+.bh-filter-accordion .filters .chip{
+ min-height:40px!important;box-sizing:border-box;
+ padding:0 14px!important;font-size:13px!important;line-height:1.25!important;
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+}
+
+/* Repositionable floating action, drag only on the action itself. */
+#fabNew{
+ touch-action:none;-ms-touch-action:none;
+ user-select:none;-webkit-user-select:none;
+ cursor:grab;
+}
+#fabNew.is-dragging{cursor:grabbing!important;opacity:.9;box-shadow:0 10px 28px rgba(0,0,0,.23)!important}
+
+@media(max-width:760px){
+ /* Toolbar begins at exactly the same left inset as the listing cards. */
+ .bh-list-head{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:11px!important}
+ .bh-list-head .bh-list-title{flex:0 0 auto!important;width:100%}
+ .bh-list-head .bh-browse-toolbar{
+  display:flex!important;justify-content:flex-start!important;
+  align-items:center!important;gap:8px!important;
+  width:100%!important;max-width:100%;margin:0!important;
+ }
+ .bh-list-head .bh-view-switch{margin-left:auto!important}
+ .bh-browse-toolbar .bh-search-toggle{width:112px!important;flex:0 0 112px!important}
+ .bh-browse-toolbar .bh-select-wrap{min-width:0;flex:0 1 auto}
+ .bh-browse-toolbar .bh-select-wrap select{max-width:150px}
+ .bh-filter-accordion .filters{padding-top:4px;padding-bottom:10px}
+ .bh-metrics .bh-metric-action{min-width:145px}
+}
+@media(max-width:350px){
+ .bh-browse-toolbar .bh-search-toggle{width:100px!important;flex-basis:100px!important}
+ .bh-browse-toolbar .bh-select-wrap select{max-width:112px}
+}
+
+/* Snail brand lockup — compact flat mark, angular slanted wordmark. */
+.bh-brand-lockup{display:inline-flex;align-items:center;gap:7px;min-width:0;white-space:nowrap}
+.bh-snail-mark{display:block;width:37px;height:34px;object-fit:contain;flex:0 0 auto}
+.bh-custom-wordmark{font-family:"STSong","Songti SC","Noto Serif CJK SC","SimSun",serif!important;font-weight:900!important;font-style:italic!important;letter-spacing:-.06em!important;transform:skewX(-5deg);display:inline-block;white-space:nowrap;color:#111E36!important}
+.bh-topbar .bh-custom-wordmark{font-size:21px!important;line-height:1.1!important}
+.bh-snail-drawer-mark{background:#F3F5F9!important;display:flex!important;align-items:center!important;justify-content:center!important}
+.bh-snail-drawer-mark img{width:44px;height:44px;object-fit:contain}
+.bh-drawer-brand .bh-custom-wordmark{font-size:19px!important}
+@media(max-width:390px){.bh-snail-mark{width:32px;height:31px}.bh-brand-lockup{gap:4px}.bh-topbar .bh-custom-wordmark{font-size:18px!important}}
+
+/* Complete image-based brand: no rebuilt mascot or live font wordmark. */
+.bh-brand-lockup{display:inline-flex;align-items:center;min-width:0}
+.bh-full-logo{display:block;width:180px;height:auto;max-height:54px;object-fit:contain;object-position:left center}
+.bh-drawer-full-logo{display:flex;align-items:center;min-width:0;max-width:100%}
+.bh-drawer-full-logo img{display:block;width:208px;height:auto;max-height:65px;object-fit:contain;object-position:left center}
+.bh-drawer-brand:has(.bh-drawer-full-logo){align-items:center}
+@media(max-width:390px){.bh-full-logo{width:155px}}
+
+/* Header v2: brand | upload queue | menu, matching page gutters. */
+.bh-topbar{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important}
+.bh-topbar-left{flex:0 0 auto!important;min-width:0!important}
+.bh-topbar .bh-brand-lockup{display:flex!important;margin:0!important}
+.bh-topbar .bh-full-logo{width:90px!important;height:auto!important;max-height:27px!important;object-fit:contain!important;object-position:left center!important}
+.bh-topbar-right#topbarUploadSlot{flex:1 1 0!important;width:auto!important;min-width:0!important;max-width:none!important;justify-content:center!important;overflow:visible}
+#hqUploadDock{width:100%!important;max-width:100%!important;justify-content:center!important}
+#hqUploadDock .hq-upload-mini{max-width:100%!important}
+.bh-topbar>#navToggle{order:3;flex:0 0 37px!important;margin:0!important}
+.app-drawer{left:auto!important;right:0!important;transform:translate3d(104%,0,0)!important;box-shadow:-15px 0 45px rgba(42,42,42,.16)!important}
+body.bh-drawer-open .app-drawer{transform:translate3d(0,0,0)!important}
+@media(max-width:760px){
+ .bh-topbar{padding-left:16px!important;padding-right:16px!important}
+ .app-drawer{left:auto!important;right:0!important;transform:translate3d(104%,0,0)!important}
+ body.bh-drawer-open .app-drawer{transform:translate3d(0,0,0)!important}
+ .bh-topbar .bh-full-logo{width:90px!important;max-height:27px!important}
+ .bh-topbar-right#topbarUploadSlot{max-width:none!important}
+}
+@media(max-width:350px){
+ .bh-topbar{gap:6px!important;padding-left:14px!important;padding-right:14px!important}
+}
+
+/* Brand sizing adjustment: 50% larger than previous 90px preview. */
+.bh-topbar .bh-full-logo{width:135px!important;max-height:39px!important}
+@media(max-width:760px){.bh-topbar .bh-full-logo{width:135px!important;max-height:39px!important}}
+
+/* Preview mobile navigation redesign */
+.bh-menu-btn,.app-drawer,.bh-backdrop,.bh-fab{display:none!important}
+.bh-bottom-nav{position:fixed;z-index:1000;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);left:16px;right:16px;display:flex;justify-content:space-around;align-items:center;min-height:68px;padding:7px 4px;border-radius:28px;background:rgba(12,12,13,.92);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:0 8px 24px rgba(0,0,0,.13)}
+.bh-bottom-nav button{appearance:none;border:0;background:transparent;color:#929299;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:500;min-height:52px;cursor:pointer}
+.bh-bottom-nav button.active{color:#fff;font-weight:700}
+.bh-bottom-nav button .ico{display:flex;align-items:center;justify-content:center}
+.bh-bottom-nav button .bh-icon-svg{width:23px;height:23px}
+body{padding-bottom:calc(100px + env(safe-area-inset-bottom,0px))!important}
+.bh-metrics{display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;gap:12px!important;padding-bottom:4px}
+.bh-metrics::-webkit-scrollbar{display:none}
+.bh-metrics>.bh-metric{flex:0 0 clamp(155px,40vw,220px)!important;min-width:155px!important;scroll-snap-align:start}
+.bh-create-inline{display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;border:1px solid #e5e5e5;border-radius:14px;background:#fff;color:#242424;min-height:42px;padding:0 11px;font-size:13px;cursor:pointer}
+.bh-browse-toolbar{display:flex!important;flex-wrap:nowrap;gap:7px!important}
+.bh-browse-toolbar .bh-create-inline{flex:0 0 auto}
+.bh-browse-toolbar .bh-select-wrap{min-width:0;flex:1 1 auto}
+.bh-browse-toolbar .bh-search-toggle{flex:0 0 42px}
+.bh-browse-toolbar .bh-view-switch{flex:0 0 auto}
+@media(max-width:480px){.bh-browse-toolbar{gap:5px!important}.bh-create-inline{width:42px;min-width:42px;padding:0!important}.bh-create-inline span{display:none}.bh-browse-toolbar .bh-view-switch{transform:scale(.92);transform-origin:right center}.bh-metrics>.bh-metric{flex-basis:42vw!important}}
+
+/* Draft redesign — do not publish until approved */
+.bh-topbar{display:flex!important;align-items:center!important;gap:10px!important}
+.bh-topbar-left{flex:0 0 auto!important}
+.bh-topbar-right#topbarUploadSlot{flex:1 1 auto!important;min-width:0!important;max-width:none!important;justify-content:center!important}
+.bh-header-create{flex:0 0 42px;display:flex;align-items:center;justify-content:center;width:42px;height:42px;border:1.5px solid #222;border-radius:13px;background:#fff;color:#111;cursor:pointer;margin-left:auto}
+.bh-bottom-nav{background:rgba(13,13,15,.78)!important;-webkit-backdrop-filter:blur(24px) saturate(130%)!important;backdrop-filter:blur(24px) saturate(130%)!important;border:1px solid rgba(255,255,255,.14)!important;box-shadow:0 8px 30px rgba(0,0,0,.19)!important}
+.bh-bottom-nav button.active{color:#fff!important}
+.bh-bottom-nav button:not(.active){color:#a9a9ad!important}
+.bh-bottom-nav button .bh-icon-svg{width:24px;height:24px}
+.bh-browse-toolbar{justify-content:space-between}
+@media(max-width:760px){.bh-topbar{padding-left:16px!important;padding-right:16px!important}.bh-topbar .bh-full-logo{width:135px!important;max-height:39px!important}.bh-header-create{flex-basis:42px;width:42px;height:42px}.bh-topbar-right#topbarUploadSlot{min-width:0!important}}
