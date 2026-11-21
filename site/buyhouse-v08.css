@@ -554,3 +554,22 @@ body.bh-drawer-open .app-drawer{transform:translate3d(0,0,0)!important}
 /* Brand sizing adjustment: 50% larger than previous 90px preview. */
 .bh-topbar .bh-full-logo{width:135px!important;max-height:39px!important}
 @media(max-width:760px){.bh-topbar .bh-full-logo{width:135px!important;max-height:39px!important}}
+
+/* Preview mobile navigation redesign */
+.bh-menu-btn,.app-drawer,.bh-backdrop,.bh-fab{display:none!important}
+.bh-bottom-nav{position:fixed;z-index:1000;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);left:16px;right:16px;display:flex;justify-content:space-around;align-items:center;min-height:68px;padding:7px 4px;border-radius:28px;background:rgba(12,12,13,.92);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:0 8px 24px rgba(0,0,0,.13)}
+.bh-bottom-nav button{appearance:none;border:0;background:transparent;color:#929299;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:500;min-height:52px;cursor:pointer}
+.bh-bottom-nav button.active{color:#fff;font-weight:700}
+.bh-bottom-nav button .ico{display:flex;align-items:center;justify-content:center}
+.bh-bottom-nav button .bh-icon-svg{width:23px;height:23px}
+body{padding-bottom:calc(100px + env(safe-area-inset-bottom,0px))!important}
+.bh-metrics{display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;gap:12px!important;padding-bottom:4px}
+.bh-metrics::-webkit-scrollbar{display:none}
+.bh-metrics>.bh-metric{flex:0 0 clamp(155px,40vw,220px)!important;min-width:155px!important;scroll-snap-align:start}
+.bh-create-inline{display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;border:1px solid #e5e5e5;border-radius:14px;background:#fff;color:#242424;min-height:42px;padding:0 11px;font-size:13px;cursor:pointer}
+.bh-browse-toolbar{display:flex!important;flex-wrap:nowrap;gap:7px!important}
+.bh-browse-toolbar .bh-create-inline{flex:0 0 auto}
+.bh-browse-toolbar .bh-select-wrap{min-width:0;flex:1 1 auto}
+.bh-browse-toolbar .bh-search-toggle{flex:0 0 42px}
+.bh-browse-toolbar .bh-view-switch{flex:0 0 auto}
+@media(max-width:480px){.bh-browse-toolbar{gap:5px!important}.bh-create-inline{width:42px;min-width:42px;padding:0!important}.bh-create-inline span{display:none}.bh-browse-toolbar .bh-view-switch{transform:scale(.92);transform-origin:right center}.bh-metrics>.bh-metric{flex-basis:42vw!important}}
