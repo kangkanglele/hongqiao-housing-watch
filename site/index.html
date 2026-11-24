@@ -299,7 +299,7 @@ body{font-size:calc(14px * var(--hq-text-scale))}
 <nav class="bh-bottom-nav" id="bottomNav" aria-label="底部功能导航"></nav><button class="bh-fab" id="fabNew" data-action="new" aria-label="新增房源" title="新增房源" hidden></button>
 <div id="overlay"></div>
 <input id="importInput" type="file" accept=".json,application/json" hidden>
-<script src="/sync-merge.js"></script><script src="/media-client.js"></script>
+<script src="/sync-merge.js"></script><script src="/media-client.js"></script><script src="/market-monitor.js"></script>
 <script>
 (function(){'use strict';
 const KEY='hongqiao_watch_v1_20261118';
@@ -355,6 +355,8 @@ function sanitizeState(s){
  if(!Array.isArray(s.marketScans))s.marketScans=[];
  if(!Array.isArray(s.saleLeads))s.saleLeads=[];
  if(!Array.isArray(s.visitSessions))s.visitSessions=[];
+ if(!s.marketMonitor||typeof s.marketMonitor!=='object')s.marketMonitor=window.HQMarketMonitor.defaultData();
+ else s.marketMonitor=window.HQMarketMonitor.normalize(s.marketMonitor);
  for(const h of [...s.houses,...s.quarantine])for(const src of h.sources||[])upgradeLegacySource(src);
  const keep=[];
  const legacySet=new Set(['TJ-HQ-0001','TJ-HQ-0002','DEMO-0001','DEMO-0002','DEMO-0003','DEMO-0004','DEMO-0005']);
@@ -448,7 +450,7 @@ function configPairs(c){
  return rows;
 }
 
-const seed={version:4,created:'2026-11-18',scopes:scopesSeed,benchmarks:[],marketScans:[],saleLeads:[],houses:[],quarantine:[]};
+const seed={version:4,created:'2026-11-18',scopes:scopesSeed,benchmarks:[],marketScans:[],saleLeads:[],houses:[],quarantine:[],marketMonitor:window.HQMarketMonitor.defaultData()};
 let state;try{let saved=localStorage.getItem(KEY);state=saved?JSON.parse(saved):structuredClone(seed)}catch(e){state=JSON.parse(JSON.stringify(seed))}
 state=sanitizeState(state);
 applyPageConfig();
@@ -633,9 +635,10 @@ async function initCloud(){
   if(localPending){setCloudStatus('发现本地待同步修改，正在自动合并并补传…');await cloudPush(true);if(localPending)return;}
   await cloudPull(true);
  }
+let marketView='macro';
 let tab='houses', filter=state.pageConfig.defaultFilter, search='', searchOpen=false, kind='all', view=state.pageConfig.defaultView, detail=null;
-const navs=[['houses','house','房源概览'],['visits','calendar','看房行程'],['changes','chart','市场记录'],['benchmark','bars','成交基准'],['scopes','building','监控小区'],['settings','settings','数据管理']];
-const titles={houses:['房源概览','实体房屋 × 跨平台关联 × 用户反馈'],visits:['看房行程','待看房源不计日期；历史按实际拍摄时间归档。'],changes:['市场记录','只展示单套房源记录与可追溯的修改历史。'],benchmark:['成交基准','正常房基准与有缺陷房折价分开研究。'],scopes:['监控小区','周六实勘后逐个评级、调整筛选规则。'],config:['页面配置','动态修改样式、布局和筛选规则，无须重新发布。'],settings:['数据管理','资料核验 · 云端同步 · 备份。']};
+const navs=[['houses','house','房源概览'],['visits','calendar','看房行程'],['changes','chart','市场'],['benchmark','bars','成交基准'],['scopes','building','监控小区'],['settings','settings','数据管理']];
+const titles={houses:['房源概览','实体房屋 × 跨平台关联 × 用户反馈'],visits:['看房行程','待看房源不计日期；历史按实际拍摄时间归档。'],changes:['市场','天津大盘走势 · 市场底部信号 · 房源变化'],benchmark:['成交基准','正常房基准与有缺陷房折价分开研究。'],scopes:['监控小区','周六实勘后逐个评级、调整筛选规则。'],config:['页面配置','动态修改样式、布局和筛选规则，无须重新发布。'],settings:['数据管理','资料核验 · 云端同步 · 备份。']};
 const HARD_DEFECTS=[
  ['duplex','跃层／复式结构'],['top','顶层'],['severeNoise','卧室持续明显噪音'],
  ['legal','产权或入学条件不符'],['structure','漏水／结构安全问题'],['groundDamp','一楼严重返潮／潮湿'],
@@ -1023,7 +1026,7 @@ function renderItems(){
   </span>
  </button></article>`}).join('')}</div>`;
 }
-function renderChanges(){
+function renderListingChanges(){
  // 旧小区扫描继续保留于 state.marketScans / Google Sheets，仅从前台隐藏。
  // 市场记录只展示能追溯到单套房源档案的事件，不推断真实成交。
  const logs=(state.houses||[]).flatMap(h=>(h.events||[]).map(e=>({...e,house:h})))
@@ -1033,6 +1036,11 @@ function renderChanges(){
   <p class="muted" style="margin:0 0 18px">记录已经建档房源的新增、报价调整和人工观察，按记录时间排序。仅有记录不代表已成交；真实成交价格、成交日期需另外核验。</p>
   ${logs.length?logs.map(e=>`<div class="log-item"><div class="log-ico"><svg class="bh-icon-svg" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg></div><div><strong>${esc(e.house.community||'待核实小区')} · ${esc(e.title||'房源记录')}</strong><p>${esc(e.desc||'暂无事件说明')}</p><time>${esc(e.date||'时间待核实')} · ${esc(e.house.id)} <button class="btn text sm" data-open="${esc(e.house.id)}">查看房源档案</button></time></div></div>`).join(''):'<div class="empty">暂无单套房源变动记录。通过 Chrome 采集或编辑已有房源后，相关操作会逐步保存在这里。</div>'}
  </section>`;
+}
+function renderChanges(){
+ const tabs=window.HQMarketMonitor.renderTabs(marketView);
+ const content=marketView==='records'?renderListingChanges():window.HQMarketMonitor.renderDashboard(state.marketMonitor,!!cloudConfig.token);
+ return '<div class="market-shell">'+tabs+content+'</div>';
 }
 function renderBenchmark(){const ds=state.benchmarks||[];return `<div class="alert"><span>${bhIcon('info',16)}</span><div><b>成交基准只使用已确认、可比的正常房成交。</b> 缺少楼层、环境或房屋状态的公开成交可以保留为“参考样本”，但不能直接归入B级无硬伤基准。暂不生成未经证实的溢价比例。</div></div><div class="grid2"><div class="box"><h3>B级环境 · 正常房基准</h3><div style="font-size:28px;font-weight:780;margin:18px 0 8px">待建立</div><p>同园区、同面积段、相近楼层，优先近6–12个月真实成交。至少有可比证据才能计算。</p></div><div class="box"><h3>A级环境 · 合理溢价</h3><div style="font-size:28px;font-weight:780;margin:18px 0 8px">证据不足</div><p>只有市场成交支持时才加价。好楼层、优质环境、好装修分开比较，防止重复计价。</p></div></div><div class="box"><h3>已收录的公开成交参考</h3><div class="table-wrap" style="box-shadow:none"><table class="main-table"><thead><tr><th>园区</th><th>日期</th><th>面积</th><th>成交总价</th><th>单价</th><th>可比性</th><th>证据</th></tr></thead><tbody>${ds.map(b=>`<tr><td><strong>${esc(b.community)}</strong></td><td>${esc(b.date)}</td><td>${fmt(b.area)}㎡</td><td>${fmt(b.price)}万</td><td>${Math.round(b.price*10000/b.area).toLocaleString()}元/㎡</td><td>${esc(b.quality)}</td><td>${urlSafe(b.url)?`<a href="${esc(urlSafe(b.url))}" target="_blank" rel="noopener noreferrer">来源 ${bhIcon('external',12)}</a>`:'未核验'}</td></tr>`).join('')}</tbody></table></div><p class="muted">仅通过严格来源核实的成交才可进入这张表，参考线索不得作为定价基准。</p></div>
 <div class="box"><h3>历史成交线索 <span class="badge warn">待核实 ${(state.saleLeads||[]).length} 条</span></h3>
@@ -1384,7 +1392,7 @@ window.addEventListener('focus',()=>{if(!document.hidden)onCloudWake()});
 window.addEventListener('pageshow',e=>{if(e.persisted)onCloudWake(true)});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)onCloudWake()});
 window.addEventListener('online',()=>{if(cloudStartupDone)onCloudWake(true)});
-document.addEventListener('click',e=>{const ui=e.target.closest('[data-ui]');if(ui){const cmd=ui.dataset.ui;if(cmd==='drawerOpen'){openBhDrawer();return}if(cmd==='pendingLinks'){showPendingCandidates();return}if(cmd==='drawerClose'){closeBhDrawer();return}if(cmd==='goSettings'){closeOverlay();tab='settings';render();window.scrollTo(0,0);return}if(cmd==='searchToggle'){searchOpen=!searchOpen;render();if(searchOpen)document.getElementById('search')?.focus();return}if(cmd==='searchClose'){search='';searchOpen=false;render();return}if(cmd==='help'){modal('买房助手 · 使用说明','<p>房源信息、历史价格、看房行程和小区记录均可查看。新增、修改或归档需要在「数据管理」输入 PIN。</p><p>正式房源须有可识别的单套官方详情链接；待核实线索独立保存，不能计入正式房源。</p><p>首页概览来自真实数据库，筛选条默认展开，左右滑动查看更多状态。</p>');return}}const close=e.target.closest('[data-close]');if(close&&(close===e.target||e.target.closest('button[data-close]'))){closeOverlay();return}const nt=e.target.closest('[data-tab]');if(nt){if(configFormDirty&&tab==='config'&&nt.dataset.tab!=='config'){if(!confirm('页面配置有未保存的修改，确认放弃吗？'))return;configFormDirty=false;}closeBhDrawer();tab=nt.dataset.tab;filter=state.pageConfig.defaultFilter;search='';searchOpen=false;render();window.scrollTo(0,0);return}const ff=e.target.closest('[data-filter]');if(ff){window.__hqUserFiltersTouched=true;filter=ff.dataset.filter;render();return}const vv=e.target.closest('[data-view]');if(vv){window.__hqUserFiltersTouched=true;view=vv.dataset.view;render();return}const oo=e.target.closest('[data-open]');if(oo){openDetail(oo.dataset.open);return}const a=e.target.closest('[data-action]');if(!a)return;const action=a.dataset.action;const publicActions=new Set(['visitSelectTab','visitFilter','reopen','shareHouse','exportLinks','export','saveCloudConfig','lockCloud','cloudPull']);if(!cloudConfig.token&&!publicActions.has(action)){toast('当前为公开只读模式；输入 PIN 解锁后才能修改数据');tab='settings';render();return;}const id=a.dataset.id, h=state.houses.find(x=>x.id===id);switch(action){
+document.addEventListener('click',e=>{const ui=e.target.closest('[data-ui]');if(ui){const cmd=ui.dataset.ui;if(cmd==='drawerOpen'){openBhDrawer();return}if(cmd==='pendingLinks'){showPendingCandidates();return}if(cmd==='drawerClose'){closeBhDrawer();return}if(cmd==='goSettings'){closeOverlay();tab='settings';render();window.scrollTo(0,0);return}if(cmd==='searchToggle'){searchOpen=!searchOpen;render();if(searchOpen)document.getElementById('search')?.focus();return}if(cmd==='searchClose'){search='';searchOpen=false;render();return}if(cmd==='help'){modal('买房助手 · 使用说明','<p>房源信息、历史价格、看房行程和小区记录均可查看。新增、修改或归档需要在「数据管理」输入 PIN。</p><p>正式房源须有可识别的单套官方详情链接；待核实线索独立保存，不能计入正式房源。</p><p>首页概览来自真实数据库，筛选条默认展开，左右滑动查看更多状态。</p>');return}}const close=e.target.closest('[data-close]');if(close&&(close===e.target||e.target.closest('button[data-close]'))){closeOverlay();return}const nt=e.target.closest('[data-tab]');if(nt){if(configFormDirty&&tab==='config'&&nt.dataset.tab!=='config'){if(!confirm('页面配置有未保存的修改，确认放弃吗？'))return;configFormDirty=false;}closeBhDrawer();tab=nt.dataset.tab;filter=state.pageConfig.defaultFilter;search='';searchOpen=false;render();window.scrollTo(0,0);return}const ff=e.target.closest('[data-filter]');if(ff){window.__hqUserFiltersTouched=true;filter=ff.dataset.filter;render();return}const vv=e.target.closest('[data-view]');if(vv){window.__hqUserFiltersTouched=true;view=vv.dataset.view;render();return}const oo=e.target.closest('[data-open]');if(oo){openDetail(oo.dataset.open);return}const marketTab=e.target.closest('[data-market-view]');if(marketTab){marketView=marketTab.dataset.marketView==='records'?'records':'macro';render();return}const a=e.target.closest('[data-action]');if(!a)return;const action=a.dataset.action;const publicActions=new Set(['visitSelectTab','visitFilter','reopen','shareHouse','exportLinks','export','saveCloudConfig','lockCloud','cloudPull']);if(!cloudConfig.token&&!publicActions.has(action)){toast('当前为公开只读模式；输入 PIN 解锁后才能修改数据');tab='settings';render();return;}const id=a.dataset.id, h=state.houses.find(x=>x.id===id);switch(action){
  case 'visitSelectTab':visitView=a.dataset.visitTab==='history'?'history':'pending';render();break;
  case 'visitMarkSeen':if(h){if(visitApplyStatus(h,'看过')){changed(h,'看房状态','标记看过；进入历史时间轴');save();}visitView='history';render();toast('已归入看房历史');}break;
  case 'visitNew':editVisitSession();break;
@@ -1437,6 +1445,34 @@ document.addEventListener('click',e=>{const ui=e.target.closest('[data-ui]');if(
    const sess=visitRecords().find(s=>s.id===id);if(!sess)break;
    sess.status='planned';delete sess.finishedAt;save();visitView='active';render();toast('行程已重新打开，历史记录未删除');break;
  }
+case 'marketOpenObservation':{
+ modal('记录大盘观察',`<div class="help">记录新一期宏观或天津市场数据。请保留统计期、来源和原始链接；没有核实的内容可标注为观察线索。</div>
+ <div class="market-form-grid">
+  <div><label>统计期 *</label><input id="marketObsPeriod" type="month" value="${new Date().toISOString().slice(0,7)}"></div>
+  <div><label>指标名称 *</label><input id="marketObsLabel" placeholder="如：天津二手房成交量"></div>
+  <div><label>数值 *</label><input id="marketObsValue" placeholder="如：11292 或 -0.5"></div>
+  <div><label>单位</label><input id="marketObsUnit" placeholder="套、%、万套等"></div>
+  <div><label>数据来源 *</label><input id="marketObsSource" placeholder="国家统计局／中指研究院／官方公告"></div>
+  <div><label>原始链接</label><input id="marketObsUrl" type="url" placeholder="https://..."></div>
+  <div class="wide"><label>备注与判断</label><textarea id="marketObsNote" rows="3" placeholder="口径、变化、对天津或红桥的可能影响"></textarea></div>
+ </div>
+ <div class="modal-actions"><button class="btn" data-action="reopen">取消</button><button class="btn primary" data-action="marketSaveObservation">保存观察</button></div>`);
+ break;
+}
+case 'marketSaveObservation':{
+ const period=val('marketObsPeriod').trim(),label=val('marketObsLabel').trim(),value=val('marketObsValue').trim(),source=val('marketObsSource').trim();
+ if(!/^\d{4}-\d{2}$/.test(period)||!label||!value||!source){toast('请填写统计期、指标名称、数值和来源');break;}
+ const record={id:'MM-'+Date.now().toString(36),period,label,value,unit:val('marketObsUnit').trim(),source,url:urlSafe(val('marketObsUrl').trim()),note:val('marketObsNote').trim(),createdAt:nowStamp()};
+ state.marketMonitor=window.HQMarketMonitor.normalize(state.marketMonitor);
+ state.marketMonitor.observations.unshift(record);
+ save();closeOverlay();tab='changes';marketView='macro';render();toast('大盘观察已保存并加入云端同步队列');break;
+}
+case 'marketDeleteObservation':{
+ if(!confirm('删除这条大盘观察记录？'))break;
+ state.marketMonitor=window.HQMarketMonitor.normalize(state.marketMonitor);
+ state.marketMonitor.observations=(state.marketMonitor.observations||[]).filter(x=>x.id!==id);
+ save();render();toast('观察记录已删除');break;
+}
 case 'new':newHouse();break;
 case 'promoteCandidate':{const c=(state.listingCandidates||[]).find(x=>x.candidateId===id);if(!c)break;newHouse(null,{platform:c.platform,url:c.originalUrl||c.url,title:c.title||'',community:scopeFor(c.community)?c.community:'',price:c.price??null,area:c.area??null,rooms:c.rooms||'',floorBand:c.floorBand||'',floor:c.floor||null,totalFloors:c.totalFloors||null,orientation:c.orient||c.orientation||'',elevator:c.elevator||'未知',visitStatus:c.visitStatus||'未看'});break;}
 case 'editInfo':newHouse(id);break;
