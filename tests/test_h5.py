@@ -6,6 +6,7 @@ import secrets
 ROOT = Path(__file__).resolve().parents[1]
 html = (ROOT / 'site' / 'index.html').read_text()
 merge_js = (ROOT / 'site' / 'sync-merge.js').read_text()
+market_monitor_js = (ROOT / 'site' / 'market-monitor.js').read_text()
 layout_css = (ROOT / 'site' / 'buyhouse-v08.css').read_text()
 test_pin = str(1000 + secrets.randbelow(9000))
 
@@ -19,6 +20,9 @@ def basic_route(route):
         return
     if request.url.endswith('/sync-merge.js'):
         route.fulfill(status=200, content_type='text/javascript; charset=utf-8', body=merge_js)
+        return
+    if request.url.split('?')[0].endswith('/market-monitor.js'):
+        route.fulfill(status=200, content_type='text/javascript; charset=utf-8', body=market_monitor_js)
         return
     if '/.netlify/functions/hq-api' in request.url:
         data = request.post_data_json or {}
@@ -73,6 +77,9 @@ def conflict_route_factory():
             return
         if request.url.endswith('/sync-merge.js'):
             route.fulfill(status=200, content_type='text/javascript; charset=utf-8', body=merge_js)
+            return
+        if request.url.split('?')[0].endswith('/market-monitor.js'):
+            route.fulfill(status=200, content_type='text/javascript; charset=utf-8', body=market_monitor_js)
             return
         if '/.netlify/functions/hq-api' not in request.url:
             route.fulfill(status=204, body='')
@@ -148,6 +155,18 @@ with sync_playwright() as pw:
     assert '暂无房屋照片' not in page.locator('.bh-listing').first.inner_text()
     assert '照片可选' not in page.locator('.bh-listing').first.inner_text()
     assert '水木天成翠杨园' in page.locator('.bh-listing-name').inner_text()
+    # Market opens on the macro dashboard; the original individual listing log remains a subview.
+    page.locator('#navToggle').click()
+    page.locator('#nav [data-tab="changes"]').click()
+    assert page.locator('.market-status-card').is_visible(), f'macro market dashboard missing; errors={errors}'
+    assert '天津二手房仍处于调整期' in page.locator('.market-status-card').inner_text()
+    assert page.locator('.market-metric').count() >= 10, 'official and third-party market indicators should render'
+    assert page.locator('[data-action="marketOpenObservation"]').count() == 0, 'public read-only view must not expose market edits'
+    page.locator('[data-market-view="records"]').click()
+    assert '单套房源变动流水' in page.locator('#root').inner_text(), 'original listing event log must remain available'
+    page.locator('[data-market-view="macro"]').click()
+    page.locator('#navToggle').click()
+    page.locator('#nav [data-tab="houses"]').click()
     # Header: no white slab or redundant cloud/help block; upload slot is reserved at the right.
     header_style = page.locator('.topbar-shell').evaluate("""el => ({background:getComputedStyle(el).backgroundColor,border:getComputedStyle(el).borderBottomWidth})""")
     assert header_style['background'] == 'rgb(255, 255, 255)' and header_style['border'] == '0px', f'header should blend into page background: {header_style}'
