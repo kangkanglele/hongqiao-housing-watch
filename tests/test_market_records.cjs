@@ -19,8 +19,8 @@ const state={
  ]}]
 };
 const snapshot=JSON.stringify(state.marketScans);
-const rendered=vm.runInNewContext(c.slice(a,b)+'\nrenderChanges();',{
- state,esc:x=>String(x??'')
+const rendered=vm.runInNewContext(c.slice(a,end)+'\nrenderChanges();',{
+ state,marketView:'records',window:{HQMarketMonitor:{renderTabs:()=>'<div>market tabs</div>',renderDashboard:()=>''}},esc:x=>String(x??'')
 });
 assert.ok(rendered.includes('单套房源变动流水'));
 assert.ok(rendered.includes('55万 → 53万'));
@@ -30,8 +30,8 @@ assert.ok(!rendered.includes('小区挂牌扫描'));
 assert.ok(!rendered.includes('挂牌均价'));
 assert.ok(!rendered.includes('今日索引'));
 assert.equal(JSON.stringify(state.marketScans),snapshot,'historical scans must not be deleted or mutated');
-const empty=vm.runInNewContext(c.slice(a,b)+'\nrenderChanges();',{
- state:{marketScans:state.marketScans,houses:[]},esc:x=>String(x??'')
+const empty=vm.runInNewContext(c.slice(a,end)+'\nrenderChanges();',{
+ state:{marketScans:state.marketScans,houses:[]},marketView:'records',window:{HQMarketMonitor:{renderTabs:()=>'<div>market tabs</div>',renderDashboard:()=>''}},esc:x=>String(x??'')
 });
 assert.ok(empty.includes('暂无单套房源变动记录'));
 assert.ok(!empty.includes('小区挂牌扫描'));
