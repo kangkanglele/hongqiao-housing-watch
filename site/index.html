@@ -277,7 +277,7 @@ body{font-size:calc(14px * var(--hq-text-scale))}
 #newPhotoFile:focus-visible+.photo-file-picker{outline:2px solid var(--active);outline-offset:3px}
 @media(max-width:730px){.photo-file-picker{min-height:68px;border-radius:16px;font-size:15px;gap:10px;padding:14px}.photo-file-picker .photo-file-icon{width:26px;height:26px}}
 
-</style><link rel="stylesheet" href="/buyhouse-v08.css?v=20261120-header-upload-fab-v2&theme=marvis-v2&mobile=20261120-v3&brand=snail-v2-right-drawer"></head><body>
+</style><link rel="stylesheet" href="/buyhouse-v08.css?v=20261124-market-monitor-v1&theme=marvis-v2&mobile=20261120-v3&brand=snail-v2-right-drawer"></head><body>
 
 <div class="topbar-shell"><header class="bh-topbar">
  <div class="bh-topbar-left"><span class="bh-brand-lockup"><img class="bh-full-logo" src="/brand-logo-green.svg" alt="买房助手" width="135" height="38"></span></div>
@@ -1456,7 +1456,7 @@ case 'marketOpenObservation':{
   <div><label>原始链接</label><input id="marketObsUrl" type="url" placeholder="https://..."></div>
   <div class="wide"><label>备注与判断</label><textarea id="marketObsNote" rows="3" placeholder="口径、变化、对天津或红桥的可能影响"></textarea></div>
  </div>
- <div class="modal-actions"><button class="btn" data-action="reopen">取消</button><button class="btn primary" data-action="marketSaveObservation">保存观察</button></div>`);
+ <div class="modal-actions"><button class="btn" data-close="1">取消</button><button class="btn primary" data-action="marketSaveObservation">保存观察</button></div>`);
  break;
 }
 case 'marketSaveObservation':{
