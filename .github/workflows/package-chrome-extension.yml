@@ -24,14 +24,15 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          cp -R extension "dist/红桥房源采集助手_V0.9_蜗牛Logo"
+          cp -R extension "dist/HongqiaoHousingCapture_V0.9_SnailLogo"
+          mv "dist/HongqiaoHousingCapture_V0.9_SnailLogo/安装说明.txt" "dist/HongqiaoHousingCapture_V0.9_SnailLogo/README.txt"
           cd dist
-          zip -qr "../红桥房源采集助手_V0.9_蜗牛Logo.zip" "红桥房源采集助手_V0.9_蜗牛Logo"
+          zip -qr "../HongqiaoHousingCapture_V0.9_SnailLogo.zip" "HongqiaoHousingCapture_V0.9_SnailLogo"
 
       - name: Upload install package
         uses: actions/upload-artifact@v4
         with:
           name: hongqiao-housing-extension-v0.9-snail-logo
-          path: 红桥房源采集助手_V0.9_蜗牛Logo.zip
+          path: HongqiaoHousingCapture_V0.9_SnailLogo.zip
           if-no-files-found: error
           retention-days: 14
