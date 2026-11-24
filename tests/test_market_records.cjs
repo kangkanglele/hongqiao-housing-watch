@@ -7,9 +7,10 @@ const path=require('node:path');
 const assert=require('node:assert/strict');
 const vm=require('node:vm');
 const c=fs.readFileSync(path.join(__dirname,'../site/index.html'),'utf8');
-const a=c.indexOf('function renderChanges(){');
-const b=c.indexOf('function renderBenchmark(){',a);
-assert.ok(a>0&&b>a,'market view function must exist');
+const a=c.indexOf('function renderListingChanges(){');
+const b=c.indexOf('function renderChanges(){',a);
+const end=c.indexOf('function renderBenchmark(){',b);
+assert.ok(a>0&&b>a&&end>b,'market view functions must exist');
 const state={
  marketScans:[{id:'MKT-20261119-01',community:'民畅园',listedAvg:12943.74,url:'https://tj.5i5j.com/ershoufang/392459/o1p3/'}],
  houses:[{id:'TJ-HQ-0001',community:'水木天成翠杨园',events:[
