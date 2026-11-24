@@ -16,7 +16,7 @@ async function reportBadge(tabId,phase,queueLength){
   const target=tabId?{tabId}:{};
   await chrome.action.setBadgeText({...target,text});
   await chrome.action.setBadgeBackgroundColor({...target,color});
-  await chrome.action.setTitle({...target,title:phase==='synced'?'房源已同步到云端':queueLength?'待同步 '+queueLength+' 条房源':'红桥房源采集助手'});
+  await chrome.action.setTitle({...target,title:phase==='synced'?'房源已同步到云端':queueLength?'待同步 '+queueLength+' 条房源':'买房助手'});
  }catch(_){}
 }
 async function notifyTab(tabId,payload){

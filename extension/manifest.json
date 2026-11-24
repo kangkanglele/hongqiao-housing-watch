@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "红桥房源采集助手",
-  "short_name": "红桥采集",
-  "version": "0.8",
+  "name": "买房助手",
+  "short_name": "买房助手",
+  "version": "0.9",
   "description": "采集房源数据与主图，可选保存相册到私人 Google Drive；先本地排队。",
   "minimum_chrome_version": "110",
   "permissions": [
@@ -19,8 +19,12 @@
     "https://*.5i5j.com/*"
   ],
   "action": {
-    "default_title": "一键采集并同步房源",
-    "default_popup": "popup.html"
+    "default_title": "买房助手",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
   },
   "background": {
     "service_worker": "background.js"
@@ -28,5 +32,11 @@
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
   }
 }
