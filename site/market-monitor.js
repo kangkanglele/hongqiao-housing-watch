@@ -54,19 +54,19 @@ function renderDashboard(input, canEdit){
   }).join('');
   return '<div class="market-dashboard">'
     + '<section class="market-status-card"><div><span class="market-eyebrow">天津房地产 · 大盘监控</span><h2>天津二手房仍处于调整期</h2><p>当前没有足够证据确认市场见底。成交已有一定韧性，但价格、开发资金和新房销售仍偏弱。</p><small>研究基准：2026-11-24 · 最新官方房价数据：2026年10月</small></div><div class="market-status-mark"><span>市场阶段</span><strong>调整中</strong><small>尚未确认底部</small></div></section>'
-    + '<section class="market-panel"><div class="market-panel-head"><div><h3>天津二手住宅价格</h3><p>国家统计局 · 2026年10月 · 70城价格指数</p></div>' + sourceLink('https://www.stats.gov.cn/sj/zxfb/202611/t20261116_1965836.html','官方数据') + '</div>'
+    + '<section class="market-panel"><div class="market-panel-head"><div><h3>天津二手住宅价格</h3><p>国家统计局 · 2026年11月16日发布 · 2026年10月统计</p></div>' + sourceLink('https://www.stats.gov.cn/sj/zxfb/202611/t20261116_1965836.html','官方数据') + '</div>'
     + '<div class="market-metric-grid">' 
     + metric('环比变化','-0.5','%','指数99.5，上月=100','negative')
     + metric('同比变化','-5.3','%','指数94.7，上年同月=100','negative')
     + metric('1–10月平均同比','-5.8','%','指数94.2，上年同期=100','negative')
     + '</div><p class="market-footnote">说明：这是天津全市二手住宅指数，不等于红桥区或某个小区的实际成交跌幅。</p></section>'
-    + '<section class="market-panel"><div class="market-panel-head"><div><h3>成交量与价格出现背离</h3><p>中指研究院 CREIS · 2026年9月</p></div>' + sourceLink('https://www.cih-index.com/news/2026-10-16/55166389.html','市场报告') + '</div>'
+    + '<section class="market-panel"><div class="market-panel-head"><div><h3>成交量与价格出现背离</h3><p>中指研究院 CREIS · 2026年10月16日发布 · 2026年9月统计</p></div>' + sourceLink('https://www.cih-index.com/news/2026-10-16/55166389.html','市场报告') + '</div>'
     + '<div class="market-metric-grid">'
     + metric('二手住宅成交','11,292','套','同比增长9.0%','positive')
     + metric('1–9月累计成交','约10.4万','套','同比增长0.9%','neutral')
     + metric('9月价格环比','-0.63','%','同比仍下跌8.14%','negative')
     + '</div><p class="market-footnote">成交量改善但价格仍下跌，说明需求有韧性，尚不足以证明供需关系已经反转。</p></section>'
-    + '<section class="market-panel"><div class="market-panel-head"><div><h3>全国房地产行业压力</h3><p>国家统计局 · 2026年1–10月</p></div>' + sourceLink('https://www.stats.gov.cn/sj/zxfbhjd/202611/t20261116_1965840.html','官方数据') + '</div>'
+    + '<section class="market-panel"><div class="market-panel-head"><div><h3>全国房地产行业压力</h3><p>国家统计局 · 2026年11月16日发布 · 2026年1–10月</p></div>' + sourceLink('https://www.stats.gov.cn/sj/zxfbhjd/202611/t20261116_1965840.html','官方数据') + '</div>'
     + '<div class="market-metric-grid">'
     + metric('房地产开发投资','-21.6','%','同比变化','negative')
     + metric('住宅销售面积','-14.2','%','同比变化','negative')
