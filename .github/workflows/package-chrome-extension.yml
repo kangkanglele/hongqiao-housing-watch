@@ -1,0 +1,37 @@
+name: Package Chrome Extension
+
+on:
+  push:
+    branches:
+      - feat/chrome-plugin-snail-logo-20261124
+    paths:
+      - 'extension/**'
+      - '.github/workflows/package-chrome-extension.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Package unpacked extension
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp -R extension "dist/红桥房源采集助手_V0.9_蜗牛Logo"
+          cd dist
+          zip -qr "../红桥房源采集助手_V0.9_蜗牛Logo.zip" "红桥房源采集助手_V0.9_蜗牛Logo"
+
+      - name: Upload install package
+        uses: actions/upload-artifact@v4
+        with:
+          name: hongqiao-housing-extension-v0.9-snail-logo
+          path: 红桥房源采集助手_V0.9_蜗牛Logo.zip
+          if-no-files-found: error
+          retention-days: 14
