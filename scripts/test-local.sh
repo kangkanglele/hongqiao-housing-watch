@@ -48,6 +48,7 @@ if command -v node >/dev/null 2>&1; then
   node tests/test_market_records.cjs
   echo "==> Macro housing market bottom dashboard regression"
   node tests/test_market_monitor.cjs
+  node tests/test_rental_yield.cjs
 
   echo "==> Apps Script / Google Sheets snapshot simulation"
   node tests/test_apps_script_snapshot.cjs

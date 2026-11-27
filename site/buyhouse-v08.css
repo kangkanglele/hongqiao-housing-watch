@@ -683,3 +683,6 @@ body{padding-bottom:calc(100px + env(safe-area-inset-bottom,0px))!important}
  .market-form-grid{grid-template-columns:1fr}
  .market-form-grid .wide{grid-column:auto}
 }
+
+/* Rental valuation */
+.rental-detail{margin:14px 0}.rental-inline{font-size:11px;color:#6d7885;line-height:1.5}.rental-history{margin-top:12px;font-size:12px}.rental-history summary{cursor:pointer;color:#687382}.rental-table{margin-top:12px;overflow-x:auto}.market-form-grid select{width:100%;border:1px solid #dfe3e9;border-radius:9px;padding:10px;font:inherit;background:var(--surface,#fff);color:inherit}.rental-detail .market-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
