@@ -277,16 +277,17 @@ body{font-size:calc(14px * var(--hq-text-scale))}
 #newPhotoFile:focus-visible+.photo-file-picker{outline:2px solid var(--active);outline-offset:3px}
 @media(max-width:730px){.photo-file-picker{min-height:68px;border-radius:16px;font-size:15px;gap:10px;padding:14px}.photo-file-picker .photo-file-icon{width:26px;height:26px}}
 
-</style><link rel="stylesheet" href="/buyhouse-v08.css?v=20261120-header-upload-fab-v2&theme=marvis-v2"></head><body>
+</style><link rel="stylesheet" href="/buyhouse-v08.css?v=20261120-header-upload-fab-v2&theme=marvis-v2&mobile=20261120-v3&brand=snail-v2-right-drawer&market=20261127-rent-v1"></head><body>
 
 <div class="topbar-shell"><header class="bh-topbar">
- <div class="bh-topbar-left"><button type="button" class="bh-icon-btn bh-menu-btn" id="navToggle" data-ui="drawerOpen" aria-expanded="false" aria-controls="navDrawer" aria-label="打开导航菜单"></button><strong class="bh-logo">买房助手</strong></div>
- <div class="bh-topbar-right" id="topbarUploadSlot" hidden aria-live="polite"></div>
+ <div class="bh-topbar-left"><span class="bh-brand-lockup"><img class="bh-full-logo" src="/brand-logo-green.svg" alt="买房助手" width="135" height="38"></span></div>
+ <div class="bh-topbar-right" id="topbarUploadSlot" hidden aria-live="polite"></div><button type="button" class="bh-header-create" data-action="new" aria-label="新建房源" title="新建房源"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 4v16M4 12h16"/></svg></button>
+ 
 </header></div>
 <div class="app">
  <button type="button" class="bh-backdrop" id="navBackdrop" data-ui="drawerClose" aria-label="关闭导航菜单" tabindex="-1"></button>
  <aside class="app-drawer" id="navDrawer" data-open="false" aria-label="功能导航" aria-hidden="true">
-  <div class="bh-drawer-head"><div class="bh-drawer-brand"><span class="bh-drawer-glyph" id="drawerBrandGlyph"></span><div><strong>买房助手</strong><small>个人房源跟踪工具</small></div></div><button class="bh-icon-btn" type="button" data-ui="drawerClose" aria-label="关闭导航"></button></div>
+  <div class="bh-drawer-head"><div class="bh-drawer-brand"><span class="bh-drawer-full-logo" id="drawerBrandGlyph"><img src="/brand-logo-exact.svg" alt="买房助手" width="208" height="59" referrerpolicy="no-referrer"></span></div><button class="bh-icon-btn" type="button" data-ui="drawerClose" aria-label="关闭导航"></button></div>
   <div class="bh-drawer-label">功能导航</div><nav class="nav drawer-links" id="nav"></nav>
   <div class="bh-drawer-bottom"><div id="cloudSidebarStatus">云端连接中</div>房源、成交记录和看房档案持续保留</div>
  </aside>
@@ -295,10 +296,10 @@ body{font-size:calc(14px * var(--hq-text-scale))}
   <div id="root"></div>
  </div></main>
 </div>
-<button class="bh-fab" id="fabNew" data-action="new" aria-label="新增房源" title="新增房源"></button>
+<nav class="bh-bottom-nav" id="bottomNav" aria-label="底部功能导航"></nav><button class="bh-fab" id="fabNew" data-action="new" aria-label="新增房源" title="新增房源" hidden></button>
 <div id="overlay"></div>
 <input id="importInput" type="file" accept=".json,application/json" hidden>
-<script src="/sync-merge.js"></script><script src="/media-client.js"></script>
+<script src="/sync-merge.js"></script><script src="/media-client.js"></script><script src="/market-monitor.js"></script>
 <script>
 (function(){'use strict';
 const KEY='hongqiao_watch_v1_20261118';
@@ -354,6 +355,8 @@ function sanitizeState(s){
  if(!Array.isArray(s.marketScans))s.marketScans=[];
  if(!Array.isArray(s.saleLeads))s.saleLeads=[];
  if(!Array.isArray(s.visitSessions))s.visitSessions=[];
+ if(!s.marketMonitor||typeof s.marketMonitor!=='object')s.marketMonitor=window.HQMarketMonitor.defaultData();
+ else s.marketMonitor=window.HQMarketMonitor.normalize(s.marketMonitor);
  for(const h of [...s.houses,...s.quarantine])for(const src of h.sources||[])upgradeLegacySource(src);
  const keep=[];
  const legacySet=new Set(['TJ-HQ-0001','TJ-HQ-0002','DEMO-0001','DEMO-0002','DEMO-0003','DEMO-0004','DEMO-0005']);
@@ -369,7 +372,7 @@ function sanitizeState(s){
 function firstImage(h){const src=String(h?.photoData||h?.imageUrl||'');return /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(src)||/^https:\/\//i.test(src)?src:''}
 function photoMarkup(h,mode='card'){
  const img=firstImage(h);
- return `<div class="property-photo ${mode}">${img?`<img alt="房源照片（用户提供）" src="${esc(img)}" loading="lazy" referrerpolicy="no-referrer">`:`<div class="photo-placeholder"><span class="photo-symbol">${metricIcon('house')}</span><span>暂无房屋照片</span></div>`}<span class="photo-label">${img?'实地／来源照片':'照片可选'}</span></div>`;
+ return `<div class="property-photo ${mode}">${img?`<img alt="房源照片（用户提供）" src="${esc(img)}" loading="lazy" referrerpolicy="no-referrer">`:`<div class="photo-placeholder" role="img" aria-label="房源暂无照片"><span class="photo-symbol">${metricIcon('house')}</span></div>`}${img?'<span class="photo-label">实地／来源照片</span>':''}</div>`;
 }
 function nextHouseId(){const nums=[...state.houses,...(state.quarantine||[])].map(x=>/TJ-HQ-(\d+)/.exec(x.id)?.[1]).filter(Boolean).map(Number);return 'TJ-HQ-'+String(Math.max(0,...nums)+1).padStart(4,'0')}
 
@@ -447,7 +450,7 @@ function configPairs(c){
  return rows;
 }
 
-const seed={version:4,created:'2026-11-18',scopes:scopesSeed,benchmarks:[],marketScans:[],saleLeads:[],houses:[],quarantine:[]};
+const seed={version:4,created:'2026-11-18',scopes:scopesSeed,benchmarks:[],marketScans:[],saleLeads:[],houses:[],quarantine:[],marketMonitor:window.HQMarketMonitor.defaultData()};
 let state;try{let saved=localStorage.getItem(KEY);state=saved?JSON.parse(saved):structuredClone(seed)}catch(e){state=JSON.parse(JSON.stringify(seed))}
 state=sanitizeState(state);
 applyPageConfig();
@@ -632,9 +635,10 @@ async function initCloud(){
   if(localPending){setCloudStatus('发现本地待同步修改，正在自动合并并补传…');await cloudPush(true);if(localPending)return;}
   await cloudPull(true);
  }
+let marketView='macro';
 let tab='houses', filter=state.pageConfig.defaultFilter, search='', searchOpen=false, kind='all', view=state.pageConfig.defaultView, detail=null;
-const navs=[['houses','house','房源概览'],['visits','calendar','看房行程'],['changes','chart','市场记录'],['benchmark','bars','成交基准'],['scopes','building','监控小区'],['settings','settings','数据管理']];
-const titles={houses:['房源概览','实体房屋 × 跨平台关联 × 用户反馈'],visits:['看房行程','待看房源不计日期；历史按实际拍摄时间归档。'],changes:['市场记录','只展示单套房源记录与可追溯的修改历史。'],benchmark:['成交基准','正常房基准与有缺陷房折价分开研究。'],scopes:['监控小区','周六实勘后逐个评级、调整筛选规则。'],config:['页面配置','动态修改样式、布局和筛选规则，无须重新发布。'],settings:['数据管理','资料核验 · 云端同步 · 备份。']};
+const navs=[['houses','house','房源概览'],['visits','calendar','看房行程'],['changes','chart','市场'],['benchmark','bars','成交基准'],['scopes','building','监控小区'],['settings','settings','数据管理']];
+const titles={houses:['房源概览','实体房屋 × 跨平台关联 × 用户反馈'],visits:['看房行程','待看房源不计日期；历史按实际拍摄时间归档。'],changes:['市场','天津大盘走势 · 市场底部信号 · 房源变化'],benchmark:['成交基准','正常房基准与有缺陷房折价分开研究。'],scopes:['监控小区','周六实勘后逐个评级、调整筛选规则。'],config:['页面配置','动态修改样式、布局和筛选规则，无须重新发布。'],settings:['数据管理','资料核验 · 云端同步 · 备份。']};
 const HARD_DEFECTS=[
  ['duplex','跃层／复式结构'],['top','顶层'],['severeNoise','卧室持续明显噪音'],
  ['legal','产权或入学条件不符'],['structure','漏水／结构安全问题'],['groundDamp','一楼严重返潮／潮湿'],
@@ -908,6 +912,7 @@ const BH_PATHS={
  download:'<path d="M12 4v12"/><path d="m7 11 5 5 5-5"/><path d="M4 20h16"/>',
  external:'<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6"/>'
 };
+BH_PATHS.database='<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/><path d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/>';
 function bhIcon(name,size=19){
  return '<svg class="bh-icon-svg" viewBox="0 0 24 24" width="'+size+'" height="'+size+'" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(BH_PATHS[name]||BH_PATHS.info)+'</svg>';
 }
@@ -918,9 +923,9 @@ function closeBhDrawer(){document.body.classList.remove('bh-drawer-open');const 
 function openBhDrawer(){document.body.classList.add('bh-drawer-open');const d=document.getElementById('navDrawer'),b=document.getElementById('navToggle');if(d){d.dataset.open='true';d.setAttribute('aria-hidden','false')}if(b)b.setAttribute('aria-expanded','true')}
 function renderNav(){
  document.getElementById('nav').innerHTML=navs.map(([id,icon,label])=>'<button type="button" class="'+(tab===id?'active':'')+'" data-tab="'+id+'" aria-label="'+esc(label)+'" '+(tab===id?'aria-current="page"':'')+'><span class="ico">'+bhIcon(icon,20)+'</span>'+esc(label)+'</button>').join('');
- const fab=document.getElementById('fabNew');if(fab){fab.hidden=tab!=='houses';fab.innerHTML=bhIcon('plus',27)}
- const toggle=document.getElementById('navToggle');if(toggle)toggle.innerHTML=bhIcon('menu',21);
- const brand=document.getElementById('drawerBrandGlyph');if(brand)brand.innerHTML=bhIcon('app',23);
+ const fab=document.getElementById('fabNew');if(fab){fab.hidden=true;fab.innerHTML=bhIcon('plus',27)}
+ const bottom=document.getElementById('bottomNav');if(bottom){const items=[['houses','house','房源'],['visits','calendar','行程'],['changes','chart','市场'],['scopes','building','小区'],['settings','database','数据']];bottom.innerHTML=items.map(([id,icon,label])=>'<button type="button" class="'+(tab===id||(tab==='benchmark'&&id==='changes')?'active':'')+'" data-tab="'+id+'" aria-label="'+label+'" '+(tab===id?'aria-current="page"':'')+'><span class="ico">'+bhIcon(icon,22)+'</span><span>'+label+'</span></button>').join('');}
+ // Full original logo remains in the drawer; no dynamic icon redraw.
  const close=document.querySelector('.bh-drawer-head [data-ui="drawerClose"]');if(close)close.innerHTML=bhIcon('close',15);
 }
 
@@ -945,6 +950,15 @@ function render(){
   }
  }
 }
+function pendingCandidatesForOverview(){
+ return (state.listingCandidates||[]).filter(x=>inspectListingUrl(x.originalUrl||x.url,x.platform).ok);
+}
+function showPendingCandidates(){
+ const pending=pendingCandidatesForOverview();
+ const rows=pending.map(x=>`<div class="quarantine-item"><div><strong>${esc(x.community&&x.community!=='待核实'?x.community:x.platform+'房源 '+x.platformListingId)}</strong><div class="muted">${esc(x.platform)} · ${x.price?esc(x.price)+'万 · ':''}${x.area?esc(x.area)+'㎡':''}</div><a href="${esc(urlSafe(x.originalUrl||x.url))}" target="_blank" rel="noopener noreferrer">官方原始链接 ${bhIcon('external',12)}</a></div>${cloudConfig.token?`<button class="btn sm" data-action="promoteCandidate" data-id="${esc(x.candidateId)}">补全建档</button>`:`<button class="btn sm" data-ui="goSettings">解锁后建档</button>`}</div>`).join('');
+ modal('待补全官方链接 · '+pending.length+' 条',
+ `<p class="muted">这些是待核验的独立房源链接，不计入总房源数量；确认小区与房屋信息后再补全建档。</p><div class="hq-pending-modal-list">${rows||'<div class="empty">暂无待补全的官方房源链接</div>'}</div>`);
+}
 function renderHouses(){
  const houses=state.houses.filter(h=>!h.deletedAt);
  const qualified=houses.filter(h=>!issue(h).length);
@@ -955,13 +969,14 @@ function renderHouses(){
  const pending=(state.listingCandidates||[]).filter(x=>inspectListingUrl(x.originalUrl||x.url,x.platform).ok);
  const readOnly=!cloudConfig.token;
  return `
- <section class="bh-overview-head"><h1>房源概览</h1><span class="bh-live-label">实时数据库</span></section>
+ <section class="bh-overview-head"><h1>房源概览</h1></section>
  <section class="bh-metrics" aria-label="房源概览统计">
   <div class="bh-metric"><div class="bh-metric-top"><span class="bh-metric-label">总房源</span>${metricIcon('house')}</div><div class="bh-metric-value">${houses.length}<small>套</small></div></div>
   <div class="bh-metric"><div class="bh-metric-top"><span class="bh-metric-label">待看房源</span>${metricIcon('calendar')}</div><div class="bh-metric-value">${toVisit.length}<small>套</small></div></div>
   <div class="bh-metric"><div class="bh-metric-top"><span class="bh-metric-label">重点关注</span>${metricIcon('bookmark')}</div><div class="bh-metric-value">${focus.length}<small>套</small></div></div>
+  <button type="button" class="bh-metric bh-metric-action" data-ui="pendingLinks" aria-label="待补全官方链接 ${pending.length} 条，查看详情"><div class="bh-metric-top"><span class="bh-metric-label">待补全链接</span>${metricIcon('filePlus')}</div><div class="bh-metric-value">${pending.length}<small>条</small></div></button>
  </section>
- <section class="bh-list-head"><div class="bh-list-title"><h2>房源列表</h2><span id="listingCount">${visibleHouses().length} 套</span></div>
+ <section class="bh-list-head"><div class="bh-list-title"><h2>房源列表</h2></div>
   <div class="bh-browse-toolbar">
    <button type="button" class="bh-tool-btn bh-search-toggle ${searchOpen?'active':''}" data-ui="searchToggle" aria-label="搜索房源" title="搜索房源" aria-expanded="${searchOpen}">${bhIcon('search',19)}</button>
    <div class="bh-select-wrap"><select id="kind" aria-label="筛选小区"><option value="all">全部小区</option>${communities.map(x=>`<option value="${esc(x)}" ${kind===x?'selected':''}>${esc(x)}</option>`).join('')}</select>${bhIcon('down',13)}</div>
@@ -970,7 +985,6 @@ function renderHouses(){
  </section>
  <div class="bh-search-panel" ${searchOpen?'':'hidden'}>${bhIcon('search',17)}<input id="search" type="search" aria-label="搜索房源" placeholder="搜索小区、户型、编号或官方链接…" value="${esc(search)}"><button type="button" data-ui="searchClose" aria-label="关闭搜索">${bhIcon('close',13)}</button></div>
  <div class="bh-filter-accordion" aria-label="房源筛选"><div class="filters" id="filters">${[['all','非硬伤候选'],['focus','重点关注'],['toVisit','待看房源'],['visited','看过房源'],['mine','我觉得合适'],['uncertain','待核验'],['withphoto','有照片'],['excluded','硬伤排除'],['budget','价格区间']].map(([id,label])=>`<button class="chip ${filter===id?'active':''}" data-filter="${id}">${esc(id==='focus'?'重点关注':id==='visited'?'已看房源':state.pageConfig.filterLabels[id]||label)}</button>`).join('')}</div></div>
- ${pending.length?`<details class="bh-pending-details"><summary>待补全官方房源链接 · ${pending.length} 条（不计入正式房源）</summary>${pending.map(x=>`<div class="quarantine-item"><div><strong>${esc(x.community&&x.community!=='待核实'?x.community:x.platform+'房源 '+x.platformListingId)}</strong><div class="muted">${esc(x.platform)} · ${x.price?esc(x.price)+'万 · ':''}${x.area?esc(x.area)+'㎡':''}</div><a href="${esc(urlSafe(x.originalUrl||x.url))}" target="_blank" rel="noopener noreferrer">官方原始链接 ${bhIcon('external',12)}</a></div><button class="btn sm" data-action="promoteCandidate" data-id="${esc(x.candidateId)}">补全建档</button></div>`).join('')}</details>`:''}
  <div id="results">${renderItems()}</div>`;
 }
 function renderResults(){const x=document.getElementById('results');if(x)x.innerHTML=renderItems();const count=document.getElementById('listingCount');if(count)count.textContent=visibleHouses().length+' 套'}
@@ -1007,12 +1021,12 @@ function renderItems(){
   <span class="bh-listing-info">
    <span class="bh-listing-name" title="${esc(h.title||heading)}">${esc(heading)}</span>
    <span class="bh-listing-meta">${esc(meta)}</span>
-   <span class="bh-listing-price"><b>${price}</b><small>万元</small></span>
+   <span class="bh-listing-price"><b>${price}</b><small>万元</small></span>${window.HQMarketMonitor.rentalInline(h)}
    <span class="bh-listing-bottom"><span class="bh-stage ${tone}">${esc(status)}</span><span class="bh-view-detail">查看档案 ›</span></span>
   </span>
  </button></article>`}).join('')}</div>`;
 }
-function renderChanges(){
+function renderListingChanges(){
  // 旧小区扫描继续保留于 state.marketScans / Google Sheets，仅从前台隐藏。
  // 市场记录只展示能追溯到单套房源档案的事件，不推断真实成交。
  const logs=(state.houses||[]).flatMap(h=>(h.events||[]).map(e=>({...e,house:h})))
@@ -1022,6 +1036,11 @@ function renderChanges(){
   <p class="muted" style="margin:0 0 18px">记录已经建档房源的新增、报价调整和人工观察，按记录时间排序。仅有记录不代表已成交；真实成交价格、成交日期需另外核验。</p>
   ${logs.length?logs.map(e=>`<div class="log-item"><div class="log-ico"><svg class="bh-icon-svg" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg></div><div><strong>${esc(e.house.community||'待核实小区')} · ${esc(e.title||'房源记录')}</strong><p>${esc(e.desc||'暂无事件说明')}</p><time>${esc(e.date||'时间待核实')} · ${esc(e.house.id)} <button class="btn text sm" data-open="${esc(e.house.id)}">查看房源档案</button></time></div></div>`).join(''):'<div class="empty">暂无单套房源变动记录。通过 Chrome 采集或编辑已有房源后，相关操作会逐步保存在这里。</div>'}
  </section>`;
+}
+function renderChanges(){
+ const tabs=window.HQMarketMonitor.renderTabs(marketView);
+ const content=marketView==='records'?renderListingChanges():window.HQMarketMonitor.renderDashboard(state.marketMonitor,!!cloudConfig.token)+window.HQMarketMonitor.rentalMarket(state.houses);
+ return '<div class="market-shell">'+tabs+content+'</div>';
 }
 function renderBenchmark(){const ds=state.benchmarks||[];return `<div class="alert"><span>${bhIcon('info',16)}</span><div><b>成交基准只使用已确认、可比的正常房成交。</b> 缺少楼层、环境或房屋状态的公开成交可以保留为“参考样本”，但不能直接归入B级无硬伤基准。暂不生成未经证实的溢价比例。</div></div><div class="grid2"><div class="box"><h3>B级环境 · 正常房基准</h3><div style="font-size:28px;font-weight:780;margin:18px 0 8px">待建立</div><p>同园区、同面积段、相近楼层，优先近6–12个月真实成交。至少有可比证据才能计算。</p></div><div class="box"><h3>A级环境 · 合理溢价</h3><div style="font-size:28px;font-weight:780;margin:18px 0 8px">证据不足</div><p>只有市场成交支持时才加价。好楼层、优质环境、好装修分开比较，防止重复计价。</p></div></div><div class="box"><h3>已收录的公开成交参考</h3><div class="table-wrap" style="box-shadow:none"><table class="main-table"><thead><tr><th>园区</th><th>日期</th><th>面积</th><th>成交总价</th><th>单价</th><th>可比性</th><th>证据</th></tr></thead><tbody>${ds.map(b=>`<tr><td><strong>${esc(b.community)}</strong></td><td>${esc(b.date)}</td><td>${fmt(b.area)}㎡</td><td>${fmt(b.price)}万</td><td>${Math.round(b.price*10000/b.area).toLocaleString()}元/㎡</td><td>${esc(b.quality)}</td><td>${urlSafe(b.url)?`<a href="${esc(urlSafe(b.url))}" target="_blank" rel="noopener noreferrer">来源 ${bhIcon('external',12)}</a>`:'未核验'}</td></tr>`).join('')}</tbody></table></div><p class="muted">仅通过严格来源核实的成交才可进入这张表，参考线索不得作为定价基准。</p></div>
 <div class="box"><h3>历史成交线索 <span class="badge warn">待核实 ${(state.saleLeads||[]).length} 条</span></h3>
@@ -1310,7 +1329,7 @@ document.addEventListener('click',ev=>{
 });
 
 
-function openDetail(id){const h=state.houses.find(x=>x.id===id);if(!h)return;detail=id;const hard=issue(h);document.getElementById('overlay').innerHTML=`<div class="shade detail-shade" data-close="1"><div class="drawer detail-sheet" role="dialog" aria-modal="true" aria-label="房源详情"><div class="drawer-body"><div class="modal-header"><span class="eyebrow">房源档案 · ${esc(h.id)}</span><button class="icon-btn" data-close="1" aria-label="关闭">${bhIcon('close',14)}</button></div><div class="source-row" style="margin-bottom:10px"><button class="btn sm primary" data-action="shareHouse" data-id="${esc(h.id)}">↗ 分享 / 复制房源链接</button><span class="muted">链接即房源身份</span></div><div class="badges" style="justify-content:flex-start;margin-bottom:12px">${origin(h)}${scene(h)}${visitStateBadge(h)}${visitBadgeForHouse(h)}<span class="badge neutral">${esc(h.stage)}</span></div>${photoMarkup(h,'detail')}<div id="houseMedia">${houseMediaMarkup(h)}</div><div class="detail-title">${esc(h.community)}<br>${esc(h.title)}</div><div class="detail-sub">档案编号 ${esc(h.id)} · 首次记录 ${esc(h.firstSeen)} · 末次观察 ${esc(h.lastSeen)}</div><div class="detail-price">${fmtMoney(h)}<small> 万</small><span style="font-size:13px;font-weight:400;color:#989898;margin-left:12px">${unit(h)}</span></div><div class="fact-grid"><div class="fact"><small>面积 / 户型</small><strong>${fmt(h.area)}㎡ / ${esc(h.rooms)}</strong></div><div class="fact"><small>楼层</small><strong>${esc(h.floor||'未知')} / ${esc(h.total||'未知')} 层</strong></div><div class="fact"><small>环境等级</small><strong>${esc(envFor(h))}</strong></div><div class="fact"><small>电梯</small><strong>${esc(h.elevator)}</strong></div><div class="fact"><small>噪声</small><strong>${esc(h.noise)}</strong></div><div class="fact"><small>装修</small><strong>${esc(h.decoration)}</strong></div></div><div class="minihead">自动筛选结论</div>${issueTags(h)}<div class="help">${hard.length?`<b style="color:#b65047">一票否决：${hard.map(esc).join('、')}</b>`:unknown(h)?'<b>待核验：</b>存在环境、噪声、楼层/电梯、产权或一楼特殊风险信息缺失，不能直接认定无硬伤。':'<b style="color:#4c4c4c">初筛通过：</b>根据已填字段暂未触发已定义硬伤。仍应现场和产权核验。'}</div><div class="minihead">各平台来源 <button class="btn sm" data-action="editSource" data-id="${esc(h.id)}">${bhIcon('plus',13)} 关联 / 修改</button></div>${h.sources.length?h.sources.map((s,i)=>`<div class="source-box"><div class="row"><strong>${esc(s.channel)}</strong><span class="badge neutral">${esc(s.relation||'未核验')}</span></div><div class="muted" style="margin:5px 0">平台ID：${esc(s.platformId||'未知')} · ${esc(s.urlType||'未注明')}</div><div class="row">${urlSafe(s.originalUrl||s.url)?`<a href="${esc(urlSafe(s.originalUrl||s.url))}" target="_blank" rel="noopener noreferrer">直接打开原始房源 ${bhIcon('external',12)}</a>`:'<span class="nourl">暂无链接</span>'}<span><button class="btn text sm" data-action="editSource" data-id="${esc(h.id)}" data-index="${i}">修改</button><button class="btn text sm" data-action="splitSource" data-id="${esc(h.id)}" data-index="${i}">拆分</button><button class="btn text sm danger" data-action="detachSource" data-id="${esc(h.id)}" data-index="${i}">解绑</button></span></div></div>`).join(''):'<div class="help">尚未关联来源，点击上方按钮添加官方单套房源详情链接。</div>'}<div class="minihead">历史带看记录 <button class="btn sm" data-tab="visits">${bhIcon('enter',13)} 查看行程</button></div>${visitsForHouse(h).map(v=>`<div class="visit-feedback"><b>${esc(v.session.date)} · ${esc(v.session.broker||'现场看房')}</b><br>${esc(v.entry.decision||'待判断')} · ${esc(v.entry.impression||'暂无备注')}${v.entry.photoData?`<div><img src="${esc(v.entry.photoData)}" alt="现场照片" class="visit-photo"></div>`:''}</div>`).join('')||'<p class="muted">尚无实际带看记录。中介发来的链接应先加入「看房行程」。</p>'}<div class="minihead">你的判断与看房记录 <button class="btn sm soft" data-action="saveHouse" data-id="${esc(h.id)}">保存修改</button></div><div class="form-grid"><div class="form-item"><label>是否合适</label><select id="editSuit">${selectOptions(['待判断','合适','不合适'],h.suitability)}</select></div><div class="form-item"><label>行动状态</label><select id="editStage">${selectOptions(['观察中','重点关注','准备看房','已看房','放弃'],h.stage)}</select></div><div class="form-item"><label>小区环境（继承目录）</label><div class="environment-readonly">${esc(envFor(h))}级 · 在「监控小区」里统一修改</div></div><div class="form-item"><label>噪音</label><select id="editNoise">${selectOptions(['未知','安静','一般可接受','严重'],h.noise)}</select></div><div class="form-item"><label>真实楼层</label><input id="editFloor" type="number" min="0" max="99" value="${esc(h.floor||'')}"></div><div class="form-item"><label>电梯</label><select id="editElevator">${selectOptions(['未知','有','无'],h.elevator)}</select></div><div class="form-item"><label>目前报价（万）</label><input id="editPrice" type="number" min="0.1" step="0.1" value="${esc(h.price??'')}"></div><div class="form-item"><label>产权/入学核查</label><select id="editLegal">${selectOptions(['待核实','普通住宅待核学位','已核实符合','产权/入学不符'],h.legal||'待核实')}</select></div></div>
+function openDetail(id){const h=state.houses.find(x=>x.id===id);if(!h)return;detail=id;const hard=issue(h);document.getElementById('overlay').innerHTML=`<div class="shade detail-shade" data-close="1"><div class="drawer detail-sheet" role="dialog" aria-modal="true" aria-label="房源详情"><div class="drawer-body"><div class="modal-header"><span class="eyebrow">房源档案 · ${esc(h.id)}</span><button class="icon-btn" data-close="1" aria-label="关闭">${bhIcon('close',14)}</button></div><div class="source-row" style="margin-bottom:10px"><button class="btn sm primary" data-action="shareHouse" data-id="${esc(h.id)}">↗ 分享 / 复制房源链接</button><span class="muted">链接即房源身份</span></div><div class="badges" style="justify-content:flex-start;margin-bottom:12px">${origin(h)}${scene(h)}${visitStateBadge(h)}${visitBadgeForHouse(h)}<span class="badge neutral">${esc(h.stage)}</span></div>${photoMarkup(h,'detail')}<div id="houseMedia">${houseMediaMarkup(h)}</div><div class="detail-title">${esc(h.community)}<br>${esc(h.title)}</div><div class="detail-sub">档案编号 ${esc(h.id)} · 首次记录 ${esc(h.firstSeen)} · 末次观察 ${esc(h.lastSeen)}</div><div class="detail-price">${fmtMoney(h)}<small> 万</small><span style="font-size:13px;font-weight:400;color:#989898;margin-left:12px">${unit(h)}</span></div><div class="fact-grid"><div class="fact"><small>面积 / 户型</small><strong>${fmt(h.area)}㎡ / ${esc(h.rooms)}</strong></div><div class="fact"><small>楼层</small><strong>${esc(h.floor||'未知')} / ${esc(h.total||'未知')} 层</strong></div><div class="fact"><small>环境等级</small><strong>${esc(envFor(h))}</strong></div><div class="fact"><small>电梯</small><strong>${esc(h.elevator)}</strong></div><div class="fact"><small>噪声</small><strong>${esc(h.noise)}</strong></div><div class="fact"><small>装修</small><strong>${esc(h.decoration)}</strong></div></div>${window.HQMarketMonitor.rentalDetail(h,!!cloudConfig.token)}<div class="minihead">自动筛选结论</div>${issueTags(h)}<div class="help">${hard.length?`<b style="color:#b65047">一票否决：${hard.map(esc).join('、')}</b>`:unknown(h)?'<b>待核验：</b>存在环境、噪声、楼层/电梯、产权或一楼特殊风险信息缺失，不能直接认定无硬伤。':'<b style="color:#4c4c4c">初筛通过：</b>根据已填字段暂未触发已定义硬伤。仍应现场和产权核验。'}</div><div class="minihead">各平台来源 <button class="btn sm" data-action="editSource" data-id="${esc(h.id)}">${bhIcon('plus',13)} 关联 / 修改</button></div>${h.sources.length?h.sources.map((s,i)=>`<div class="source-box"><div class="row"><strong>${esc(s.channel)}</strong><span class="badge neutral">${esc(s.relation||'未核验')}</span></div><div class="muted" style="margin:5px 0">平台ID：${esc(s.platformId||'未知')} · ${esc(s.urlType||'未注明')}</div><div class="row">${urlSafe(s.originalUrl||s.url)?`<a href="${esc(urlSafe(s.originalUrl||s.url))}" target="_blank" rel="noopener noreferrer">直接打开原始房源 ${bhIcon('external',12)}</a>`:'<span class="nourl">暂无链接</span>'}<span><button class="btn text sm" data-action="editSource" data-id="${esc(h.id)}" data-index="${i}">修改</button><button class="btn text sm" data-action="splitSource" data-id="${esc(h.id)}" data-index="${i}">拆分</button><button class="btn text sm danger" data-action="detachSource" data-id="${esc(h.id)}" data-index="${i}">解绑</button></span></div></div>`).join(''):'<div class="help">尚未关联来源，点击上方按钮添加官方单套房源详情链接。</div>'}<div class="minihead">历史带看记录 <button class="btn sm" data-tab="visits">${bhIcon('enter',13)} 查看行程</button></div>${visitsForHouse(h).map(v=>`<div class="visit-feedback"><b>${esc(v.session.date)} · ${esc(v.session.broker||'现场看房')}</b><br>${esc(v.entry.decision||'待判断')} · ${esc(v.entry.impression||'暂无备注')}${v.entry.photoData?`<div><img src="${esc(v.entry.photoData)}" alt="现场照片" class="visit-photo"></div>`:''}</div>`).join('')||'<p class="muted">尚无实际带看记录。中介发来的链接应先加入「看房行程」。</p>'}<div class="minihead">你的判断与看房记录 <button class="btn sm soft" data-action="saveHouse" data-id="${esc(h.id)}">保存修改</button></div><div class="form-grid"><div class="form-item"><label>是否合适</label><select id="editSuit">${selectOptions(['待判断','合适','不合适'],h.suitability)}</select></div><div class="form-item"><label>行动状态</label><select id="editStage">${selectOptions(['观察中','重点关注','准备看房','已看房','放弃'],h.stage)}</select></div><div class="form-item"><label>小区环境（继承目录）</label><div class="environment-readonly">${esc(envFor(h))}级 · 在「监控小区」里统一修改</div></div><div class="form-item"><label>噪音</label><select id="editNoise">${selectOptions(['未知','安静','一般可接受','严重'],h.noise)}</select></div><div class="form-item"><label>真实楼层</label><input id="editFloor" type="number" min="0" max="99" value="${esc(h.floor||'')}"></div><div class="form-item"><label>电梯</label><select id="editElevator">${selectOptions(['未知','有','无'],h.elevator)}</select></div><div class="form-item"><label>目前报价（万）</label><input id="editPrice" type="number" min="0.1" step="0.1" value="${esc(h.price??'')}"></div><div class="form-item"><label>产权/入学核查</label><select id="editLegal">${selectOptions(['待核实','普通住宅待核学位','已核实符合','产权/入学不符'],h.legal||'待核实')}</select></div></div>
 <div class="visit-v2-state-editor"><label>看房属性</label>${visitStateChoices('editVisitStatus',visitStateOf(h))}</div><div class="defects-block"><h4>${bhIcon('block',14)} 一票否决硬伤（可多选）</h4><p class="subnote">任一项勾选后自动归入「硬伤排除」，不会从数据库删除，可随时改回。</p>${defectMarkup('editHard',HARD_DEFECTS,h.defects||[])}</div>
 <div class="defects-block soft"><h4>一般缺点（可多选）</h4><p class="subnote">只作为议价／看房参考，不会自动排除。</p>${defectMarkup('editSoft',SOFT_DEFECTS,h.drawbacks||[])}</div>
 <div id="editScreeningPreview">${statusHint(h.defects||[],h.drawbacks||[],envFor(h),issue(h).filter(x=>!HARD_DEFECTS.some(y=>y[1]===x)))}</div>
@@ -1373,7 +1392,7 @@ window.addEventListener('focus',()=>{if(!document.hidden)onCloudWake()});
 window.addEventListener('pageshow',e=>{if(e.persisted)onCloudWake(true)});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)onCloudWake()});
 window.addEventListener('online',()=>{if(cloudStartupDone)onCloudWake(true)});
-document.addEventListener('click',e=>{const ui=e.target.closest('[data-ui]');if(ui){const cmd=ui.dataset.ui;if(cmd==='drawerOpen'){openBhDrawer();return}if(cmd==='drawerClose'){closeBhDrawer();return}if(cmd==='goSettings'){closeOverlay();tab='settings';render();window.scrollTo(0,0);return}if(cmd==='searchToggle'){searchOpen=!searchOpen;render();if(searchOpen)document.getElementById('search')?.focus();return}if(cmd==='searchClose'){search='';searchOpen=false;render();return}if(cmd==='help'){modal('买房助手 · 使用说明','<p>房源信息、历史价格、看房行程和小区记录均可查看。新增、修改或归档需要在「数据管理」输入 PIN。</p><p>正式房源须有可识别的单套官方详情链接；待核实线索独立保存，不能计入正式房源。</p><p>首页概览来自真实数据库，筛选条默认展开，左右滑动查看更多状态。</p>');return}}const close=e.target.closest('[data-close]');if(close&&(close===e.target||e.target.closest('button[data-close]'))){closeOverlay();return}const nt=e.target.closest('[data-tab]');if(nt){if(configFormDirty&&tab==='config'&&nt.dataset.tab!=='config'){if(!confirm('页面配置有未保存的修改，确认放弃吗？'))return;configFormDirty=false;}closeBhDrawer();tab=nt.dataset.tab;filter=state.pageConfig.defaultFilter;search='';searchOpen=false;render();window.scrollTo(0,0);return}const ff=e.target.closest('[data-filter]');if(ff){window.__hqUserFiltersTouched=true;filter=ff.dataset.filter;render();return}const vv=e.target.closest('[data-view]');if(vv){window.__hqUserFiltersTouched=true;view=vv.dataset.view;render();return}const oo=e.target.closest('[data-open]');if(oo){openDetail(oo.dataset.open);return}const a=e.target.closest('[data-action]');if(!a)return;const action=a.dataset.action;const publicActions=new Set(['visitSelectTab','visitFilter','reopen','shareHouse','exportLinks','export','saveCloudConfig','lockCloud','cloudPull']);if(!cloudConfig.token&&!publicActions.has(action)){toast('当前为公开只读模式；输入 PIN 解锁后才能修改数据');tab='settings';render();return;}const id=a.dataset.id, h=state.houses.find(x=>x.id===id);switch(action){
+document.addEventListener('click',e=>{const ui=e.target.closest('[data-ui]');if(ui){const cmd=ui.dataset.ui;if(cmd==='drawerOpen'){openBhDrawer();return}if(cmd==='pendingLinks'){showPendingCandidates();return}if(cmd==='drawerClose'){closeBhDrawer();return}if(cmd==='goSettings'){closeOverlay();tab='settings';render();window.scrollTo(0,0);return}if(cmd==='searchToggle'){searchOpen=!searchOpen;render();if(searchOpen)document.getElementById('search')?.focus();return}if(cmd==='searchClose'){search='';searchOpen=false;render();return}if(cmd==='help'){modal('买房助手 · 使用说明','<p>房源信息、历史价格、看房行程和小区记录均可查看。新增、修改或归档需要在「数据管理」输入 PIN。</p><p>正式房源须有可识别的单套官方详情链接；待核实线索独立保存，不能计入正式房源。</p><p>首页概览来自真实数据库，筛选条默认展开，左右滑动查看更多状态。</p>');return}}const close=e.target.closest('[data-close]');if(close&&(close===e.target||e.target.closest('button[data-close]'))){closeOverlay();return}const nt=e.target.closest('[data-tab]');if(nt){if(configFormDirty&&tab==='config'&&nt.dataset.tab!=='config'){if(!confirm('页面配置有未保存的修改，确认放弃吗？'))return;configFormDirty=false;}closeBhDrawer();tab=nt.dataset.tab;filter=state.pageConfig.defaultFilter;search='';searchOpen=false;render();window.scrollTo(0,0);return}const ff=e.target.closest('[data-filter]');if(ff){window.__hqUserFiltersTouched=true;filter=ff.dataset.filter;render();return}const vv=e.target.closest('[data-view]');if(vv){window.__hqUserFiltersTouched=true;view=vv.dataset.view;render();return}const oo=e.target.closest('[data-open]');if(oo){openDetail(oo.dataset.open);return}const marketTab=e.target.closest('[data-market-view]');if(marketTab){marketView=marketTab.dataset.marketView==='records'?'records':'macro';render();return}const a=e.target.closest('[data-action]');if(!a)return;const action=a.dataset.action;const publicActions=new Set(['visitSelectTab','visitFilter','reopen','shareHouse','exportLinks','export','saveCloudConfig','lockCloud','cloudPull']);if(!cloudConfig.token&&!publicActions.has(action)){toast('当前为公开只读模式；输入 PIN 解锁后才能修改数据');tab='settings';render();return;}const id=a.dataset.id, h=state.houses.find(x=>x.id===id);switch(action){
  case 'visitSelectTab':visitView=a.dataset.visitTab==='history'?'history':'pending';render();break;
  case 'visitMarkSeen':if(h){if(visitApplyStatus(h,'看过')){changed(h,'看房状态','标记看过；进入历史时间轴');save();}visitView='history';render();toast('已归入看房历史');}break;
  case 'visitNew':editVisitSession();break;
@@ -1426,6 +1445,45 @@ document.addEventListener('click',e=>{const ui=e.target.closest('[data-ui]');if(
    const sess=visitRecords().find(s=>s.id===id);if(!sess)break;
    sess.status='planned';delete sess.finishedAt;save();visitView='active';render();toast('行程已重新打开，历史记录未删除');break;
  }
+case 'rentalOpen':if(h)modal('记录租金观察',window.HQMarketMonitor.rentalForm(h,nowDay()));break;
+case 'rentalSave':{
+ if(!h)break;
+ const rent=Number(val('rentValue')),months=Number(val('rentMonths')),cost=Number(val('rentCost')),date=val('rentDate'),kind=val('rentKind'),source=val('rentSource').trim(),raw=val('rentUrl').trim(),note=val('rentNote').trim();
+ if(!val('rentValue')||!val('rentMonths')||!val('rentCost')||!window.HQMarketMonitor.rentalYield(1,rent,months,cost)||!/^\d{4}-\d{2}-\d{2}$/.test(date)||!source||!['人工估算','挂牌租金','已租记录'].includes(kind)||(raw&&!urlSafe(raw))){toast('请填写有效租金、日期、出租月数、费用比例和来源');break;}
+ if(kind==='已租记录'&&!raw&&!note){toast('已租记录须填写原始链接或可追溯依据备注');break;}
+ const previous=h.rentalObservations;
+ h.rentalObservations=[...(Array.isArray(previous)?previous:[]),{id:'RENT-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8),date,createdAt:new Date().toISOString(),rent,kind,months,cost,source,url:urlSafe(raw),note,priceAtRecord:Number(h.price)>0?Number(h.price):null}];
+ if(!save()){h.rentalObservations=previous;break;}
+ render();openDetail(id);toast('租金观察已保存，等待云端同步');break;
+}
+case 'marketOpenObservation':{
+ modal('记录大盘观察',`<div class="help">记录新一期宏观或天津市场数据。请保留统计期、来源和原始链接；没有核实的内容可标注为观察线索。</div>
+ <div class="market-form-grid">
+  <div><label>统计期 *</label><input id="marketObsPeriod" type="month" value="${new Date().toISOString().slice(0,7)}"></div>
+  <div><label>指标名称 *</label><input id="marketObsLabel" placeholder="如：天津二手房成交量"></div>
+  <div><label>数值 *</label><input id="marketObsValue" placeholder="如：11292 或 -0.5"></div>
+  <div><label>单位</label><input id="marketObsUnit" placeholder="套、%、万套等"></div>
+  <div><label>数据来源 *</label><input id="marketObsSource" placeholder="国家统计局／中指研究院／官方公告"></div>
+  <div><label>原始链接</label><input id="marketObsUrl" type="url" placeholder="https://..."></div>
+  <div class="wide"><label>备注与判断</label><textarea id="marketObsNote" rows="3" placeholder="口径、变化、对天津或红桥的可能影响"></textarea></div>
+ </div>
+ <div class="modal-actions"><button class="btn" data-close="1">取消</button><button class="btn primary" data-action="marketSaveObservation">保存观察</button></div>`);
+ break;
+}
+case 'marketSaveObservation':{
+ const period=val('marketObsPeriod').trim(),label=val('marketObsLabel').trim(),value=val('marketObsValue').trim(),source=val('marketObsSource').trim();
+ if(!/^\d{4}-\d{2}$/.test(period)||!label||!value||!source){toast('请填写统计期、指标名称、数值和来源');break;}
+ const record={id:'MM-'+Date.now().toString(36),period,label,value,unit:val('marketObsUnit').trim(),source,url:urlSafe(val('marketObsUrl').trim()),note:val('marketObsNote').trim(),createdAt:nowStamp()};
+ state.marketMonitor=window.HQMarketMonitor.normalize(state.marketMonitor);
+ state.marketMonitor.observations.unshift(record);
+ save();closeOverlay();tab='changes';marketView='macro';render();toast('大盘观察已保存并加入云端同步队列');break;
+}
+case 'marketDeleteObservation':{
+ if(!confirm('删除这条大盘观察记录？'))break;
+ state.marketMonitor=window.HQMarketMonitor.normalize(state.marketMonitor);
+ state.marketMonitor.observations=(state.marketMonitor.observations||[]).filter(x=>x.id!==id);
+ save();render();toast('观察记录已删除');break;
+}
 case 'new':newHouse();break;
 case 'promoteCandidate':{const c=(state.listingCandidates||[]).find(x=>x.candidateId===id);if(!c)break;newHouse(null,{platform:c.platform,url:c.originalUrl||c.url,title:c.title||'',community:scopeFor(c.community)?c.community:'',price:c.price??null,area:c.area??null,rooms:c.rooms||'',floorBand:c.floorBand||'',floor:c.floor||null,totalFloors:c.totalFloors||null,orientation:c.orient||c.orientation||'',elevator:c.elevator||'未知',visitStatus:c.visitStatus||'未看'});break;}
 case 'editInfo':newHouse(id);break;
@@ -1469,7 +1527,7 @@ case 'commitHouse':{
 }
 
 case 'commitLog':if(!h)break;{const type=val('evType'),desc=val('evDesc').trim(),src=val('evSource').trim();if(!desc){toast('请输入事件内容');break}changed(h,type,desc+(src?'；证据：'+src:''));if(type==='下架待核')h.stage='观察中';save();render();openDetail(id);toast('已加入时间线');break}
-case 'commitMerge':if(!h)break;{const other=state.houses.find(x=>x.id===val('mergeOther'));if(!other||h.id===other.id)break;if(!confirm('确认 '+h.id+' 和 '+other.id+' 是同一套真实房屋？此操作会删除另一条独立档案，请先导出备份。'))break;h.sources.push(...(other.sources||[]));h.events.push(...(other.events||[]));other.mergedInto=h.id;other.deletedAt=nowStamp();other.deletedReason='合并至 '+h.id;changed(other,'档案合并保留别名',`此档案合并至 ${h.id}；原始ID和链接保留，避免历史链接身份丢失。`);changed(h,'手动合并档案',`并入 ${other.id}，原始价${other.price}万，${other.community}。人工备注：${other.note||'无'}`);save();render();openDetail(id);toast('已合并；原档案作为别名保留');break}
+case 'commitMerge':if(!h)break;{const other=state.houses.find(x=>x.id===val('mergeOther'));if(!other||h.id===other.id)break;if(!confirm('确认 '+h.id+' 和 '+other.id+' 是同一套真实房屋？此操作会删除另一条独立档案，请先导出备份。'))break;h.sources.push(...(other.sources||[]));h.events.push(...(other.events||[]));h.rentalObservations=Array.from(new Map([...(other.rentalObservations||[]),...(h.rentalObservations||[])].map(r=>[r.id,r])).values());other.mergedInto=h.id;other.deletedAt=nowStamp();other.deletedReason='合并至 '+h.id;changed(other,'档案合并保留别名',`此档案合并至 ${h.id}；原始ID和链接保留，避免历史链接身份丢失。`);changed(h,'手动合并档案',`并入 ${other.id}，原始价${other.price}万，${other.community}。人工备注：${other.note||'无'}`);save();render();openDetail(id);toast('已合并；原档案作为别名保留');break}
 case 'removeHouse':if(!h)break;if(!confirm('将 '+id+' 从正式列表隐藏？链接、平台来源、评价和全部历史都会保留。以后再次发现相同链接时不会自动重新出现。'))break;h.deletedAt=nowStamp();h.deletedReason='用户手动隐藏';changed(h,'用户隐藏房源','从正式房源列表隐藏；保留唯一链接、来源、标签、评价和历史。相同链接再次出现时禁止自动复活。');save();closeOverlay();render();toast('已从列表隐藏，完整档案已保留');break;
 case 'restoreHouse':if(!h)break;if(!confirm('恢复 '+id+' 到正式房源列表？'))break;delete h.deletedAt;delete h.deletedReason;changed(h,'用户恢复房源','人工从隐藏档案恢复到正式列表。');save();render();toast('已恢复显示');break;
 case 'shareHouse':shareHouse(id);break;
@@ -1549,6 +1607,77 @@ function importCapturedRecord(record){
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('bh-drawer-open'))closeBhDrawer()});
 // V3.5: 浏览器扩展独立直传 Netlify Functions；已移除旧的 H5 消息中转。
+
+/* Draggable add-listing action: pointer/touch, click-safe and device-local position. */
+const FAB_POSITION_KEY='HQ_FAB_POSITION_V1';
+function initDraggableFab(){
+ const fab=document.getElementById('fabNew');if(!fab)return;
+ let pointer=null,moved=false,lastDragAt=0;
+ const limit=(v,min,max)=>Math.min(Math.max(v,min),max);
+ const bounds=()=>{
+  const vv=window.visualViewport;
+  const width=Math.min(window.innerWidth,(vv?.width||window.innerWidth)+(vv?.offsetLeft||0));
+  const height=Math.min(window.innerHeight,(vv?.height||window.innerHeight)+(vv?.offsetTop||0));
+  const minX=12,maxX=Math.max(minX,width-(fab.offsetWidth||54)-12);
+  const minY=70,maxY=Math.max(minY,height-(fab.offsetHeight||54)-78);
+  return {minX,maxX,minY,maxY};
+ };
+ const put=(x,y)=>{
+  const b=bounds();
+  fab.style.setProperty('left',Math.round(limit(x,b.minX,b.maxX))+'px','important');
+  fab.style.setProperty('top',Math.round(limit(y,b.minY,b.maxY))+'px','important');
+  fab.style.setProperty('right','auto','important');
+  fab.style.setProperty('bottom','auto','important');
+ };
+ const store=()=>{
+  const b=bounds(),r=fab.getBoundingClientRect();
+  const position={
+   x:(r.left-b.minX)/Math.max(1,b.maxX-b.minX),
+   y:(r.top-b.minY)/Math.max(1,b.maxY-b.minY)
+  };
+  try{localStorage.setItem(FAB_POSITION_KEY,JSON.stringify(position));}catch(_){}
+ };
+ const restore=()=>{
+  let p=null;try{p=JSON.parse(localStorage.getItem(FAB_POSITION_KEY)||'null');}catch(_){}
+  if(p&&Number.isFinite(p.x)&&Number.isFinite(p.y)){
+   const b=bounds();
+   put(b.minX+limit(p.x,0,1)*(b.maxX-b.minX),
+       b.minY+limit(p.y,0,1)*(b.maxY-b.minY));
+  }
+ };
+ fab.addEventListener('pointerdown',e=>{
+  if(e.button!==0||!e.isPrimary)return;
+  const r=fab.getBoundingClientRect();
+  pointer={id:e.pointerId,x:e.clientX,y:e.clientY,left:r.left,top:r.top};
+  moved=false;
+  try{fab.setPointerCapture(e.pointerId);}catch(_){}
+ });
+ fab.addEventListener('pointermove',e=>{
+  if(!pointer||e.pointerId!==pointer.id)return;
+  const dx=e.clientX-pointer.x,dy=e.clientY-pointer.y;
+  if(!moved&&Math.hypot(dx,dy)<6)return;
+  moved=true;fab.classList.add('is-dragging');
+  put(pointer.left+dx,pointer.top+dy);
+  if(e.cancelable)e.preventDefault();
+ });
+ const finish=e=>{
+  if(!pointer||e.pointerId!==pointer.id)return;
+  if(moved){store();lastDragAt=Date.now();}
+  pointer=null;moved=false;fab.classList.remove('is-dragging');
+  try{if(fab.hasPointerCapture(e.pointerId))fab.releasePointerCapture(e.pointerId);}catch(_){}
+ };
+ fab.addEventListener('pointerup',finish);
+ fab.addEventListener('pointercancel',finish);
+ // A release after dragging must never trigger "new listing".
+ fab.addEventListener('click',e=>{
+  if(Date.now()-lastDragAt<500){e.preventDefault();e.stopImmediatePropagation();}
+ },true);
+ window.addEventListener('resize',restore);
+ window.visualViewport?.addEventListener('resize',restore);
+ restore();
+}
+
+initDraggableFab();
 applyPageConfig();render();
 const hqCloudInitPromise=initCloud().finally(()=>{cloudStartupDone=true;void restoreMediaTasks();});
 // 新设备首次打开时自动展示 PIN 登录界面，避免看到全是0的空白初始化页。

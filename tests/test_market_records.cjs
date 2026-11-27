@@ -7,9 +7,10 @@ const path=require('node:path');
 const assert=require('node:assert/strict');
 const vm=require('node:vm');
 const c=fs.readFileSync(path.join(__dirname,'../site/index.html'),'utf8');
-const a=c.indexOf('function renderChanges(){');
-const b=c.indexOf('function renderBenchmark(){',a);
-assert.ok(a>0&&b>a,'market view function must exist');
+const a=c.indexOf('function renderListingChanges(){');
+const b=c.indexOf('function renderChanges(){',a);
+const end=c.indexOf('function renderBenchmark(){',b);
+assert.ok(a>0&&b>a&&end>b,'market view functions must exist');
 const state={
  marketScans:[{id:'MKT-20261119-01',community:'民畅园',listedAvg:12943.74,url:'https://tj.5i5j.com/ershoufang/392459/o1p3/'}],
  houses:[{id:'TJ-HQ-0001',community:'水木天成翠杨园',events:[
@@ -18,8 +19,8 @@ const state={
  ]}]
 };
 const snapshot=JSON.stringify(state.marketScans);
-const rendered=vm.runInNewContext(c.slice(a,b)+'\nrenderChanges();',{
- state,esc:x=>String(x??'')
+const rendered=vm.runInNewContext(c.slice(a,end)+'\nrenderChanges();',{
+ state,marketView:'records',window:{HQMarketMonitor:{renderTabs:()=>'<div>market tabs</div>',renderDashboard:()=>''}},esc:x=>String(x??'')
 });
 assert.ok(rendered.includes('单套房源变动流水'));
 assert.ok(rendered.includes('55万 → 53万'));
@@ -29,8 +30,8 @@ assert.ok(!rendered.includes('小区挂牌扫描'));
 assert.ok(!rendered.includes('挂牌均价'));
 assert.ok(!rendered.includes('今日索引'));
 assert.equal(JSON.stringify(state.marketScans),snapshot,'historical scans must not be deleted or mutated');
-const empty=vm.runInNewContext(c.slice(a,b)+'\nrenderChanges();',{
- state:{marketScans:state.marketScans,houses:[]},esc:x=>String(x??'')
+const empty=vm.runInNewContext(c.slice(a,end)+'\nrenderChanges();',{
+ state:{marketScans:state.marketScans,houses:[]},marketView:'records',window:{HQMarketMonitor:{renderTabs:()=>'<div>market tabs</div>',renderDashboard:()=>''}},esc:x=>String(x??'')
 });
 assert.ok(empty.includes('暂无单套房源变动记录'));
 assert.ok(!empty.includes('小区挂牌扫描'));

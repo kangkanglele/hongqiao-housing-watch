@@ -1,0 +1,10 @@
+'use strict';
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path');
+const ctx={window:{}};vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../site/market-monitor.js'),'utf8'),ctx);
+const a=ctx.window.HQMarketMonitor;
+const y=a.rentalYield(45,1500,11,10);
+assert.equal(y.gross,4);assert.equal(y.net,3.3);assert.equal(y.annualNet,14850);assert.equal(y.ratio,300);assert.equal(y.priceAt4,45);
+assert.equal(a.rentalYield(0,1500),null);assert.equal(a.rentalYield(45,1500,13,10),null);assert.equal(a.rentalYield(45,1500,11,101),null);
+const h={id:'H1',price:45,community:'水木天成',rentalObservations:[{id:'a',date:'2026-11-20',createdAt:'2026-11-20T00:00:00Z',rent:1400,months:11,cost:10,kind:'人工估算'},{id:'b',date:'2026-11-27',createdAt:'2026-11-27T00:00:00Z',rent:1500,months:11,cost:10,kind:'已租记录',source:'<script>',priceAtRecord:45}]};
+assert.equal(a.rentalLatest(h).id,'b');assert.ok(a.rentalInline(h).includes('4.00%'));assert.ok(a.rentalDetail(h,true).includes('rentalOpen'));assert.ok(!a.rentalDetail(h,false).includes('rentalOpen'));assert.ok(a.rentalDetail(h,true).includes('&lt;script&gt;'));assert.ok(a.rentalMarket([h]).includes('4.00'));assert.ok(a.rentalMarket([{...h,deletedAt:'today'}]).includes('暂无可计算样本'));
+console.log('PASS rental yield, latest observations, source escaping, read-only controls and sample aggregation');

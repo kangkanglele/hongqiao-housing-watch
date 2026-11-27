@@ -6,6 +6,7 @@ import secrets
 ROOT = Path(__file__).resolve().parents[1]
 html = (ROOT / 'site' / 'index.html').read_text()
 merge_js = (ROOT / 'site' / 'sync-merge.js').read_text()
+market_monitor_js = (ROOT / 'site' / 'market-monitor.js').read_text()
 layout_css = (ROOT / 'site' / 'buyhouse-v08.css').read_text()
 test_pin = str(1000 + secrets.randbelow(9000))
 
@@ -20,6 +21,9 @@ def basic_route(route):
     if request.url.endswith('/sync-merge.js'):
         route.fulfill(status=200, content_type='text/javascript; charset=utf-8', body=merge_js)
         return
+    if request.url.split('?')[0].endswith('/market-monitor.js'):
+        route.fulfill(status=200, content_type='text/javascript; charset=utf-8', body=market_monitor_js)
+        return
     if '/.netlify/functions/hq-api' in request.url:
         data = request.post_data_json or {}
         if data.get('action') == 'login':
@@ -33,7 +37,7 @@ def basic_route(route):
                  ], 'benchmarks': [],
                 'scopes': [{'id': 'S1', 'name': '水木天成翠杨园', 'group': '水木天成', 'env': 'B', 'priority': '核心内圈'}],
                 'quarantine': [], 'marketScans': [{'id': 'test', 'date': '2026-11-19', 'community': '民畅园'}],
-                'saleLeads': [], 'listingCandidates': [], 'linkLedger': [], 'visitSessions': []
+                'saleLeads': [], 'listingCandidates': [{'candidateId':'PENDING-TEST-1','platform':'贝壳','platformListingId':'11111111111','originalUrl':'https://m.ke.com/tj/ershoufang/11111111111.html','community':'水木天成翠杨园','price':56,'area':70}], 'linkLedger': [], 'visitSessions': []
             }}
         elif data.get('action') == 'ping':
             answer = {'ok': True, 'version': 8}
@@ -73,6 +77,9 @@ def conflict_route_factory():
             return
         if request.url.endswith('/sync-merge.js'):
             route.fulfill(status=200, content_type='text/javascript; charset=utf-8', body=merge_js)
+            return
+        if request.url.split('?')[0].endswith('/market-monitor.js'):
+            route.fulfill(status=200, content_type='text/javascript; charset=utf-8', body=market_monitor_js)
             return
         if '/.netlify/functions/hq-api' not in request.url:
             route.fulfill(status=204, body='')
@@ -129,17 +136,37 @@ with sync_playwright() as pw:
     page.wait_for_timeout(300)
     root_text = page.locator('#root').inner_text()
     assert page.locator('.bh-overview-head h1').inner_text() == '房源概览', f'new dynamic overview missing; errors={errors}; root={root_text[:500]}'
-    assert page.locator('.bh-metric').count() == 3, 'three independent overview metrics expected'
+    assert page.locator('.bh-metric').count() == 4, 'four independent overview metrics expected'
     assert page.locator('#nav [data-tab="config"]').count() == 0, 'page configuration must not appear in navigation'
-    page.wait_for_function("document.querySelectorAll('.bh-metric-value').length === 3 && document.querySelector('.bh-metric-value').textContent.includes('2')", timeout=6000)
-    assert [x.replace('套','').strip() for x in page.locator('.bh-metric-value').all_inner_texts()] == ['2','0','1'], 'total, pending and focus must reflect loaded records'
+    page.wait_for_function("document.querySelectorAll('.bh-metric-value').length === 4 && document.querySelector('.bh-metric-value').textContent.includes('2')", timeout=6000)
+    assert [x.replace('套','').replace('条','').strip() for x in page.locator('.bh-metric-value').all_inner_texts()] == ['2','0','1','1'], 'total, visit-pending, focus and unverified-link counts must remain separate'
     assert page.locator('.bh-sync-line').count() == 0, 'redundant homepage refresh strip removed'
+    assert page.locator('.bh-pending-details').count() == 0, 'old pending-link strip should be removed'
+    page.locator('[data-ui="pendingLinks"]').click()
+    assert page.locator('.hq-pending-modal-list .quarantine-item').count() == 1
+    assert page.locator('.hq-pending-modal-list [data-ui="goSettings"]').count() == 1, 'locked candidate action must offer PIN unlock instead of a blocked edit'
+    assert page.locator('.hq-pending-modal-list a[href*="11111111111"]').count() == 1
+    page.locator('#overlay button[data-close]').click()
     assert page.locator('.bh-filter-accordion .filters').is_visible(), 'filters visible by default'
     assert page.locator('.bh-filter-accordion .chip').count() == 9, 'focus, pending visit and visited are separate filters'
     assert page.get_by_role('button', name='待看房源').count() == 1, 'pending visit filter is distinct from focus'
     assert page.locator('.bh-listing').count() == 1, 'default list excludes hard defects and deleted records'
     assert page.locator('.photo-placeholder .photo-symbol .bh-metric-icon').count() >= 1, 'listing placeholder reuses overview house icon'
+    assert '暂无房屋照片' not in page.locator('.bh-listing').first.inner_text()
+    assert '照片可选' not in page.locator('.bh-listing').first.inner_text()
     assert '水木天成翠杨园' in page.locator('.bh-listing-name').inner_text()
+    # Market opens on the macro dashboard; the original individual listing log remains a subview.
+    page.locator('#navToggle').click()
+    page.locator('#nav [data-tab="changes"]').click()
+    assert page.locator('.market-status-card').is_visible(), f'macro market dashboard missing; errors={errors}'
+    assert '天津二手房仍处于调整期' in page.locator('.market-status-card').inner_text()
+    assert page.locator('.market-metric').count() >= 10, 'official and third-party market indicators should render'
+    assert page.locator('[data-action="marketOpenObservation"]').count() == 0, 'public read-only view must not expose market edits'
+    page.locator('[data-market-view="records"]').click()
+    assert '单套房源变动流水' in page.locator('#root').inner_text(), 'original listing event log must remain available'
+    page.locator('[data-market-view="macro"]').click()
+    page.locator('#navToggle').click()
+    page.locator('#nav [data-tab="houses"]').click()
     # Header: no white slab or redundant cloud/help block; upload slot is reserved at the right.
     header_style = page.locator('.topbar-shell').evaluate("""el => ({background:getComputedStyle(el).backgroundColor,border:getComputedStyle(el).borderBottomWidth})""")
     assert header_style['background'] == 'rgb(255, 255, 255)' and header_style['border'] == '0px', f'header should blend into page background: {header_style}'
@@ -175,8 +202,38 @@ with sync_playwright() as pw:
     assert page.locator('.bh-listing').count() == 1
     page.set_viewport_size({'width':390,'height':844})
     assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), '390px layout must not scroll horizontally'
+    toolbar_x = page.locator('.bh-search-toggle').bounding_box()['x']
+    card_x = page.locator('.bh-listing').first.bounding_box()['x']
+    assert abs(toolbar_x-card_x) <= 2, f'mobile search must share the listing cards left edge: {toolbar_x} vs {card_x}'
+    assert min(page.locator('.bh-filter-accordion .chip').evaluate_all('(els)=>els.map(x=>x.getBoundingClientRect().height)')) >= 39.9, 'mobile filter chips must have 40pt logical tap height'
+    dock_align = page.evaluate("""() => {
+       const slot=document.getElementById('topbarUploadSlot');
+       const oldDock=document.getElementById('hqUploadDock');
+       const dock=oldDock||document.createElement('div');
+       if(!oldDock){dock.id='hqUploadDock';slot.appendChild(dock);}
+       slot.hidden=false;dock.hidden=false;
+       dock.innerHTML='<div class="hq-upload-mini" style="width:160px">上传任务</div>';
+       const delta=Math.abs(dock.querySelector('.hq-upload-mini').getBoundingClientRect().right-slot.getBoundingClientRect().right);
+       slot.hidden=true;dock.hidden=true;dock.innerHTML='';
+       if(!oldDock)dock.remove();
+       return delta;
+    }""")
+    assert dock_align <= 2, f'upload queue must be right-aligned inside the header margin: {dock_align}'
     page.set_viewport_size({'width':320,'height':740})
     assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), '320px layout must not scroll horizontally'
+    start_fab = page.locator('#fabNew').bounding_box()
+    page.mouse.move(start_fab['x']+start_fab['width']/2,start_fab['y']+start_fab['height']/2)
+    page.mouse.down()
+    page.mouse.move(86,235,steps=8)
+    page.mouse.up()
+    moved_fab = page.locator('#fabNew').bounding_box()
+    assert abs(moved_fab['x']-start_fab['x']) > 30, 'floating add button should be draggable'
+    assert page.evaluate("localStorage.getItem('HQ_FAB_POSITION_V1')") is not None, 'dragged FAB position must persist'
+    assert page.locator('#adminPin').count() == 0 and page.locator('#overlay .shade').count() == 0, 'drag release must not trigger new listing'
+    page.reload(wait_until='domcontentloaded')
+    page.wait_for_function("document.querySelectorAll('.bh-metric-value').length === 4")
+    restored_fab = page.locator('#fabNew').bounding_box()
+    assert abs(moved_fab['x']-restored_fab['x']) <= 2, 'FAB position should be restored on page reload'
     # Opening a property modal must shade the sticky top bar too.
     page.locator('.bh-listing-main').first.click()
     assert page.locator('#overlay .detail-shade').count() == 1
